@@ -1,0 +1,29 @@
+[versions]
+kotlin = "2.1.21"                   # https://github.com/jetbrains/kotlin/releases
+agp = "8.9.2"                       # https://developer.android.com/build/releases/gradle-plugin?hl=en
+
+compose = "1.8.0"                   # https://github.com/JetBrains/compose-multiplatform/releases
+
+android-material = "1.12.0"         # https://github.com/material-components/material-components-android/releases
+
+androidx-activity = "1.10.1"        # https://developer.android.com/jetpack/androidx/releases/activity?hl=en
+androidx-camera = "1.5.0-beta01"    # https://developer.android.com/jetpack/androidx/releases/camerax?hl=en
+
+[libraries]
+android-material = { group = "com.google.android.material", name = "material", version.ref = "android-material" }
+
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
+
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "androidx-camera" }
+androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "androidx-camera" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "androidx-camera" }
+androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "androidx-camera" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
