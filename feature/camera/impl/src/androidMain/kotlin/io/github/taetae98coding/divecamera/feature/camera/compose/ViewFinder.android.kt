@@ -23,10 +23,9 @@ internal actual fun ViewFinder(
     state: CameraState,
     modifier: Modifier,
 ) {
-    val androidState = state as? AndroidCameraState ?: return
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraId = androidState.cameraId
+    val cameraId = state.cameraId
     var surfaceRequest: SurfaceRequest? by remember { mutableStateOf(null) }
     val preview = remember {
         Preview.Builder()

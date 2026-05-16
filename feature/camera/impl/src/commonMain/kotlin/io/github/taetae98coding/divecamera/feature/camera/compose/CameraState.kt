@@ -2,7 +2,7 @@ package io.github.taetae98coding.divecamera.feature.camera.compose
 
 import androidx.compose.runtime.Composable
 
-internal interface CameraState {
+internal expect class CameraState(lensProvider: LensProvider) {
     val shutterInNanos: Long
     val aperture: Float
     val iso: Int

@@ -18,26 +18,26 @@ import platform.UIKit.UIApplicationWillResignActiveNotification
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_queue_create
 
-internal class IosCameraState(
+internal actual class CameraState actual constructor(
     private val lensProvider: LensProvider,
-) : CameraState {
-    override val shutterInNanos: Long get() = 0L
-    override val aperture: Float get() = 0F
-    override val iso: Int get() = 0
-    override val aspectWidth: Int get() = 3
-    override val aspectHeight: Int get() = 4
+) {
+    actual val shutterInNanos: Long get() = 0L
+    actual val aperture: Float get() = 0F
+    actual val iso: Int get() = 0
+    actual val aspectWidth: Int get() = 3
+    actual val aspectHeight: Int get() = 4
 
     private var currentIndex: Int by mutableIntStateOf(0)
 
     private val currentLens: Lens?
         get() = lensProvider.lenses.getOrNull(currentIndex)
 
-    override val fov: Float
+    actual val fov: Float
         get() = currentLens?.equivalentFocalLengthMm ?: 0F
 
     val session: AVCaptureSession = AVCaptureSession()
 
-    private val sessionQueue = dispatch_queue_create("io.github.taetae98coding.divecamera.camera.session", null,)
+    private val sessionQueue = dispatch_queue_create("io.github.taetae98coding.divecamera.camera.session", null)
 
     private var currentInput: AVCaptureDeviceInput? = null
 
@@ -66,7 +66,7 @@ internal class IosCameraState(
         }
     }
 
-    override fun changeLens() {
+    actual fun changeLens() {
         val size = lensProvider.lenses.size
         if (size <= 1) return
         currentIndex = (currentIndex + 1) % size
@@ -78,7 +78,7 @@ internal class IosCameraState(
         }
     }
 
-    override fun changeAspect() = Unit
+    actual fun changeAspect() = Unit
 
     private fun applyCurrentLens() {
         val lens = currentLens ?: return
@@ -93,7 +93,7 @@ internal class IosCameraState(
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {
-    val state = retain { IosCameraState(LensProvider()).also { it.configure() } }
+    val state = retain { CameraState(LensProvider()).also { it.configure() } }
 
     DisposableEffect(state) {
         state.start()

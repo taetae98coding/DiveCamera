@@ -17,10 +17,8 @@ internal actual fun ViewFinder(
     state: CameraState,
     modifier: Modifier,
 ) {
-    val iosState = state as? IosCameraState ?: return
-
-    val previewLayer = remember(iosState) {
-        AVCaptureVideoPreviewLayer(session = iosState.session).apply {
+    val previewLayer = remember(state) {
+        AVCaptureVideoPreviewLayer(session = state.session).apply {
             videoGravity = AVLayerVideoGravityResizeAspectFill
         }
     }
