@@ -38,7 +38,7 @@ internal fun CameraButtonBar(
         )
         SleepButton(
             isEnable = true,
-            onClick = state::unbind,
+            onClick = {},
             modifier = Modifier.size(60.dp),
         )
     }

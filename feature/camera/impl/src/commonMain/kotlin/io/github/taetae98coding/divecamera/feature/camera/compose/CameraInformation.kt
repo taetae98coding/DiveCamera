@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,8 +25,6 @@ internal fun CameraInformation(
     state: CameraState,
     modifier: Modifier = Modifier,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
     Column(
         modifier = modifier.background(Color.White.copy(alpha = 0.3F), RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp)),
