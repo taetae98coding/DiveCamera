@@ -46,9 +46,9 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     val cameraId: String?
         get() = currentLens?.let { lensProvider.cameraIdOf(it) }
 
-    private var isShutterManualState: Boolean by mutableStateOf(false)
+    private var isManualState: Boolean by mutableStateOf(false)
 
-    actual val isShutterManual: Boolean get() = isShutterManualState
+    actual val isShutterManual: Boolean get() = isManualState
 
     private var cameraControl: Camera2CameraControl? = null
 
@@ -66,7 +66,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 
     fun attachCameraControl(control: Camera2CameraControl) {
         cameraControl = control
-        if (isShutterManualState) applyManualExposure(shutterInNanosState)
+        if (isManualState) applyManualExposure(shutterInNanosState)
     }
 
     fun detachCameraControl() {
@@ -76,7 +76,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual fun changeLens() {
         val size = lensProvider.lenses.size
         if (size <= 1) return
-        if (isShutterManualState) setShutterAuto()
+        if (isManualState) setShutterAuto()
         currentIndex = (currentIndex + 1) % size
     }
 
@@ -86,13 +86,17 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 
     actual fun setShutterManual(nanos: Long) {
         val snapped = snapToShutterPreset(nanos)
-        isShutterManualState = true
+        isManualState = true
         applyManualExposure(snapped)
     }
 
     actual fun setShutterAuto() {
-        if (!isShutterManualState) return
-        isShutterManualState = false
+        exitManualExposure()
+    }
+
+    private fun exitManualExposure() {
+        if (!isManualState) return
+        isManualState = false
         cameraControl?.setCaptureRequestOptions(
             CaptureRequestOptions.Builder()
                 .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)

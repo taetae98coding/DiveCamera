@@ -58,9 +58,9 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual val fov: Float
         get() = currentLens?.equivalentFocalLengthMm ?: 0F
 
-    private var isShutterManualState: Boolean by mutableStateOf(false)
+    private var isManualState: Boolean by mutableStateOf(false)
 
-    actual val isShutterManual: Boolean get() = isShutterManualState
+    actual val isShutterManual: Boolean get() = isManualState
 
     val session: AVCaptureSession = AVCaptureSession()
 
@@ -100,7 +100,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual fun changeLens() {
         val size = lensProvider.lenses.size
         if (size <= 1) return
-        if (isShutterManualState) setShutterAuto()
+        if (isManualState) setShutterAuto()
         currentIndex = (currentIndex + 1) % size
 
         dispatch_async(sessionQueue) {
@@ -120,7 +120,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         if (!device.isExposureModeSupported(AVCaptureExposureModeCustom)) return
         if (!device.lockForConfiguration(null)) return
         try {
-            if (!isShutterManualState) {
+            if (!isManualState) {
                 device.exposureMode = AVCaptureExposureModeCustom
             }
             device.setExposureModeCustomWithDuration(
@@ -131,14 +131,18 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         } finally {
             device.unlockForConfiguration()
         }
-        isShutterManualState = true
+        isManualState = true
     }
 
     actual fun setShutterAuto() {
-        if (!isShutterManualState) return
+        exitManualExposure()
+    }
+
+    private fun exitManualExposure() {
+        if (!isManualState) return
         val device = currentDevice() ?: return
         if (!device.isExposureModeSupported(AVCaptureExposureModeContinuousAutoExposure)) {
-            isShutterManualState = false
+            isManualState = false
             return
         }
         if (!device.lockForConfiguration(null)) return
@@ -147,7 +151,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         } finally {
             device.unlockForConfiguration()
         }
-        isShutterManualState = false
+        isManualState = false
     }
 
     private fun currentDevice(): AVCaptureDevice? = currentLens?.let { lensProvider.deviceOf(it) }
