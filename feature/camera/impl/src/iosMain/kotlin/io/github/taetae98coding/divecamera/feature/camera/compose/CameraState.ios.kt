@@ -5,25 +5,38 @@ package io.github.taetae98coding.divecamera.feature.camera.compose
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
+import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetHigh
+import platform.AVFoundation.ISO
+import platform.AVFoundation.exposureDuration
+import platform.AVFoundation.lensAperture
+import platform.CoreMedia.CMTimeGetSeconds
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.NSTimer
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIApplicationWillResignActiveNotification
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_queue_create
 
-internal actual class CameraState actual constructor(
-    private val lensProvider: LensProvider,
-) {
-    actual val shutterInNanos: Long get() = 0L
-    actual val aperture: Float get() = 0F
-    actual val iso: Int get() = 0
+internal actual class CameraState actual constructor(private val lensProvider: LensProvider) {
+    private var shutterInNanosState: Long by mutableLongStateOf(0L)
+    private var apertureState: Float by mutableFloatStateOf(0F)
+    private var isoState: Int by mutableIntStateOf(0)
+
+    actual val shutterInNanos: Long
+        get() = shutterInNanosState
+    actual val aperture: Float
+        get() = apertureState
+    actual val iso: Int
+        get() = isoState
     actual val aspectWidth: Int get() = 3
     actual val aspectHeight: Int get() = 4
 
@@ -41,6 +54,8 @@ internal actual class CameraState actual constructor(
 
     private var currentInput: AVCaptureDeviceInput? = null
 
+    private var exposureTimer: NSTimer? = null
+
     fun configure() {
         dispatch_async(sessionQueue) {
             session.beginConfiguration()
@@ -56,9 +71,11 @@ internal actual class CameraState actual constructor(
                 session.startRunning()
             }
         }
+        startExposurePolling()
     }
 
     fun stop() {
+        stopExposurePolling()
         dispatch_async(sessionQueue) {
             if (session.isRunning()) {
                 session.stopRunning()
@@ -89,7 +106,41 @@ internal actual class CameraState actual constructor(
         session.addInput(newInput)
         currentInput = newInput
     }
+
+    private fun startExposurePolling() {
+        if (exposureTimer != null) return
+        exposureTimer = NSTimer.scheduledTimerWithTimeInterval(
+            interval = EXPOSURE_POLL_INTERVAL_SECONDS,
+            repeats = true,
+        ) { _: NSTimer? ->
+            pollExposure()
+        }
+    }
+
+    private fun stopExposurePolling() {
+        exposureTimer?.invalidate()
+        exposureTimer = null
+    }
+
+    private fun pollExposure() {
+        val lens = currentLens ?: return
+        val device = lensProvider.deviceOf(lens) ?: return
+        readExposureFrom(device)
+    }
+
+    private fun readExposureFrom(device: AVCaptureDevice) {
+        val seconds = CMTimeGetSeconds(device.exposureDuration)
+        shutterInNanosState = if (seconds.isFinite() && seconds > 0.0) {
+            (seconds * 1_000_000_000.0).toLong()
+        } else {
+            0L
+        }
+        isoState = device.ISO.toInt()
+        apertureState = device.lensAperture
+    }
 }
+
+private const val EXPOSURE_POLL_INTERVAL_SECONDS = 0.2
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {

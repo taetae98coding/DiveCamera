@@ -1,6 +1,8 @@
 package io.github.taetae98coding.divecamera.feature.camera.compose
 
+import android.annotation.SuppressLint
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -18,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.awaitCancellation
 
+@SuppressLint("UnsafeOptInUsageError")
 @Composable
 internal actual fun ViewFinder(
     state: CameraState,
@@ -27,8 +30,9 @@ internal actual fun ViewFinder(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraId = state.cameraId
     var surfaceRequest: SurfaceRequest? by remember { mutableStateOf(null) }
-    val preview = remember {
+    val preview = remember(state) {
         Preview.Builder()
+            .also { Camera2Interop.Extender(it).setSessionCaptureCallback(state.captureCallback) }
             .build()
             .apply { setSurfaceProvider { surfaceRequest = it } }
     }

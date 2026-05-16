@@ -1,18 +1,29 @@
 package io.github.taetae98coding.divecamera.feature.camera.compose
 
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.TotalCaptureResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
-internal actual class CameraState actual constructor(
-    private val lensProvider: LensProvider,
-) {
-    actual val shutterInNanos: Long get() = 0L
-    actual val aperture: Float get() = 0F
-    actual val iso: Int get() = 0
+internal actual class CameraState actual constructor(private val lensProvider: LensProvider) {
+    private var shutterInNanosState: Long by mutableLongStateOf(0L)
+    private var apertureState: Float by mutableFloatStateOf(0F)
+    private var isoState: Int by mutableIntStateOf(0)
+
+    actual val shutterInNanos: Long
+        get() = shutterInNanosState
+    actual val aperture: Float
+        get() = apertureState
+    actual val iso: Int
+        get() = isoState
     actual val aspectWidth: Int get() = 3
     actual val aspectHeight: Int get() = 4
 
@@ -26,6 +37,18 @@ internal actual class CameraState actual constructor(
 
     val cameraId: String?
         get() = currentLens?.let { lensProvider.cameraIdOf(it) }
+
+    val captureCallback: CameraCaptureSession.CaptureCallback = object : CameraCaptureSession.CaptureCallback() {
+        override fun onCaptureCompleted(
+            session: CameraCaptureSession,
+            request: CaptureRequest,
+            result: TotalCaptureResult,
+        ) {
+            result.get(CaptureResult.SENSOR_EXPOSURE_TIME)?.let { shutterInNanosState = it }
+            result.get(CaptureResult.LENS_APERTURE)?.let { apertureState = it }
+            result.get(CaptureResult.SENSOR_SENSITIVITY)?.let { isoState = it }
+        }
+    }
 
     actual fun changeLens() {
         val size = lensProvider.lenses.size
