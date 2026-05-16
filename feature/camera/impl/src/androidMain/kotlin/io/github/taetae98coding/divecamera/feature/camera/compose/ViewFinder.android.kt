@@ -6,6 +6,7 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.DynamicRange
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -31,12 +32,6 @@ internal actual fun ViewFinder(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraId = state.cameraId
     var surfaceRequest: SurfaceRequest? by remember { mutableStateOf(null) }
-    val preview = remember(state) {
-        Preview.Builder()
-            .also { Camera2Interop.Extender(it).setSessionCaptureCallback(state.captureCallback) }
-            .build()
-            .apply { setSurfaceProvider { surfaceRequest = it } }
-    }
 
     surfaceRequest?.let { request ->
         CameraXViewfinder(
@@ -45,9 +40,30 @@ internal actual fun ViewFinder(
         )
     }
 
-    LaunchedEffect(context, lifecycleOwner, preview, cameraId) {
+    LaunchedEffect(context, lifecycleOwner, state, cameraId) {
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
         val selector = cameraSelectorFor(cameraId)
+        val cameraInfo = cameraProvider.getCameraInfo(selector)
+        val capabilities = Preview.getPreviewCapabilities(cameraInfo)
+        val supportedHdr = cameraInfo.querySupportedDynamicRanges(
+            setOf(DynamicRange.HDR_UNSPECIFIED_10_BIT),
+        )
+        val hdrEnabled = DynamicRange.HDR_UNSPECIFIED_10_BIT in supportedHdr
+        state.setDynamicRangeLabel(if (hdrEnabled) "10-bit" else "SDR")
+
+        val preview = Preview.Builder()
+            .apply {
+                if (capabilities.isStabilizationSupported) {
+                    setPreviewStabilizationEnabled(true)
+                }
+                if (hdrEnabled) {
+                    setDynamicRange(DynamicRange.HDR_UNSPECIFIED_10_BIT)
+                }
+            }
+            .also { Camera2Interop.Extender(it).setSessionCaptureCallback(state.captureCallback) }
+            .build()
+            .apply { setSurfaceProvider { surfaceRequest = it } }
+
         try {
             cameraProvider.unbind(preview)
             val camera = cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)

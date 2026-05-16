@@ -20,7 +20,7 @@ internal actual fun ViewFinder(
     val previewLayer = remember(state) {
         AVCaptureVideoPreviewLayer(session = state.session).apply {
             videoGravity = AVLayerVideoGravityResizeAspectFill
-        }
+        }.also(state::applyPreviewStabilization)
     }
 
     UIKitView(

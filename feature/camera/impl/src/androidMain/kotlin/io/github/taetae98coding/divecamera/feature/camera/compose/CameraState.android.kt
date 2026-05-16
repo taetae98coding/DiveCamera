@@ -2,6 +2,7 @@ package io.github.taetae98coding.divecamera.feature.camera.compose
 
 import android.annotation.SuppressLint
 import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
@@ -51,6 +52,12 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual val isShutterManual: Boolean get() = isManualState
     actual val isIsoManual: Boolean get() = isManualState
 
+    private var stabilizationLabelState: String by mutableStateOf("Off")
+    private var dynamicRangeLabelState: String by mutableStateOf("SDR")
+
+    actual val previewStabilizationLabel: String get() = stabilizationLabelState
+    actual val dynamicRangeLabel: String get() = dynamicRangeLabelState
+
     private var manualShutterNanos: Long = 0L
     private var manualIso: Int = DEFAULT_MANUAL_ISO
 
@@ -65,7 +72,14 @@ internal actual class CameraState actual constructor(private val lensProvider: L
             result.get(CaptureResult.SENSOR_EXPOSURE_TIME)?.let { shutterInNanosState = it }
             result.get(CaptureResult.LENS_APERTURE)?.let { apertureState = it }
             result.get(CaptureResult.SENSOR_SENSITIVITY)?.let { isoState = it }
+            result.get(CaptureResult.CONTROL_VIDEO_STABILIZATION_MODE)?.let {
+                stabilizationLabelState = stabilizationLabelOf(it)
+            }
         }
+    }
+
+    fun setDynamicRangeLabel(label: String) {
+        dynamicRangeLabelState = label
     }
 
     fun attachCameraControl(control: Camera2CameraControl) {
@@ -137,6 +151,13 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 }
 
 private const val DEFAULT_MANUAL_SHUTTER_NANOS: Long = 10_000_000L
+
+private fun stabilizationLabelOf(mode: Int): String = when (mode) {
+    CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF -> "Off"
+    CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON -> "On"
+    CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_PREVIEW_STABILIZATION -> "Preview"
+    else -> "Off"
+}
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {

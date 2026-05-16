@@ -17,6 +17,13 @@ import platform.AVFoundation.AVCaptureExposureModeContinuousAutoExposure
 import platform.AVFoundation.AVCaptureExposureModeCustom
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetHigh
+import platform.AVFoundation.AVCaptureVideoPreviewLayer
+import platform.AVFoundation.AVCaptureVideoStabilizationModeAuto
+import platform.AVFoundation.AVCaptureVideoStabilizationModeCinematic
+import platform.AVFoundation.AVCaptureVideoStabilizationModeCinematicExtended
+import platform.AVFoundation.AVCaptureVideoStabilizationModeOff
+import platform.AVFoundation.AVCaptureVideoStabilizationModePreviewOptimized
+import platform.AVFoundation.AVCaptureVideoStabilizationModeStandard
 import platform.AVFoundation.ISO
 import platform.AVFoundation.exposureDuration
 import platform.AVFoundation.exposureMode
@@ -63,6 +70,11 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual val isShutterManual: Boolean get() = isManualState
     actual val isIsoManual: Boolean get() = isManualState
 
+    private var stabilizationLabelState: String by mutableStateOf("Off")
+
+    actual val previewStabilizationLabel: String get() = stabilizationLabelState
+    actual val dynamicRangeLabel: String get() = "SDR"
+
     private var manualShutterNanos: Long = 0L
     private var manualIso: Int = DEFAULT_MANUAL_ISO
 
@@ -71,6 +83,8 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     private val sessionQueue = dispatch_queue_create("io.github.taetae98coding.divecamera.camera.session", null)
 
     private var currentInput: AVCaptureDeviceInput? = null
+
+    private var previewLayer: AVCaptureVideoPreviewLayer? = null
 
     private var exposureTimer: NSTimer? = null
 
@@ -81,6 +95,38 @@ internal actual class CameraState actual constructor(private val lensProvider: L
             applyCurrentLens()
             session.commitConfiguration()
         }
+    }
+
+    fun applyPreviewStabilization(previewLayer: AVCaptureVideoPreviewLayer) {
+        this.previewLayer = previewLayer
+        dispatch_async(sessionQueue) {
+            applyStabilizationToCurrentDevice()
+        }
+    }
+
+    private fun applyStabilizationToCurrentDevice() {
+        val connection = previewLayer?.connection ?: return
+        val device = currentDevice() ?: return
+        val format = device.activeFormat
+        val supportsCinematic = format.isVideoStabilizationModeSupported(AVCaptureVideoStabilizationModeCinematic)
+        val supportsCinematicExt = format.isVideoStabilizationModeSupported(AVCaptureVideoStabilizationModeCinematicExtended)
+        val supportsPreviewOpt = format.isVideoStabilizationModeSupported(AVCaptureVideoStabilizationModePreviewOptimized)
+        val supportsStandard = format.isVideoStabilizationModeSupported(AVCaptureVideoStabilizationModeStandard)
+
+        val chosen = when {
+            supportsCinematic -> AVCaptureVideoStabilizationModeCinematic
+            supportsPreviewOpt -> AVCaptureVideoStabilizationModePreviewOptimized
+            supportsStandard -> AVCaptureVideoStabilizationModeStandard
+            else -> AVCaptureVideoStabilizationModeOff
+        }
+        connection.preferredVideoStabilizationMode = chosen
+
+        println(
+            "[Stab] supports: cinematic=$supportsCinematic, " +
+                "cinematicExt=$supportsCinematicExt, " +
+                "previewOpt=$supportsPreviewOpt, " +
+                "standard=$supportsStandard → applied=${stabilizationLabelOf(chosen)}",
+        )
     }
 
     fun start() {
@@ -111,6 +157,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
             session.beginConfiguration()
             applyCurrentLens()
             session.commitConfiguration()
+            applyStabilizationToCurrentDevice()
         }
     }
 
@@ -207,6 +254,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     private fun pollExposure() {
         val device = currentDevice() ?: return
         readExposureFrom(device)
+        readStabilizationFromConnection()
     }
 
     private fun readExposureFrom(device: AVCaptureDevice) {
@@ -219,6 +267,21 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         isoState = device.ISO.toInt()
         apertureState = device.lensAperture
     }
+
+    private fun readStabilizationFromConnection() {
+        val mode = previewLayer?.connection?.activeVideoStabilizationMode ?: return
+        stabilizationLabelState = stabilizationLabelOf(mode)
+    }
+}
+
+private fun stabilizationLabelOf(mode: Long): String = when (mode) {
+    AVCaptureVideoStabilizationModeOff -> "Off"
+    AVCaptureVideoStabilizationModeStandard -> "Standard"
+    AVCaptureVideoStabilizationModeCinematic -> "Cinematic"
+    AVCaptureVideoStabilizationModeCinematicExtended -> "Cinematic Ext"
+    AVCaptureVideoStabilizationModePreviewOptimized -> "Preview Opt"
+    AVCaptureVideoStabilizationModeAuto -> "Auto"
+    else -> "Off"
 }
 
 private const val EXPOSURE_POLL_INTERVAL_SECONDS = 0.2

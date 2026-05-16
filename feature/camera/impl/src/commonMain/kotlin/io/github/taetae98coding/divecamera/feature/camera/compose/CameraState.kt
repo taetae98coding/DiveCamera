@@ -13,6 +13,9 @@ internal expect class CameraState(lensProvider: LensProvider) {
     val isShutterManual: Boolean
     val isIsoManual: Boolean
 
+    val previewStabilizationLabel: String
+    val dynamicRangeLabel: String
+
     fun changeLens()
     fun changeAspect()
 
