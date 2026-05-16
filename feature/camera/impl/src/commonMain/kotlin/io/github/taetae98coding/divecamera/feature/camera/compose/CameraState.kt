@@ -11,12 +11,16 @@ internal expect class CameraState(lensProvider: LensProvider) {
     val aspectHeight: Int
 
     val isShutterManual: Boolean
+    val isIsoManual: Boolean
 
     fun changeLens()
     fun changeAspect()
 
     fun setShutterManual(nanos: Long)
     fun setShutterAuto()
+
+    fun setIsoManual(iso: Int)
+    fun setIsoAuto()
 }
 
 internal val CameraAspectRatios: List<Pair<Int, Int>> = listOf(3 to 4, 9 to 16)
@@ -33,10 +37,17 @@ internal val SHUTTER_PRESET_NANOS: List<Long> = listOf(
     20_000_000L,
 )
 
+internal val ISO_PRESETS: List<Int> = listOf(
+    100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3200,
+)
+
 internal const val DEFAULT_MANUAL_ISO: Int = 200
 
 internal fun snapToShutterPreset(nanos: Long): Long =
     SHUTTER_PRESET_NANOS.minBy { (it - nanos).let { delta -> if (delta < 0) -delta else delta } }
+
+internal fun snapToIsoPreset(iso: Int): Int =
+    ISO_PRESETS.minBy { (it - iso).let { delta -> if (delta < 0) -delta else delta } }
 
 @Composable
 internal expect fun rememberCameraState(): CameraState

@@ -25,6 +25,7 @@ import kotlin.math.ceil
 internal fun CameraInformation(
     state: CameraState,
     onShutterClick: () -> Unit,
+    onIsoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -71,7 +72,7 @@ internal fun CameraInformation(
                         state.iso.toString()
                     }
                 },
-                onClick = {},
+                onClick = onIsoClick,
                 modifier = Modifier.weight(1F),
             )
         }

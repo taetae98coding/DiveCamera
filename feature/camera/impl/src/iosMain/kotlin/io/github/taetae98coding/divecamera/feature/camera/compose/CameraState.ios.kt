@@ -61,6 +61,10 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     private var isManualState: Boolean by mutableStateOf(false)
 
     actual val isShutterManual: Boolean get() = isManualState
+    actual val isIsoManual: Boolean get() = isManualState
+
+    private var manualShutterNanos: Long = 0L
+    private var manualIso: Int = DEFAULT_MANUAL_ISO
 
     val session: AVCaptureSession = AVCaptureSession()
 
@@ -115,8 +119,31 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     }
 
     actual fun setShutterManual(nanos: Long) {
+        manualShutterNanos = snapToShutterPreset(nanos)
+        if (!isManualState) {
+            manualIso = snapToIsoPreset(isoState.takeIf { it > 0 } ?: DEFAULT_MANUAL_ISO)
+        }
+        applyManualExposure(manualShutterNanos, manualIso)
+    }
+
+    actual fun setShutterAuto() {
+        exitManualExposure()
+    }
+
+    actual fun setIsoManual(iso: Int) {
+        manualIso = snapToIsoPreset(iso)
+        if (!isManualState) {
+            manualShutterNanos = snapToShutterPreset(shutterInNanosState.takeIf { it > 0 } ?: DEFAULT_MANUAL_SHUTTER_NANOS)
+        }
+        applyManualExposure(manualShutterNanos, manualIso)
+    }
+
+    actual fun setIsoAuto() {
+        exitManualExposure()
+    }
+
+    private fun applyManualExposure(shutterNanos: Long, iso: Int) {
         val device = currentDevice() ?: return
-        val snapped = snapToShutterPreset(nanos)
         if (!device.isExposureModeSupported(AVCaptureExposureModeCustom)) return
         if (!device.lockForConfiguration(null)) return
         try {
@@ -124,18 +151,14 @@ internal actual class CameraState actual constructor(private val lensProvider: L
                 device.exposureMode = AVCaptureExposureModeCustom
             }
             device.setExposureModeCustomWithDuration(
-                duration = CMTimeMake(value = snapped, timescale = NANOS_PER_SECOND),
-                ISO = DEFAULT_MANUAL_ISO.toFloat(),
+                duration = CMTimeMake(value = shutterNanos, timescale = NANOS_PER_SECOND),
+                ISO = iso.toFloat(),
                 completionHandler = null,
             )
         } finally {
             device.unlockForConfiguration()
         }
         isManualState = true
-    }
-
-    actual fun setShutterAuto() {
-        exitManualExposure()
     }
 
     private fun exitManualExposure() {
@@ -200,6 +223,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 
 private const val EXPOSURE_POLL_INTERVAL_SECONDS = 0.2
 private const val NANOS_PER_SECOND = 1_000_000_000
+private const val DEFAULT_MANUAL_SHUTTER_NANOS: Long = 10_000_000L
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {

@@ -49,6 +49,10 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     private var isManualState: Boolean by mutableStateOf(false)
 
     actual val isShutterManual: Boolean get() = isManualState
+    actual val isIsoManual: Boolean get() = isManualState
+
+    private var manualShutterNanos: Long = 0L
+    private var manualIso: Int = DEFAULT_MANUAL_ISO
 
     private var cameraControl: Camera2CameraControl? = null
 
@@ -66,7 +70,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 
     fun attachCameraControl(control: Camera2CameraControl) {
         cameraControl = control
-        if (isManualState) applyManualExposure(shutterInNanosState)
+        if (isManualState) applyManualExposure(manualShutterNanos, manualIso)
     }
 
     fun detachCameraControl() {
@@ -85,12 +89,28 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     }
 
     actual fun setShutterManual(nanos: Long) {
-        val snapped = snapToShutterPreset(nanos)
-        isManualState = true
-        applyManualExposure(snapped)
+        manualShutterNanos = snapToShutterPreset(nanos)
+        if (!isManualState) {
+            manualIso = snapToIsoPreset(isoState.takeIf { it > 0 } ?: DEFAULT_MANUAL_ISO)
+            isManualState = true
+        }
+        applyManualExposure(manualShutterNanos, manualIso)
     }
 
     actual fun setShutterAuto() {
+        exitManualExposure()
+    }
+
+    actual fun setIsoManual(iso: Int) {
+        manualIso = snapToIsoPreset(iso)
+        if (!isManualState) {
+            manualShutterNanos = snapToShutterPreset(shutterInNanosState.takeIf { it > 0 } ?: DEFAULT_MANUAL_SHUTTER_NANOS)
+            isManualState = true
+        }
+        applyManualExposure(manualShutterNanos, manualIso)
+    }
+
+    actual fun setIsoAuto() {
         exitManualExposure()
     }
 
@@ -104,17 +124,19 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         )
     }
 
-    private fun applyManualExposure(shutterNanos: Long) {
+    private fun applyManualExposure(shutterNanos: Long, iso: Int) {
         val control = cameraControl ?: return
         control.setCaptureRequestOptions(
             CaptureRequestOptions.Builder()
                 .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
                 .setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, shutterNanos)
-                .setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, DEFAULT_MANUAL_ISO)
+                .setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, iso)
                 .build(),
         )
     }
 }
+
+private const val DEFAULT_MANUAL_SHUTTER_NANOS: Long = 10_000_000L
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {

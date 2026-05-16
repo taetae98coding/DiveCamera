@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.github.taetae98coding.divecamera.core.model.Housing
 import io.github.taetae98coding.divecamera.feature.camera.compose.CameraButtonBar
 import io.github.taetae98coding.divecamera.feature.camera.compose.CameraInformation
+import io.github.taetae98coding.divecamera.feature.camera.compose.IsoPicker
 import io.github.taetae98coding.divecamera.feature.camera.compose.ShutterPicker
 import io.github.taetae98coding.divecamera.feature.camera.compose.ViewFinderSurface
 import io.github.taetae98coding.divecamera.feature.camera.compose.rememberCameraState
@@ -33,6 +34,7 @@ internal fun CameraScreen(
 ) {
     val cameraState = rememberCameraState()
     var isShutterPickerVisible by remember { mutableStateOf(false) }
+    var isIsoPickerVisible by remember { mutableStateOf(false) }
 
     Surface(modifier = modifier) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -49,10 +51,17 @@ internal fun CameraScreen(
                 CameraInformation(
                     state = cameraState,
                     onShutterClick = { isShutterPickerVisible = !isShutterPickerVisible },
+                    onIsoClick = { isIsoPickerVisible = !isIsoPickerVisible },
                     modifier = Modifier.padding(12.dp),
                 )
                 if (isShutterPickerVisible) {
                     ShutterPicker(
+                        state = cameraState,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
+                if (isIsoPickerVisible) {
+                    IsoPicker(
                         state = cameraState,
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
