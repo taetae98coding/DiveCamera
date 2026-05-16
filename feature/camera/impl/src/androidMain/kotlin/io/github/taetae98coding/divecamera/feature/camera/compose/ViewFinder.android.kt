@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera.compose
 
 import android.annotation.SuppressLint
+import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.compose.CameraXViewfinder
@@ -49,14 +50,17 @@ internal actual fun ViewFinder(
         val selector = cameraSelectorFor(cameraId)
         try {
             cameraProvider.unbind(preview)
-            cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)
+            val camera = cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)
+            state.attachCameraControl(Camera2CameraControl.from(camera.cameraControl))
             awaitCancellation()
         } finally {
+            state.detachCameraControl()
             cameraProvider.unbind(preview)
         }
     }
 }
 
+@SuppressLint("UnsafeOptInUsageError")
 private fun cameraSelectorFor(cameraId: String?): CameraSelector {
     if (cameraId == null) return CameraSelector.DEFAULT_BACK_CAMERA
     return CameraSelector.Builder()

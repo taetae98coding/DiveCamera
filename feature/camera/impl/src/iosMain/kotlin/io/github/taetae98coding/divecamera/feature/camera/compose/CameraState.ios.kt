@@ -8,16 +8,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
+import platform.AVFoundation.AVCaptureExposureModeContinuousAutoExposure
+import platform.AVFoundation.AVCaptureExposureModeCustom
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.ISO
 import platform.AVFoundation.exposureDuration
+import platform.AVFoundation.exposureMode
+import platform.AVFoundation.isExposureModeSupported
 import platform.AVFoundation.lensAperture
+import platform.AVFoundation.setExposureModeCustomWithDuration
 import platform.CoreMedia.CMTimeGetSeconds
+import platform.CoreMedia.CMTimeMake
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSTimer
@@ -50,6 +57,10 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 
     actual val fov: Float
         get() = currentLens?.equivalentFocalLengthMm ?: 0F
+
+    private var isShutterManualState: Boolean by mutableStateOf(false)
+
+    actual val isShutterManual: Boolean get() = isShutterManualState
 
     val session: AVCaptureSession = AVCaptureSession()
 
@@ -89,6 +100,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual fun changeLens() {
         val size = lensProvider.lenses.size
         if (size <= 1) return
+        if (isShutterManualState) setShutterAuto()
         currentIndex = (currentIndex + 1) % size
 
         dispatch_async(sessionQueue) {
@@ -101,6 +113,44 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     actual fun changeAspect() {
         aspectIndex = (aspectIndex + 1) % CameraAspectRatios.size
     }
+
+    actual fun setShutterManual(nanos: Long) {
+        val device = currentDevice() ?: return
+        val snapped = snapToShutterPreset(nanos)
+        if (!device.isExposureModeSupported(AVCaptureExposureModeCustom)) return
+        if (!device.lockForConfiguration(null)) return
+        try {
+            if (!isShutterManualState) {
+                device.exposureMode = AVCaptureExposureModeCustom
+            }
+            device.setExposureModeCustomWithDuration(
+                duration = CMTimeMake(value = snapped, timescale = NANOS_PER_SECOND),
+                ISO = DEFAULT_MANUAL_ISO.toFloat(),
+                completionHandler = null,
+            )
+        } finally {
+            device.unlockForConfiguration()
+        }
+        isShutterManualState = true
+    }
+
+    actual fun setShutterAuto() {
+        if (!isShutterManualState) return
+        val device = currentDevice() ?: return
+        if (!device.isExposureModeSupported(AVCaptureExposureModeContinuousAutoExposure)) {
+            isShutterManualState = false
+            return
+        }
+        if (!device.lockForConfiguration(null)) return
+        try {
+            device.exposureMode = AVCaptureExposureModeContinuousAutoExposure
+        } finally {
+            device.unlockForConfiguration()
+        }
+        isShutterManualState = false
+    }
+
+    private fun currentDevice(): AVCaptureDevice? = currentLens?.let { lensProvider.deviceOf(it) }
 
     private fun applyCurrentLens() {
         val lens = currentLens ?: return
@@ -128,8 +178,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
     }
 
     private fun pollExposure() {
-        val lens = currentLens ?: return
-        val device = lensProvider.deviceOf(lens) ?: return
+        val device = currentDevice() ?: return
         readExposureFrom(device)
     }
 
@@ -146,6 +195,7 @@ internal actual class CameraState actual constructor(private val lensProvider: L
 }
 
 private const val EXPOSURE_POLL_INTERVAL_SECONDS = 0.2
+private const val NANOS_PER_SECOND = 1_000_000_000
 
 @Composable
 internal actual fun rememberCameraState(): CameraState {

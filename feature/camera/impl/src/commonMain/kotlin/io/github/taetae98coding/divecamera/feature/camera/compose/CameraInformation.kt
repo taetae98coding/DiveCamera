@@ -24,6 +24,7 @@ import kotlin.math.ceil
 @Composable
 internal fun CameraInformation(
     state: CameraState,
+    onShutterClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -44,7 +45,7 @@ internal fun CameraInformation(
                         formatShutter(state.shutterInNanos)
                     }
                 },
-                onClick = {},
+                onClick = onShutterClick,
                 modifier = Modifier.weight(1F),
             )
             VerticalDivider()
