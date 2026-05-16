@@ -1,5 +1,6 @@
 package io.github.taetae98coding.divecamera.feature.camera.compose
 
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -22,8 +23,10 @@ internal actual fun ViewFinder(
     state: CameraState,
     modifier: Modifier,
 ) {
+    val androidState = state as? AndroidCameraState ?: return
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraId = androidState.cameraId
     var surfaceRequest: SurfaceRequest? by remember { mutableStateOf(null) }
     val preview = remember {
         Preview.Builder()
@@ -38,17 +41,24 @@ internal actual fun ViewFinder(
         )
     }
 
-    LaunchedEffect(context, lifecycleOwner, preview) {
+    LaunchedEffect(context, lifecycleOwner, preview, cameraId) {
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
+        val selector = cameraSelectorFor(cameraId)
         try {
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                preview,
-            )
+            cameraProvider.unbind(preview)
+            cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)
             awaitCancellation()
         } finally {
             cameraProvider.unbind(preview)
         }
     }
+}
+
+private fun cameraSelectorFor(cameraId: String?): CameraSelector {
+    if (cameraId == null) return CameraSelector.DEFAULT_BACK_CAMERA
+    return CameraSelector.Builder()
+        .addCameraFilter { infos ->
+            infos.filter { Camera2CameraInfo.from(it).cameraId == cameraId }
+        }
+        .build()
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.taetae98coding.divecamera.compose.DiveCameraTheme
+import kotlin.math.ceil
 
 @Composable
 internal fun CameraInformation(
@@ -83,7 +84,7 @@ internal fun CameraInformation(
                     if (state.fov == 0F) {
                         "-"
                     } else {
-                        "${state.fov}mm"
+                        "${ceil(state.fov).toInt()}mm"
                     }
                 },
                 onClick = state::changeLens,
