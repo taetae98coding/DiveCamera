@@ -24,8 +24,11 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         get() = apertureState
     actual val iso: Int
         get() = isoState
-    actual val aspectWidth: Int get() = 3
-    actual val aspectHeight: Int get() = 4
+
+    private var aspectIndex: Int by mutableIntStateOf(0)
+
+    actual val aspectWidth: Int get() = CameraAspectRatios[aspectIndex].first
+    actual val aspectHeight: Int get() = CameraAspectRatios[aspectIndex].second
 
     private var currentIndex: Int by mutableIntStateOf(0)
 
@@ -56,7 +59,9 @@ internal actual class CameraState actual constructor(private val lensProvider: L
         currentIndex = (currentIndex + 1) % size
     }
 
-    actual fun changeAspect() = Unit
+    actual fun changeAspect() {
+        aspectIndex = (aspectIndex + 1) % CameraAspectRatios.size
+    }
 }
 
 @Composable

@@ -14,5 +14,7 @@ internal expect class CameraState(lensProvider: LensProvider) {
     fun changeAspect()
 }
 
+internal val CameraAspectRatios: List<Pair<Int, Int>> = listOf(3 to 4, 9 to 16)
+
 @Composable
 internal expect fun rememberCameraState(): CameraState
