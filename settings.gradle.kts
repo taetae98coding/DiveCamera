@@ -29,3 +29,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DiveCamera"
+
+include(":app:android")
+include(":app:shared")
+include(":app:ios")
