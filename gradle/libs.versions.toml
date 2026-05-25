@@ -1,12 +1,15 @@
 [versions]
 kotlin = "2.3.21"
 jetbrainsCompose = "1.11.0"
+jetbrainsNavigation3 = "1.1.1"
 agp = "9.1.1"
 androidxActivityCompose = "1.13.0"
 
 [libraries]
 jetbrains-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "jetbrainsCompose" }
+jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrainsNavigation3" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "jetbrainsNavigation3" }
 
 [plugins]
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
