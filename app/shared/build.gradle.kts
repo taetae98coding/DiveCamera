@@ -21,7 +21,10 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(project(":core:navigation"))
                 api(libs.jetbrains.compose.foundation)
+                implementation(libs.jetbrains.navigation3.ui)
+                implementation(libs.androidx.navigation3.runtime)
             }
         }
 
