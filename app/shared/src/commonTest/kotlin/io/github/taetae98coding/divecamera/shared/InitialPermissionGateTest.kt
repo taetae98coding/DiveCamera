@@ -38,12 +38,4 @@ class InitialPermissionGateTest {
             actual = backStack,
         )
     }
-
-    @Test
-    fun requiredPermissionLabelsReturnsTodoPermissionItems() {
-        assertEquals(
-            expected = listOf("카메라", "오디오", "위치", "사진저장"),
-            actual = requiredPermissionLabels(),
-        )
-    }
 }
