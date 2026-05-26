@@ -4,5 +4,13 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>DiveCamera uses the camera to record dives.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DiveCamera uses location while recording dives.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>DiveCamera uses the microphone to record audio with videos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>DiveCamera saves captured photos and videos to your photo library.</string>
 </dict>
 </plist>
