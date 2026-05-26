@@ -54,7 +54,10 @@ actual fun rememberPermissionManager(): PermissionManager {
             }
         } else {
             val lifecycleCallbacks = object : Application.ActivityLifecycleCallbacks {
-                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+                override fun onActivityCreated(
+                    activity: Activity,
+                    savedInstanceState: Bundle?,
+                ) = Unit
 
                 override fun onActivityStarted(activity: Activity) = Unit
 
@@ -68,7 +71,10 @@ actual fun rememberPermissionManager(): PermissionManager {
 
                 override fun onActivityStopped(activity: Activity) = Unit
 
-                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+                override fun onActivitySaveInstanceState(
+                    activity: Activity,
+                    outState: Bundle,
+                ) = Unit
 
                 override fun onActivityDestroyed(activity: Activity) = Unit
             }
@@ -86,9 +92,7 @@ actual fun rememberPermissionManager(): PermissionManager {
     return permissionManager
 }
 
-internal class AndroidPermissionManager(
-    private val context: Context,
-) : PermissionManager {
+internal class AndroidPermissionManager(private val context: Context) : PermissionManager {
     private val mutableHasAllRequiredPermissions = MutableStateFlow(
         context.requiredPermissionGrantState().hasAllRequiredPermissions,
     )
@@ -108,21 +112,18 @@ internal class AndroidPermissionManager(
     }
 }
 
-private fun Context.requiredPermissionGrantState(): RequiredPermissionGrantState =
-    RequiredPermissionGrantState(
-        hasCamera = hasPermission(Manifest.permission.CAMERA),
-        hasMicrophone = hasPermission(Manifest.permission.RECORD_AUDIO),
-        hasLocation = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
-            hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION),
-        hasPhotoSave = true,
-    )
+private fun Context.requiredPermissionGrantState(): RequiredPermissionGrantState = RequiredPermissionGrantState(
+    hasCamera = hasPermission(Manifest.permission.CAMERA),
+    hasMicrophone = hasPermission(Manifest.permission.RECORD_AUDIO),
+    hasLocation = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+        hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION),
+    hasPhotoSave = true,
+)
 
-private fun Context.hasPermission(permission: String): Boolean =
-    checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+private fun Context.hasPermission(permission: String): Boolean = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
-private tailrec fun Context.findActivity(): Activity? =
-    when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
-    }
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}

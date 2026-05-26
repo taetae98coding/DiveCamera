@@ -70,28 +70,25 @@ internal class IosPermissionManager : PermissionManager {
     }
 }
 
-private class LocationPermissionDelegate(
-    private val onAuthorizationChanged: () -> Unit,
-) : NSObject(), CLLocationManagerDelegateProtocol {
+private class LocationPermissionDelegate(private val onAuthorizationChanged: () -> Unit) :
+    NSObject(),
+    CLLocationManagerDelegateProtocol {
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
         onAuthorizationChanged()
     }
 }
 
-private fun requiredPermissionGrantState(): RequiredPermissionGrantState =
-    RequiredPermissionGrantState(
-        hasCamera = hasAvPermission(AVMediaTypeVideo),
-        hasMicrophone = hasAvPermission(AVMediaTypeAudio),
-        hasLocation = hasLocationPermission(CLLocationManager.authorizationStatus()),
-        hasPhotoSave = hasPhotoSavePermission(),
-    )
+private fun requiredPermissionGrantState(): RequiredPermissionGrantState = RequiredPermissionGrantState(
+    hasCamera = hasAvPermission(AVMediaTypeVideo),
+    hasMicrophone = hasAvPermission(AVMediaTypeAudio),
+    hasLocation = hasLocationPermission(CLLocationManager.authorizationStatus()),
+    hasPhotoSave = hasPhotoSavePermission(),
+)
 
-private fun hasAvPermission(mediaType: String?): Boolean =
-    AVCaptureDevice.authorizationStatusForMediaType(mediaType) == AVAuthorizationStatusAuthorized
+private fun hasAvPermission(mediaType: String?): Boolean = AVCaptureDevice.authorizationStatusForMediaType(mediaType) == AVAuthorizationStatusAuthorized
 
-private fun hasLocationPermission(status: CLAuthorizationStatus): Boolean =
-    status == kCLAuthorizationStatusAuthorizedAlways ||
-        status == kCLAuthorizationStatusAuthorizedWhenInUse
+private fun hasLocationPermission(status: CLAuthorizationStatus): Boolean = status == kCLAuthorizationStatusAuthorizedAlways ||
+    status == kCLAuthorizationStatusAuthorizedWhenInUse
 
 private fun hasPhotoSavePermission(): Boolean {
     val status = PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelAddOnly)

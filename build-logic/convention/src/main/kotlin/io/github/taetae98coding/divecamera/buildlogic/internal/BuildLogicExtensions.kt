@@ -13,8 +13,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 internal val Project.libs: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
-internal fun Project.library(alias: String): Provider<MinimalExternalModuleDependency> =
-    libs.findLibrary(alias).get()
+internal fun Project.library(alias: String): Provider<MinimalExternalModuleDependency> = libs.findLibrary(alias).get()
 
 internal fun Project.kotlinMultiplatform(action: KotlinMultiplatformExtension.() -> Unit) {
     extensions.getByType<KotlinMultiplatformExtension>().action()

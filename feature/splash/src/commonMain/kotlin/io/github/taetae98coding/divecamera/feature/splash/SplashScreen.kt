@@ -34,9 +34,7 @@ internal fun SplashScreen(
     Box(modifier = Modifier.fillMaxSize())
 }
 
-internal fun NavBackStack<NavKey>.replaceSplashWithRequiredPermissionDestination(
-    hasAllRequiredPermissions: Boolean,
-) {
+internal fun NavBackStack<NavKey>.replaceSplashWithRequiredPermissionDestination(hasAllRequiredPermissions: Boolean) {
     clear()
     add(
         if (hasAllRequiredPermissions) {

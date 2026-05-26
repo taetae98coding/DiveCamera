@@ -8,12 +8,12 @@ import io.github.taetae98coding.divecamera.core.navigation.CameraNavKey
 import io.github.taetae98coding.divecamera.core.navigation.PermissionNavKey
 import io.github.taetae98coding.divecamera.core.navigation.SplashNavKey
 import io.github.taetae98coding.divecamera.core.permission.PermissionManager
+import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
 class SplashScreenTest {
@@ -58,9 +58,7 @@ class SplashScreenTest {
         }
     }
 
-    private class FakePermissionManager(
-        hasAllRequiredPermissions: Boolean,
-    ) : PermissionManager {
+    private class FakePermissionManager(hasAllRequiredPermissions: Boolean) : PermissionManager {
         override val hasAllRequiredPermissions: StateFlow<Boolean> =
             MutableStateFlow(hasAllRequiredPermissions)
 
