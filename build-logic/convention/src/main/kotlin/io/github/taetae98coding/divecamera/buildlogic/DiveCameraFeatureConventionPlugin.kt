@@ -15,7 +15,10 @@ class DiveCameraFeatureConventionPlugin : Plugin<Project> {
             sourceSets {
                 commonMain {
                     dependencies {
+                        implementation(project(":core:navigation"))
+
                         implementation(library("jetbrains-compose-foundation"))
+                        api(library("androidx-navigation3-runtime"))
                     }
                 }
             }

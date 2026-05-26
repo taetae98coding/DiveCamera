@@ -11,9 +11,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api(project(":core:navigation"))
                 implementation(project(":core:permission"))
-                api(libs.androidx.navigation3.runtime)
             }
         }
     }

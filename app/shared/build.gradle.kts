@@ -17,7 +17,6 @@ kotlin {
                 implementation(project(":feature:permission"))
                 implementation(project(":feature:splash"))
                 implementation(libs.jetbrains.navigation3.ui)
-                implementation(libs.androidx.navigation3.runtime)
             }
         }
     }

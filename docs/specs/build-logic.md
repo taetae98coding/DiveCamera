@@ -59,6 +59,8 @@
 
 - `:feature` 하위 앱 feature 모듈에 적용한다.
 - `divecamera.kmp.android.library`와 `divecamera.kmp.compose`를 적용한다.
+- `commonMain`에 `implementation(project(":core:navigation"))`를 추가한다.
+- `commonMain`에 `api(libs.androidx.navigation3.runtime)`를 추가한다.
 - `commonMain`에 `implementation(libs.jetbrains.compose.foundation)`를 추가한다.
 
 ### `divecamera.kmp.common.test`
