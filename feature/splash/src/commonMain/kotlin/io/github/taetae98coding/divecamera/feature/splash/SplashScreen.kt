@@ -13,6 +13,7 @@ import io.github.taetae98coding.divecamera.core.navigation.PermissionNavKey
 import io.github.taetae98coding.divecamera.core.navigation.SplashNavKey
 import io.github.taetae98coding.divecamera.core.permission.PermissionManager
 import io.github.taetae98coding.divecamera.core.permission.rememberPermissionManager
+import kotlinx.coroutines.flow.combine
 
 fun EntryProviderScope<NavKey>.splashScreen(backStack: NavBackStack<NavKey>) {
     addEntryProvider(SplashNavKey) {
@@ -26,18 +27,28 @@ internal fun SplashScreen(
     permissionManager: PermissionManager = rememberPermissionManager(),
 ) {
     LaunchedEffect(backStack, permissionManager) {
-        permissionManager.hasAllRequiredPermissions.collect { hasAllRequiredPermissions ->
-            backStack.replaceSplashWithRequiredPermissionDestination(hasAllRequiredPermissions)
+        combine(
+            permissionManager.hasCameraPermission,
+            permissionManager.hasMicrophonePermission,
+            permissionManager.hasLocationPermission,
+            permissionManager.hasPhotoSavePermission,
+        ) { hasCameraPermission, hasMicrophonePermission, hasLocationPermission, hasPhotoSavePermission ->
+            hasCameraPermission &&
+                hasMicrophonePermission &&
+                hasLocationPermission &&
+                hasPhotoSavePermission
+        }.collect { hasRequiredPermissions ->
+            backStack.replaceSplashWithRequiredPermissionDestination(hasRequiredPermissions)
         }
     }
 
     Box(modifier = Modifier.fillMaxSize())
 }
 
-internal fun NavBackStack<NavKey>.replaceSplashWithRequiredPermissionDestination(hasAllRequiredPermissions: Boolean) {
+internal fun NavBackStack<NavKey>.replaceSplashWithRequiredPermissionDestination(hasRequiredPermissions: Boolean) {
     clear()
     add(
-        if (hasAllRequiredPermissions) {
+        if (hasRequiredPermissions) {
             CameraNavKey
         } else {
             PermissionNavKey

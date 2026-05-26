@@ -4,20 +4,22 @@ import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.StateFlow
 
 interface PermissionManager {
-    val hasAllRequiredPermissions: StateFlow<Boolean>
+    val hasCameraPermission: StateFlow<Boolean>
 
-    fun requestPermissions()
+    val hasMicrophonePermission: StateFlow<Boolean>
+
+    val hasLocationPermission: StateFlow<Boolean>
+
+    val hasPhotoSavePermission: StateFlow<Boolean>
+
+    fun requestCameraPermission()
+
+    fun requestMicrophonePermission()
+
+    fun requestLocationPermission()
+
+    fun requestPhotoSavePermission()
 }
 
 @Composable
 expect fun rememberPermissionManager(): PermissionManager
-
-internal data class RequiredPermissionGrantState(
-    val hasCamera: Boolean,
-    val hasMicrophone: Boolean,
-    val hasLocation: Boolean,
-    val hasPhotoSave: Boolean,
-)
-
-internal val RequiredPermissionGrantState.hasAllRequiredPermissions: Boolean
-    get() = hasCamera && hasMicrophone && hasLocation && hasPhotoSave

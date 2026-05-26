@@ -27,7 +27,7 @@ class SplashScreenTest {
         composeRule.setContent {
             SplashScreen(
                 backStack = backStack,
-                permissionManager = FakePermissionManager(hasAllRequiredPermissions = true),
+                permissionManager = FakePermissionManager(),
             )
         }
 
@@ -40,13 +40,13 @@ class SplashScreenTest {
     }
 
     @Test
-    fun splashScreenNavigatesToPermissionWhenPermissionsMissing() {
+    fun splashScreenNavigatesToPermissionWhenCameraPermissionMissing() {
         val backStack = NavBackStack<NavKey>(SplashNavKey)
 
         composeRule.setContent {
             SplashScreen(
                 backStack = backStack,
-                permissionManager = FakePermissionManager(hasAllRequiredPermissions = false),
+                permissionManager = FakePermissionManager(hasCameraPermission = false),
             )
         }
 
@@ -58,10 +58,87 @@ class SplashScreenTest {
         }
     }
 
-    private class FakePermissionManager(hasAllRequiredPermissions: Boolean) : PermissionManager {
-        override val hasAllRequiredPermissions: StateFlow<Boolean> =
-            MutableStateFlow(hasAllRequiredPermissions)
+    @Test
+    fun splashScreenNavigatesToPermissionWhenMicrophonePermissionMissing() {
+        val backStack = NavBackStack<NavKey>(SplashNavKey)
 
-        override fun requestPermissions() = Unit
+        composeRule.setContent {
+            SplashScreen(
+                backStack = backStack,
+                permissionManager = FakePermissionManager(hasMicrophonePermission = false),
+            )
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(
+                expected = listOf<NavKey>(PermissionNavKey),
+                actual = backStack,
+            )
+        }
+    }
+
+    @Test
+    fun splashScreenNavigatesToPermissionWhenLocationPermissionMissing() {
+        val backStack = NavBackStack<NavKey>(SplashNavKey)
+
+        composeRule.setContent {
+            SplashScreen(
+                backStack = backStack,
+                permissionManager = FakePermissionManager(hasLocationPermission = false),
+            )
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(
+                expected = listOf<NavKey>(PermissionNavKey),
+                actual = backStack,
+            )
+        }
+    }
+
+    @Test
+    fun splashScreenNavigatesToPermissionWhenPhotoSavePermissionMissing() {
+        val backStack = NavBackStack<NavKey>(SplashNavKey)
+
+        composeRule.setContent {
+            SplashScreen(
+                backStack = backStack,
+                permissionManager = FakePermissionManager(hasPhotoSavePermission = false),
+            )
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(
+                expected = listOf<NavKey>(PermissionNavKey),
+                actual = backStack,
+            )
+        }
+    }
+
+    private class FakePermissionManager(
+        hasCameraPermission: Boolean = true,
+        hasMicrophonePermission: Boolean = true,
+        hasLocationPermission: Boolean = true,
+        hasPhotoSavePermission: Boolean = true,
+    ) : PermissionManager {
+        override val hasCameraPermission: StateFlow<Boolean> =
+            MutableStateFlow(hasCameraPermission)
+
+        override val hasMicrophonePermission: StateFlow<Boolean> =
+            MutableStateFlow(hasMicrophonePermission)
+
+        override val hasLocationPermission: StateFlow<Boolean> =
+            MutableStateFlow(hasLocationPermission)
+
+        override val hasPhotoSavePermission: StateFlow<Boolean> =
+            MutableStateFlow(hasPhotoSavePermission)
+
+        override fun requestCameraPermission() = Unit
+
+        override fun requestMicrophonePermission() = Unit
+
+        override fun requestLocationPermission() = Unit
+
+        override fun requestPhotoSavePermission() = Unit
     }
 }
