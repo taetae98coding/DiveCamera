@@ -1,3 +1,5 @@
 # 카메라 화면 TC
 
-1. 카메라 화면은 `Camera` 텍스트를 표시한다.
+## uiTest
+
+1. Robolectric `androidUnitTest`에서 `CameraScreen`을 Compose로 렌더링하면 `Camera` 텍스트가 표시된다.

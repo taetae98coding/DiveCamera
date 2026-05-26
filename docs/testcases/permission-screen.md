@@ -1,4 +1,5 @@
 # 권한 화면 TC
 
-1. 권한 화면은 카메라, 오디오, 위치, 사진저장 항목을 표시한다.
-2. 이번 구현에서는 권한 요청을 실행하지 않는다.
+## uiTest
+
+1. Robolectric `androidUnitTest`에서 `PermissionScreen`을 Compose로 렌더링하면 카메라, 오디오, 위치, 사진저장 텍스트가 표시된다.

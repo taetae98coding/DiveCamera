@@ -1,7 +1,6 @@
 # 스플래시 화면 TC
 
-1. 앱은 최초 Composition에서 빈 스플래시 화면 상태를 가진다.
-2. 스플래시 화면은 `PermissionManager.hasAllRequiredPermissions` Flow를 구독한다.
-3. 스플래시 화면은 전달받은 `NavBackStack`을 직접 갱신한다.
-4. 필요한 권한이 모두 있는 경우 스플래시 이후 카메라 화면으로 이동한다.
-5. 필요한 권한 중 하나라도 없는 경우 스플래시 이후 권한 화면으로 이동한다.
+## uiTest
+
+1. Robolectric `androidUnitTest`에서 `SplashScreen`에 모든 필수 권한이 있는 fake `PermissionManager`와 `NavBackStack`을 전달하면 `NavBackStack`이 카메라 목적지로 교체된다.
+2. Robolectric `androidUnitTest`에서 `SplashScreen`에 필수 권한이 없는 fake `PermissionManager`와 `NavBackStack`을 전달하면 `NavBackStack`이 권한 목적지로 교체된다.

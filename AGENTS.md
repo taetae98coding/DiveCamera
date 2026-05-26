@@ -19,8 +19,8 @@
 
 1. 스펙 문서 작성.
 2. 스펙 충돌 검증.
-3. TC 문서 작성.
-4. TC 작성.
+3. TC 문서 작성. TC 문서는 [테스트케이스 문서 작성 가이드](docs/guides/testcase-documentation.md)를 따른다.
+4. TC 작성. TC는 [테스트케이스 작성 가이드](docs/guides/testcase-writing.md)를 따른다.
 5. 코드 구현.
 
 ## Gradle 의존성 선언
