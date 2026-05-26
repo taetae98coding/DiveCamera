@@ -1,12 +1,10 @@
 package io.github.taetae98coding.divecamera.feature.splash
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.taetae98coding.divecamera.core.navigation.CameraNavKey
 import io.github.taetae98coding.divecamera.core.navigation.PermissionNavKey
-import io.github.taetae98coding.divecamera.core.navigation.SplashNavKey
 import io.github.taetae98coding.divecamera.core.permission.PermissionManager
 import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,11 +20,12 @@ class SplashScreenTest {
 
     @Test
     fun splashScreenNavigatesToCameraWhenPermissionsGranted() {
-        val backStack = NavBackStack<NavKey>(SplashNavKey)
+        val navigationEvents = mutableListOf<NavKey>()
 
         composeRule.setContent {
             SplashScreen(
-                backStack = backStack,
+                navigateToCamera = { navigationEvents += CameraNavKey },
+                navigateToPermission = { navigationEvents += PermissionNavKey },
                 permissionManager = FakePermissionManager(),
             )
         }
@@ -34,18 +33,19 @@ class SplashScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = listOf<NavKey>(CameraNavKey),
-                actual = backStack,
+                actual = navigationEvents,
             )
         }
     }
 
     @Test
     fun splashScreenNavigatesToPermissionWhenCameraPermissionMissing() {
-        val backStack = NavBackStack<NavKey>(SplashNavKey)
+        val navigationEvents = mutableListOf<NavKey>()
 
         composeRule.setContent {
             SplashScreen(
-                backStack = backStack,
+                navigateToCamera = { navigationEvents += CameraNavKey },
+                navigateToPermission = { navigationEvents += PermissionNavKey },
                 permissionManager = FakePermissionManager(hasCameraPermission = false),
             )
         }
@@ -53,18 +53,19 @@ class SplashScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = listOf<NavKey>(PermissionNavKey),
-                actual = backStack,
+                actual = navigationEvents,
             )
         }
     }
 
     @Test
     fun splashScreenNavigatesToPermissionWhenMicrophonePermissionMissing() {
-        val backStack = NavBackStack<NavKey>(SplashNavKey)
+        val navigationEvents = mutableListOf<NavKey>()
 
         composeRule.setContent {
             SplashScreen(
-                backStack = backStack,
+                navigateToCamera = { navigationEvents += CameraNavKey },
+                navigateToPermission = { navigationEvents += PermissionNavKey },
                 permissionManager = FakePermissionManager(hasMicrophonePermission = false),
             )
         }
@@ -72,18 +73,19 @@ class SplashScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = listOf<NavKey>(PermissionNavKey),
-                actual = backStack,
+                actual = navigationEvents,
             )
         }
     }
 
     @Test
     fun splashScreenNavigatesToPermissionWhenLocationPermissionMissing() {
-        val backStack = NavBackStack<NavKey>(SplashNavKey)
+        val navigationEvents = mutableListOf<NavKey>()
 
         composeRule.setContent {
             SplashScreen(
-                backStack = backStack,
+                navigateToCamera = { navigationEvents += CameraNavKey },
+                navigateToPermission = { navigationEvents += PermissionNavKey },
                 permissionManager = FakePermissionManager(hasLocationPermission = false),
             )
         }
@@ -91,18 +93,19 @@ class SplashScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = listOf<NavKey>(PermissionNavKey),
-                actual = backStack,
+                actual = navigationEvents,
             )
         }
     }
 
     @Test
     fun splashScreenNavigatesToPermissionWhenPhotoSavePermissionMissing() {
-        val backStack = NavBackStack<NavKey>(SplashNavKey)
+        val navigationEvents = mutableListOf<NavKey>()
 
         composeRule.setContent {
             SplashScreen(
-                backStack = backStack,
+                navigateToCamera = { navigationEvents += CameraNavKey },
+                navigateToPermission = { navigationEvents += PermissionNavKey },
                 permissionManager = FakePermissionManager(hasPhotoSavePermission = false),
             )
         }
@@ -110,7 +113,7 @@ class SplashScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = listOf<NavKey>(PermissionNavKey),
-                actual = backStack,
+                actual = navigationEvents,
             )
         }
     }

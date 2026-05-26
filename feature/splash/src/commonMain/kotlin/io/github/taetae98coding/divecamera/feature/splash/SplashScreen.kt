@@ -4,29 +4,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
-import io.github.taetae98coding.divecamera.core.navigation.CameraNavKey
-import io.github.taetae98coding.divecamera.core.navigation.PermissionNavKey
-import io.github.taetae98coding.divecamera.core.navigation.SplashNavKey
 import io.github.taetae98coding.divecamera.core.permission.PermissionManager
 import io.github.taetae98coding.divecamera.core.permission.rememberPermissionManager
 import kotlinx.coroutines.flow.combine
 
-fun EntryProviderScope<NavKey>.splashScreen(backStack: NavBackStack<NavKey>) {
-    addEntryProvider(SplashNavKey) {
-        SplashScreen(backStack = backStack)
-    }
-}
-
 @Composable
 internal fun SplashScreen(
-    backStack: NavBackStack<NavKey>,
+    navigateToCamera: () -> Unit,
+    navigateToPermission: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxSize(),
     permissionManager: PermissionManager = rememberPermissionManager(),
 ) {
-    LaunchedEffect(backStack, permissionManager) {
+    val currentNavigateToCamera by rememberUpdatedState(navigateToCamera)
+    val currentNavigateToPermission by rememberUpdatedState(navigateToPermission)
+
+    Box(modifier = modifier)
+
+    LaunchedEffect(permissionManager) {
         combine(
             permissionManager.hasCameraPermission,
             permissionManager.hasMicrophonePermission,
@@ -38,20 +35,11 @@ internal fun SplashScreen(
                 hasLocationPermission &&
                 hasPhotoSavePermission
         }.collect { hasRequiredPermissions ->
-            backStack.replaceSplashWithRequiredPermissionDestination(hasRequiredPermissions)
+            if (hasRequiredPermissions) {
+                currentNavigateToCamera()
+            } else {
+                currentNavigateToPermission()
+            }
         }
     }
-
-    Box(modifier = Modifier.fillMaxSize())
-}
-
-internal fun NavBackStack<NavKey>.replaceSplashWithRequiredPermissionDestination(hasRequiredPermissions: Boolean) {
-    clear()
-    add(
-        if (hasRequiredPermissions) {
-            CameraNavKey
-        } else {
-            PermissionNavKey
-        },
-    )
 }
