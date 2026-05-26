@@ -68,6 +68,15 @@
 - `commonTest` 테스트가 있는 KMP 모듈에 적용한다.
 - `commonTest`에 `implementation(kotlin("test"))`를 추가한다.
 - `com.android.kotlin.multiplatform.library`가 적용된 모듈이면 Android host test를 활성화한다.
+- Android host test가 Android resources, assets, manifest를 사용할 수 있도록 설정한다.
+
+### `divecamera.kmp.compose.ui.test`
+
+- Robolectric 기반 Compose UI 테스트가 있는 Android-KMP 모듈에 적용한다.
+- `divecamera.kmp.common.test`를 적용한다.
+- `androidHostTest`에 `implementation(libs.androidx.compose.ui.test.junit4)`를 추가한다.
+- `androidHostTest`에 `implementation(libs.robolectric)`을 추가한다.
+- `androidHostTest`에 `runtimeOnly(libs.androidx.compose.ui.test.manifest)`를 추가한다.
 
 ## 참고
 

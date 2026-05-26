@@ -45,5 +45,9 @@ gradlePlugin {
             id = "divecamera.kmp.common.test"
             implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpCommonTestConventionPlugin"
         }
+        register("kmpComposeUiTest") {
+            id = "divecamera.kmp.compose.ui.test"
+            implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpComposeUiTestConventionPlugin"
+        }
     }
 }

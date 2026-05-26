@@ -1,6 +1,6 @@
 plugins {
     id("divecamera.feature")
-    id("divecamera.kmp.common.test")
+    id("divecamera.kmp.compose.ui.test")
 }
 
 kotlin {
