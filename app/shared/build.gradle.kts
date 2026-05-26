@@ -1,7 +1,6 @@
 plugins {
     id("divecamera.kmp.android.library")
     id("divecamera.kmp.compose")
-    id("divecamera.kmp.common.test")
 }
 
 kotlin {
