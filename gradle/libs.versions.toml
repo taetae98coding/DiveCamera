@@ -2,10 +2,10 @@
 kotlin = "2.3.21"
 kotlinxCoroutines = "1.11.0"
 jetbrainsCompose = "1.11.0"
-androidxComposeUiTest = "1.11.1"
 jetbrainsNavigation3 = "1.1.1"
 agp = "9.1.1"
 androidxActivityCompose = "1.13.0"
+androidxComposeUiTest = "1.11.1"
 robolectric = "4.16.1"
 spotless = "8.5.1"
 
