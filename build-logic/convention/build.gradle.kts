@@ -17,6 +17,14 @@ gradlePlugin {
             id = "divecamera.kmp.android.library"
             implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpAndroidLibraryConventionPlugin"
         }
+        register("kmpIos") {
+            id = "divecamera.kmp.ios"
+            implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpIosConventionPlugin"
+        }
+        register("kmpJvm") {
+            id = "divecamera.kmp.jvm"
+            implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpJvmConventionPlugin"
+        }
         register("kmpLibrary") {
             id = "divecamera.kmp.library"
             implementationClass = "io.github.taetae98coding.divecamera.buildlogic.DiveCameraKmpLibraryConventionPlugin"

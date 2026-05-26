@@ -20,17 +20,27 @@
 ### `divecamera.kmp.android.library`
 
 - Android target이 필요한 KMP 라이브러리 모듈에 적용한다.
-- `org.jetbrains.kotlin.multiplatform`와 `com.android.kotlin.multiplatform.library`를 적용한다.
+- `divecamera.kmp.ios`와 `com.android.kotlin.multiplatform.library`를 적용한다.
 - `kotlin.android`에 `compileSdk = 36`, `minSdk = 33`을 설정한다.
-- `iosArm64()` target을 추가한다.
 - Android host test는 활성화하지 않는다.
 - `namespace`는 모듈 build script에서 선언한다.
+
+### `divecamera.kmp.ios`
+
+- iOS target이 필요한 KMP 모듈에 적용한다.
+- `org.jetbrains.kotlin.multiplatform`를 적용한다.
+- `iosArm64()` target을 추가한다.
+
+### `divecamera.kmp.jvm`
+
+- JVM target이 필요한 KMP 모듈에 적용한다.
+- `org.jetbrains.kotlin.multiplatform`를 적용한다.
+- `jvm()` target을 추가한다.
 
 ### `divecamera.kmp.library`
 
 - Android target이 필요 없는 KMP 라이브러리 모듈에 적용한다.
-- `org.jetbrains.kotlin.multiplatform`를 적용한다.
-- 기본 target으로 `jvm()`과 `iosArm64()`를 추가한다.
+- `divecamera.kmp.ios`와 `divecamera.kmp.jvm`을 적용한다.
 
 ### `divecamera.kmp.compose`
 
