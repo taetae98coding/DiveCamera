@@ -42,6 +42,13 @@
 - Android target이 필요 없는 KMP 라이브러리 모듈에 적용한다.
 - `divecamera.kmp.ios`와 `divecamera.kmp.jvm`을 적용한다.
 
+### `divecamera.ios.application`
+
+- `:app:ios`에 적용한다.
+- `divecamera.kmp.ios`와 `divecamera.kmp.compose`를 적용한다.
+- Kotlin JVM toolchain 21을 설정한다.
+- iOS framework 이름, static 여부, export 대상, 모듈 의존성은 `:app:ios` build script에서 선언한다.
+
 ### `divecamera.kmp.compose`
 
 - Compose Multiplatform을 사용하는 KMP 모듈에 적용한다.
