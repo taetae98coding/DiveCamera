@@ -2,8 +2,8 @@
 
 ## unitTest
 
-1. 모든 필수 권한 상태가 충족되면 `RequiredPermissionGrantState.hasAllRequiredPermissions`는 `true`이다.
-2. 카메라 권한 상태가 충족되지 않으면 `RequiredPermissionGrantState.hasAllRequiredPermissions`는 `false`이다.
-3. 오디오 권한 상태가 충족되지 않으면 `RequiredPermissionGrantState.hasAllRequiredPermissions`는 `false`이다.
-4. 위치 권한 상태가 충족되지 않으면 `RequiredPermissionGrantState.hasAllRequiredPermissions`는 `false`이다.
-5. 사진 저장 권한 상태가 충족되지 않으면 `RequiredPermissionGrantState.hasAllRequiredPermissions`는 `false`이다.
+- 해당 없음. 권한 상태 확인과 요청은 플랫폼 권한 API에 의존하며, 현재 JVM 순수 로직 API로 분리되어 있지 않다.
+
+## uiTest
+
+- 해당 없음. 권한 매니저는 UI를 직접 표시하지 않는다.

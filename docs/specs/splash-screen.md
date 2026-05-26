@@ -4,7 +4,7 @@
 
 - 앱 최초 진입 시 스플래시 화면을 먼저 표시한다.
 - 스플래시 화면은 TODO 상태이므로 아무 UI도 표시하지 않는 빈 화면으로 둔다.
-- 스플래시 화면은 `:core:permission`의 `PermissionManager.hasAllRequiredPermissions` Flow를 구독한다.
+- 스플래시 화면은 `:core:permission`의 `PermissionManager`가 제공하는 카메라, 마이크, 위치, 사진 저장 권한 Flow를 구독한다.
 - 스플래시 화면은 `NavBackStack`을 전달받아 필요한 권한 보유 여부에 따라 직접 목적지를 결정한다.
 - 필요한 권한이 모두 있으면 카메라 화면으로 이동한다.
 - 필요한 권한 중 하나라도 없으면 권한 화면으로 이동한다.
