@@ -1,12 +1,8 @@
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
+    id("divecamera.kmp.library")
 }
 
 kotlin {
-    jvm()
-
-    iosArm64()
-
     sourceSets {
         commonMain {
             dependencies {

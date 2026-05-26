@@ -1,6 +1,4 @@
 pluginManagement {
-    includeBuild("build-logic")
-
     repositories {
         google {
             content {
@@ -13,9 +11,7 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
-}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -28,15 +24,14 @@ dependencyResolutionManagement {
         }
         mavenCentral()
     }
+
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
 }
 
-rootProject.name = "DiveCamera"
+rootProject.name = "DiveCameraBuildLogic"
 
-include(":app:android")
-include(":app:shared")
-include(":app:ios")
-include(":core:navigation")
-include(":core:permission")
-include(":feature:camera")
-include(":feature:permission")
-include(":feature:splash")
+include(":convention")
