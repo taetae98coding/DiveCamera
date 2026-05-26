@@ -4,7 +4,7 @@ import io.github.taetae98coding.divecamera.buildlogic.internal.kotlinMultiplatfo
 import io.github.taetae98coding.divecamera.buildlogic.internal.library
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.gradle.kotlin.dsl.invoke
 
 class DiveCameraFeatureConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
@@ -12,9 +12,11 @@ class DiveCameraFeatureConventionPlugin : Plugin<Project> {
         pluginManager.apply(DiveCameraKmpComposeConventionPlugin::class.java)
 
         kotlinMultiplatform {
-            sourceSets.named(KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME).configure {
-                dependencies {
-                    implementation(library("jetbrains-compose-foundation"))
+            sourceSets {
+                commonMain {
+                    dependencies {
+                        implementation(library("jetbrains-compose-foundation"))
+                    }
                 }
             }
         }
