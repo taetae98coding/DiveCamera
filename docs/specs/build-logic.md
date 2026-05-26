@@ -8,7 +8,8 @@
 - `build-logic/convention`은 Kotlin binary Gradle plugin 모듈이다.
 - convention plugin id는 `divecamera.*` 네임스페이스를 사용한다.
 - 각 애플리케이션/라이브러리 모듈은 필요한 convention plugin을 `plugins` 블록에 명시적으로 적용한다.
-- `allprojects`와 `subprojects`를 사용해 모듈 설정을 전역 주입하지 않는다.
+- `allprojects`와 `subprojects`를 사용해 애플리케이션/라이브러리 모듈의 플랫폼, 의존성, 컴파일 설정을 전역 주입하지 않는다.
+- Spotless처럼 저장소 전체에 적용되는 검증/포맷 태스크는 별도 스펙을 따른다.
 
 ### `divecamera.android.application`
 
