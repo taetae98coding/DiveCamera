@@ -8,11 +8,6 @@
 - `:app` 모듈은 feature Screen Composable을 직접 호출하지 않고 Navigation3 `entryProvider` DSL에서 feature 확장 함수를 조합한다.
 - 각 feature 확장 함수는 대응하는 `NavKey`에 대한 `NavEntry`를 등록한다.
 
-## 스펙 충돌 검증
-
-- 기존 화면 스펙은 화면에 표시할 UI 상태만 정의하므로 Screen Composable의 공개 범위 변경과 충돌하지 않는다.
-- 기존 스플래시 이후 권한 분기 스펙은 `:app` 모듈의 back stack 결정 로직에 남기므로 feature entry provider API와 충돌하지 않는다.
-
 ## 참고
 
 - Navigation3 `entryProvider` DSL은 `EntryProviderScope`에서 `NavEntry`를 등록하는 구조를 따른다.
