@@ -8,6 +8,7 @@ agp = "9.1.1"
 androidxActivityCompose = "1.13.0"
 androidxCamera = "1.6.1"
 androidxComposeUiTest = "1.11.1"
+androidxExifInterface = "1.4.2"
 robolectric = "4.16.1"
 spotless = "8.5.1"
 
@@ -25,6 +26,7 @@ androidx-camera-compose = { module = "androidx.camera:camera-compose", version.r
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "androidxCamera" }
 androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidxComposeUiTest" }
 androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidxComposeUiTest" }
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "androidxExifInterface" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "jetbrainsNavigation3" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
