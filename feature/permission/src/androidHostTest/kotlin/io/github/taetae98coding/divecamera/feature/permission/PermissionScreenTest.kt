@@ -26,7 +26,10 @@ class PermissionScreenTest {
     @Test
     fun permissionScreenDisplaysRequiredPermissionTitlesAndDescriptions() {
         composeRule.setContent {
-            PermissionScreen(permissionManager = FakePermissionManager())
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = FakePermissionManager(),
+            )
         }
 
         listOf("Camera", "Microphone", "Location", "Save Photos").forEach { permissionLabel ->
@@ -53,6 +56,7 @@ class PermissionScreenTest {
     fun permissionScreenDisplaysPermissionStatus() {
         composeRule.setContent {
             PermissionScreen(
+                navigateToCamera = {},
                 permissionManager = FakePermissionManager(
                     hasCameraPermission = true,
                     hasMicrophonePermission = false,
@@ -90,7 +94,10 @@ class PermissionScreenTest {
         )
 
         composeRule.setContent {
-            PermissionScreen(permissionManager = permissionManager)
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
         }
 
         composeRule
@@ -116,7 +123,10 @@ class PermissionScreenTest {
         )
 
         composeRule.setContent {
-            PermissionScreen(permissionManager = permissionManager)
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
         }
 
         composeRule
@@ -142,7 +152,10 @@ class PermissionScreenTest {
         )
 
         composeRule.setContent {
-            PermissionScreen(permissionManager = permissionManager)
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
         }
 
         composeRule
@@ -168,7 +181,10 @@ class PermissionScreenTest {
         )
 
         composeRule.setContent {
-            PermissionScreen(permissionManager = permissionManager)
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
         }
 
         composeRule
@@ -189,7 +205,10 @@ class PermissionScreenTest {
         val permissionManager = FakePermissionManager()
 
         composeRule.setContent {
-            PermissionScreen(permissionManager = permissionManager)
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
         }
 
         composeRule
@@ -200,6 +219,25 @@ class PermissionScreenTest {
             assertEquals(
                 expected = 1,
                 actual = permissionManager.openAppSettingsCount,
+            )
+        }
+    }
+
+    @Test
+    fun permissionScreenNavigatesToCameraWhenPermissionsGranted() {
+        var navigateToCameraCount = 0
+
+        composeRule.setContent {
+            PermissionScreen(
+                navigateToCamera = { navigateToCameraCount++ },
+                permissionManager = FakePermissionManager(),
+            )
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(
+                expected = 1,
+                actual = navigateToCameraCount,
             )
         }
     }

@@ -23,7 +23,7 @@ fun App() {
             backStack = backStack,
             entryProvider = entryProvider {
                 splashScreen(backStack)
-                permissionScreen()
+                permissionScreen(backStack)
                 cameraScreen()
             },
         )

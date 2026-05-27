@@ -25,8 +25,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -47,9 +49,11 @@ private const val REQUIRED_STATUS_TEXT = "Required"
 
 @Composable
 internal fun PermissionScreen(
+    navigateToCamera: () -> Unit,
     modifier: Modifier = Modifier,
     permissionManager: PermissionManager = rememberPermissionManager(),
 ) {
+    val currentNavigateToCamera by rememberUpdatedState(navigateToCamera)
     val hasCameraPermission by permissionManager.hasCameraPermission.collectAsState()
     val hasMicrophonePermission by permissionManager.hasMicrophonePermission.collectAsState()
     val hasLocationPermission by permissionManager.hasLocationPermission.collectAsState()
@@ -100,6 +104,22 @@ internal fun PermissionScreen(
                 onRequestPermission = permissionManager::requestPhotoSavePermission,
                 modifier = Modifier.testTag(PHOTO_SAVE_PERMISSION_ITEM_TEST_TAG),
             )
+        }
+    }
+
+    LaunchedEffect(
+        hasCameraPermission,
+        hasMicrophonePermission,
+        hasLocationPermission,
+        hasPhotoSavePermission,
+    ) {
+        if (
+            hasCameraPermission &&
+            hasMicrophonePermission &&
+            hasLocationPermission &&
+            hasPhotoSavePermission
+        ) {
+            currentNavigateToCamera()
         }
     }
 }

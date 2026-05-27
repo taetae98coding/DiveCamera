@@ -11,6 +11,7 @@
 - 권한 화면은 권한이 있는 항목을 `Allowed` 상태로 표시하고 중복 요청 액션을 비활성화한다.
 - 권한 화면은 하단에 `Open app settings` 버튼을 표시한다.
 - 권한 화면은 하단 설정 버튼을 클릭하면 앱 설정 화면 이동 함수를 호출한다.
+- 권한 화면은 카메라, 오디오, 위치, 사진 저장 권한이 모두 허용되면 카메라 화면 이동 함수를 호출한다.
 
 ## 정책
 
@@ -23,6 +24,7 @@
 
 - `docs/specs/permission-manager.md`의 Android 사진 저장 권한 정책과 충돌하지 않는다. 화면은 공통 요청 API를 호출하지만 Android 구현의 no-op 정책을 변경하지 않는다.
 - `docs/specs/splash-screen.md`의 필수 권한 판단과 충돌하지 않는다. 화면은 동일한 `PermissionManager` 상태 Flow를 표시한다.
+- `feature/AGENTS.md`의 Navigation 책임 경계와 충돌하지 않는다. 화면은 `NavKey`나 `NavBackStack`을 직접 다루지 않고 카메라 화면 이동 람다만 호출한다.
 
 ## 참고
 
