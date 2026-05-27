@@ -1,7 +1,13 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Looper
 import android.provider.MediaStore
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -10,6 +16,7 @@ import androidx.camera.core.takePicture
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 
 internal class AndroidImageCapture(
@@ -19,6 +26,9 @@ internal class AndroidImageCapture(
     private val cameraExifMetadata: AndroidCameraExifMetadata = AndroidCameraExifMetadata.Empty,
 ) {
     private val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
+    private val locationProvider = AndroidPhotoLocationProvider(context).apply {
+        start()
+    }
 
     val useCase: ImageCapture = ImageCapture.Builder()
         .setTargetRotation(targetRotation)
@@ -31,12 +41,14 @@ internal class AndroidImageCapture(
 
     suspend fun capturePhoto() {
         try {
-            val outputFileResults = useCase.takePicture(context.createImageOutputOptions())
+            val location = locationProvider.currentLocation()
+            val outputFileResults = useCase.takePicture(context.createImageOutputOptions(location))
             outputFileResults.savedUri?.let { uri ->
                 cameraExifMetadata.writeTo(
                     context = context,
                     uri = uri,
                     captureResultMetadata = captureResultExifMetadata.snapshot(),
+                    gpsLocation = location,
                 )
             }
         } catch (throwable: Throwable) {
@@ -47,9 +59,13 @@ internal class AndroidImageCapture(
             return
         }
     }
+
+    fun release() {
+        locationProvider.stop()
+    }
 }
 
-private fun Context.createImageOutputOptions(): ImageCapture.OutputFileOptions {
+private fun Context.createImageOutputOptions(location: Location?): ImageCapture.OutputFileOptions {
     val displayName = "${PHOTO_FILE_NAME_FORMAT.format(Date())}.jpg"
     val contentValues = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
@@ -57,12 +73,92 @@ private fun Context.createImageOutputOptions(): ImageCapture.OutputFileOptions {
         put(MediaStore.Images.Media.RELATIVE_PATH, PHOTO_RELATIVE_PATH)
     }
 
-    return ImageCapture.OutputFileOptions.Builder(
+    val builder = ImageCapture.OutputFileOptions.Builder(
         contentResolver,
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
         contentValues,
-    ).build()
+    )
+    location?.let {
+        builder.setMetadata(
+            ImageCapture.Metadata().apply {
+                setLocation(it)
+            },
+        )
+    }
+
+    return builder.build()
 }
+
+private class AndroidPhotoLocationProvider(private val context: Context) {
+    private val locationManager = context.getSystemService(LocationManager::class.java)
+    private val latestLocation = AtomicReference<Location?>()
+    private val locationListener = LocationListener { location ->
+        if (location.hasExifCoordinate()) {
+            latestLocation.set(location)
+        }
+    }
+
+    fun start() {
+        if (!context.hasLocationPermission()) {
+            return
+        }
+        val manager = locationManager
+            ?: return
+
+        latestLocation.set(manager.lastKnownMetadataLocation())
+        manager.getProviders(true).forEach { provider ->
+            runCatching {
+                manager.requestLocationUpdates(
+                    provider,
+                    LOCATION_UPDATE_MIN_TIME_MILLIS,
+                    LOCATION_UPDATE_MIN_DISTANCE_METERS,
+                    locationListener,
+                    Looper.getMainLooper(),
+                )
+            }
+        }
+    }
+
+    fun currentLocation(): Location? {
+        if (!context.hasLocationPermission()) {
+            return null
+        }
+
+        return latestLocation.get()
+            ?: locationManager?.lastKnownMetadataLocation()?.also(latestLocation::set)
+    }
+
+    fun stop() {
+        locationManager?.removeUpdates(locationListener)
+    }
+}
+
+private fun LocationManager.lastKnownMetadataLocation(): Location? = getProviders(true)
+    .asSequence()
+    .mapNotNull { provider ->
+        runCatching {
+            getLastKnownLocation(provider)
+        }.getOrNull()
+    }
+    .filter(Location::hasExifCoordinate)
+    .maxByOrNull(Location::getTime)
+
+private fun Context.hasLocationPermission(): Boolean {
+    return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+}
+
+private fun Location.hasExifCoordinate(): Boolean {
+    return latitude in MIN_EXIF_LATITUDE..MAX_EXIF_LATITUDE &&
+        longitude in MIN_EXIF_LONGITUDE..MAX_EXIF_LONGITUDE
+}
+
+private const val MIN_EXIF_LATITUDE = -90.0
+private const val MAX_EXIF_LATITUDE = 90.0
+private const val MIN_EXIF_LONGITUDE = -180.0
+private const val MAX_EXIF_LONGITUDE = 180.0
+private const val LOCATION_UPDATE_MIN_TIME_MILLIS = 5_000L
+private const val LOCATION_UPDATE_MIN_DISTANCE_METERS = 0F
 
 private const val PHOTO_MIME_TYPE = "image/jpeg"
 private const val PHOTO_RELATIVE_PATH = "Pictures/DiveCamera"

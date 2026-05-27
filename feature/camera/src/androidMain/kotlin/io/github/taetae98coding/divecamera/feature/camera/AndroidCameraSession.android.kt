@@ -44,6 +44,7 @@ internal class AndroidCameraSession(
                 provider.unbind(cameraPreview.useCase)
             } else {
                 provider.unbind(cameraPreview.useCase, currentImageCapture.useCase)
+                currentImageCapture.release()
             }
 
             val camera = provider.bindToLifecycle(
@@ -78,6 +79,7 @@ internal class AndroidCameraSession(
     fun release() {
         cameraController.updateImageCapture(null)
         imageCapture?.let { currentImageCapture ->
+            currentImageCapture.release()
             cameraProvider?.unbind(cameraPreview.useCase, currentImageCapture.useCase)
         } ?: cameraProvider?.unbind(cameraPreview.useCase)
         imageCapture = null

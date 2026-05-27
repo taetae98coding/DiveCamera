@@ -6,6 +6,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
+import android.location.Location
 import android.net.Uri
 import android.util.Range
 import android.util.SizeF
@@ -35,6 +36,7 @@ internal data class AndroidCameraExifMetadata(
         context: Context,
         uri: Uri,
         captureResultMetadata: AndroidCaptureResultMetadata? = null,
+        gpsLocation: Location? = null,
     ) {
         runCatching {
             context.contentResolver.openFileDescriptor(uri, "rw")?.use { descriptor ->
@@ -42,6 +44,7 @@ internal data class AndroidCameraExifMetadata(
                 writeTo(
                     exif = exif,
                     captureResultMetadata = captureResultMetadata,
+                    gpsLocation = gpsLocation,
                 )
                 exif.saveAttributes()
             }
@@ -51,10 +54,12 @@ internal data class AndroidCameraExifMetadata(
     internal fun writeTo(
         exif: ExifInterface,
         captureResultMetadata: AndroidCaptureResultMetadata? = null,
+        gpsLocation: Location? = null,
     ) {
         val singleAperture = availableApertures.singleOrNull()
         val singleFocalLength = availableFocalLengths.singleOrNull()
 
+        exif.setGpsInfoIfMissing(gpsLocation)
         captureResultMetadata?.writeTo(exif)
         exif.setAttributeIfMissing(
             tag = ExifInterface.TAG_F_NUMBER,
@@ -312,6 +317,12 @@ private fun ExifInterface.appendUserComment(comment: String) {
     }
 
     setAttribute(ExifInterface.TAG_USER_COMMENT, nextComment)
+}
+
+private fun ExifInterface.setGpsInfoIfMissing(location: Location?) {
+    if (location != null && getLatLong() == null) {
+        setGpsInfo(location)
+    }
 }
 
 private fun SizeF.toAndroidSensorPhysicalSize(): AndroidSensorPhysicalSize = AndroidSensorPhysicalSize(

@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.graphics.Bitmap
+import android.location.Location
 import android.view.Surface
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -123,6 +124,25 @@ class AndroidImageCaptureTest {
         assertNotNull(exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME))
     }
 
+    @Test
+    fun androidCameraExifMetadataWritesGpsLocation() {
+        val exif = createTestExifInterface()
+        val location = Location(GPS_PROVIDER).apply {
+            latitude = GPS_LATITUDE
+            longitude = GPS_LONGITUDE
+            time = GPS_TIME_MILLIS
+        }
+
+        createAndroidCameraExifMetadata().writeTo(
+            exif = exif,
+            gpsLocation = location,
+        )
+
+        val latLong = requireNotNull(exif.getLatLong())
+        assertEquals(GPS_LATITUDE, latLong[0], GPS_COORDINATE_DELTA)
+        assertEquals(GPS_LONGITUDE, latLong[1], GPS_COORDINATE_DELTA)
+    }
+
     private fun createAndroidImageCapture(outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG): AndroidImageCapture = AndroidImageCapture(
         context = ApplicationProvider.getApplicationContext(),
         targetRotation = Surface.ROTATION_0,
@@ -159,5 +179,10 @@ class AndroidImageCaptureTest {
         private const val FOCAL_LENGTH_MM = 4.2F
         private const val CAPTURE_ISO = 400
         private const val CAPTURE_EXPOSURE_TIME_NANOS = 10_000_000L
+        private const val GPS_PROVIDER = "gps"
+        private const val GPS_LATITUDE = 37.5665
+        private const val GPS_LONGITUDE = 126.978
+        private const val GPS_TIME_MILLIS = 1_735_689_600_000L
+        private const val GPS_COORDINATE_DELTA = 0.000001
     }
 }
