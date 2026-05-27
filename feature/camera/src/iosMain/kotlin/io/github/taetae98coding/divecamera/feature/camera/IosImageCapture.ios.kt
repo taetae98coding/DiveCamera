@@ -3,6 +3,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import kotlin.coroutines.resume
+import kotlin.math.abs
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -22,6 +23,11 @@ import platform.AVFoundation.depthDataDeliverySupported
 import platform.AVFoundation.deviceType
 import platform.AVFoundation.fileDataRepresentation
 import platform.AVFoundation.geometricDistortionCorrectedVideoFieldOfView
+import platform.CoreLocation.CLLocation
+import platform.CoreLocation.CLLocationManager
+import platform.CoreLocation.CLLocationManagerDelegateProtocol
+import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
+import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSError
@@ -34,6 +40,7 @@ import platform.darwin.NSObject
 internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) -> Unit) {
     private val photoOutput = AVCapturePhotoOutput()
     private val photoCaptureDelegates = mutableSetOf<PhotoCaptureDelegate>()
+    private val locationProvider = IosPhotoLocationProvider()
     private var cameraMetadata = IosCameraMetadata.Empty
     private var isConfigured = false
 
@@ -51,6 +58,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             if (photoOutput.depthDataDeliverySupported) {
                 photoOutput.depthDataDeliveryEnabled = true
             }
+            locationProvider.startUpdating()
             isConfigured = true
         }
     }
@@ -75,9 +83,15 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
         }
 
         dispatchOnSessionQueue {
-            val settings = photoOutput.createPhotoSettings(cameraMetadata)
+            locationProvider.startUpdating()
+            val location = locationProvider.currentLocation()
+            val settings = photoOutput.createPhotoSettings(
+                cameraMetadata = cameraMetadata,
+                location = location,
+            )
             lateinit var delegate: PhotoCaptureDelegate
             delegate = PhotoCaptureDelegate(
+                location = location,
                 onComplete = {
                     dispatchOnSessionQueue {
                         photoCaptureDelegates.remove(delegate)
@@ -92,6 +106,10 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             )
         }
         return true
+    }
+
+    fun release() {
+        locationProvider.stopUpdating()
     }
 }
 
@@ -108,12 +126,16 @@ private data class IosCameraMetadata(
     private val maxExposureBias: Float? = null,
     private val maxPhotoDimensions: String? = null,
 ) {
-    fun photoSettingsMetadata(): Map<Any?, *>? {
-        return mapOf(
-            IOS_EXIF_METADATA_KEY to mapOf(
+    fun photoSettingsMetadata(location: CLLocation?): Map<Any?, *> = buildMap {
+        put(
+            IOS_EXIF_METADATA_KEY,
+            mapOf(
                 IOS_EXIF_USER_COMMENT_KEY to appMetadataComment(),
             ),
         )
+        location?.gpsMetadata()?.let {
+            put(IOS_GPS_METADATA_KEY, it)
+        }
     }
 
     private fun appMetadataComment(): String = buildList {
@@ -168,7 +190,10 @@ private data class IosCameraMetadata(
     }
 }
 
-private fun AVCapturePhotoOutput.createPhotoSettings(cameraMetadata: IosCameraMetadata): AVCapturePhotoSettings {
+private fun AVCapturePhotoOutput.createPhotoSettings(
+    cameraMetadata: IosCameraMetadata,
+    location: CLLocation?,
+): AVCapturePhotoSettings {
     val settings = if (AVVideoCodecTypeHEVC in availablePhotoCodecTypes) {
         AVCapturePhotoSettings.photoSettingsWithFormat(
             mapOf(AVVideoCodecKey to AVVideoCodecTypeHEVC),
@@ -186,12 +211,101 @@ private fun AVCapturePhotoOutput.createPhotoSettings(cameraMetadata: IosCameraMe
     if (cameraCalibrationDataDeliverySupported) {
         settings.cameraCalibrationDataDeliveryEnabled = true
     }
-    cameraMetadata.photoSettingsMetadata()?.let { metadata ->
-        settings.metadata = metadata
-    }
+    settings.metadata = cameraMetadata.photoSettingsMetadata(location)
 
     return settings
 }
+
+private class IosPhotoLocationProvider :
+    NSObject(),
+    CLLocationManagerDelegateProtocol {
+    private val locationManager = CLLocationManager()
+    private var latestLocation: CLLocation? = null
+
+    init {
+        locationManager.delegate = this
+    }
+
+    fun startUpdating() {
+        if (locationManager.hasLocationAuthorization()) {
+            latestLocation = locationManager.location ?: latestLocation
+            locationManager.startUpdatingLocation()
+        }
+    }
+
+    fun currentLocation(): CLLocation? = (latestLocation ?: locationManager.location)
+        ?.takeIf(CLLocation::hasValidCoordinate)
+
+    fun stopUpdating() {
+        locationManager.stopUpdatingLocation()
+    }
+
+    override fun locationManager(
+        manager: CLLocationManager,
+        didUpdateLocations: List<*>,
+    ) {
+        latestLocation = didUpdateLocations.lastOrNull() as? CLLocation
+    }
+
+    override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
+        if (manager.hasLocationAuthorization()) {
+            startUpdating()
+        } else {
+            latestLocation = null
+            manager.stopUpdatingLocation()
+        }
+    }
+}
+
+private fun CLLocationManager.hasLocationAuthorization(): Boolean {
+    return authorizationStatus == kCLAuthorizationStatusAuthorizedAlways ||
+        authorizationStatus == kCLAuthorizationStatusAuthorizedWhenInUse
+}
+
+private fun CLLocation.hasValidCoordinate(): Boolean {
+    val coordinate = coordinate.useContents {
+        IosLocationCoordinate(
+            latitude = latitude,
+            longitude = longitude,
+        )
+    }
+
+    return coordinate.latitude in MIN_GPS_LATITUDE..MAX_GPS_LATITUDE &&
+        coordinate.longitude in MIN_GPS_LONGITUDE..MAX_GPS_LONGITUDE
+}
+
+private fun CLLocation.gpsMetadata(): Map<String, Any>? {
+    val coordinate = coordinate.useContents {
+        IosLocationCoordinate(
+            latitude = latitude,
+            longitude = longitude,
+        )
+    }
+    if (coordinate.latitude !in MIN_GPS_LATITUDE..MAX_GPS_LATITUDE ||
+        coordinate.longitude !in MIN_GPS_LONGITUDE..MAX_GPS_LONGITUDE
+    ) {
+        return null
+    }
+
+    return buildMap {
+        val latitudeRef = if (coordinate.latitude >= 0.0) IOS_GPS_LATITUDE_NORTH else IOS_GPS_LATITUDE_SOUTH
+        val longitudeRef = if (coordinate.longitude >= 0.0) IOS_GPS_LONGITUDE_EAST else IOS_GPS_LONGITUDE_WEST
+
+        put(IOS_GPS_LATITUDE_KEY, abs(coordinate.latitude))
+        put(IOS_GPS_LATITUDE_REF_KEY, latitudeRef)
+        put(IOS_GPS_LONGITUDE_KEY, abs(coordinate.longitude))
+        put(IOS_GPS_LONGITUDE_REF_KEY, longitudeRef)
+        put(IOS_GPS_MAP_DATUM_KEY, IOS_GPS_MAP_DATUM_WGS_84)
+        horizontalAccuracy.takeIf { it >= 0.0 }?.let {
+            put(IOS_GPS_HORIZONTAL_POSITIONING_ERROR_KEY, it)
+        }
+    }
+}
+
+private data class IosLocationCoordinate(
+    val latitude: Double,
+    val longitude: Double,
+)
 
 private fun AVCaptureDevice.bestPhotoDimensions(): CValue<CMVideoDimensions>? {
     val supportedDimensions = activeFormat.supportedMaxPhotoDimensions
@@ -217,10 +331,28 @@ private fun Double.formatMetadataNumber(): String = (this * METADATA_DECIMAL_SCA
 
 private const val IOS_EXIF_METADATA_KEY = "{Exif}"
 private const val IOS_EXIF_USER_COMMENT_KEY = "UserComment"
+private const val IOS_GPS_METADATA_KEY = "{GPS}"
+private const val IOS_GPS_LATITUDE_KEY = "Latitude"
+private const val IOS_GPS_LATITUDE_REF_KEY = "LatitudeRef"
+private const val IOS_GPS_LATITUDE_NORTH = "N"
+private const val IOS_GPS_LATITUDE_SOUTH = "S"
+private const val IOS_GPS_LONGITUDE_KEY = "Longitude"
+private const val IOS_GPS_LONGITUDE_REF_KEY = "LongitudeRef"
+private const val IOS_GPS_LONGITUDE_EAST = "E"
+private const val IOS_GPS_LONGITUDE_WEST = "W"
+private const val IOS_GPS_HORIZONTAL_POSITIONING_ERROR_KEY = "HPositioningError"
+private const val IOS_GPS_MAP_DATUM_KEY = "MapDatum"
+private const val IOS_GPS_MAP_DATUM_WGS_84 = "WGS-84"
+private const val MIN_GPS_LATITUDE = -90.0
+private const val MAX_GPS_LATITUDE = 90.0
+private const val MIN_GPS_LONGITUDE = -180.0
+private const val MAX_GPS_LONGITUDE = 180.0
 private const val METADATA_DECIMAL_SCALE = 1000.0
 
-private class PhotoCaptureDelegate(private val onComplete: () -> Unit) :
-    NSObject(),
+private class PhotoCaptureDelegate(
+    private val location: CLLocation?,
+    private val onComplete: () -> Unit,
+) : NSObject(),
     AVCapturePhotoCaptureDelegateProtocol {
     private var isComplete = false
 
@@ -242,12 +374,13 @@ private class PhotoCaptureDelegate(private val onComplete: () -> Unit) :
 
         PHPhotoLibrary.sharedPhotoLibrary().performChanges(
             changeBlock = {
-                PHAssetCreationRequest.creationRequestForAsset()
-                    .addResourceWithType(
-                        type = PHAssetResourceTypePhoto,
-                        data = photoData,
-                        options = null,
-                    )
+                val request = PHAssetCreationRequest.creationRequestForAsset()
+                request.location = location
+                request.addResourceWithType(
+                    type = PHAssetResourceTypePhoto,
+                    data = photoData,
+                    options = null,
+                )
             },
             completionHandler = { _, _ ->
                 complete()

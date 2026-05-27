@@ -55,6 +55,7 @@ internal class IosCameraSession(private val cameraController: CameraController) 
 
     fun release() {
         cameraController.updateImageCapture(null)
+        imageCapture.release()
         dispatch_async(sessionQueue) {
             if (session.running) {
                 session.stopRunning()
