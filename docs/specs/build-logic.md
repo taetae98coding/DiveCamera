@@ -54,7 +54,6 @@
 
 - Compose Multiplatform을 사용하는 KMP 모듈에 적용한다.
 - `org.jetbrains.compose`와 `org.jetbrains.kotlin.plugin.compose`를 적용한다.
-- `commonMain`에 `api(libs.jetbrains.compose.runtime)`를 추가한다.
 
 ### `divecamera.feature`
 
@@ -62,7 +61,7 @@
 - `divecamera.kmp.android.library`와 `divecamera.kmp.compose`를 적용한다.
 - `commonMain`에 `implementation(project(":core:navigation"))`를 추가한다.
 - `commonMain`에 `api(libs.androidx.navigation3.runtime)`를 추가한다.
-- `commonMain`에 `implementation(libs.jetbrains.compose.foundation)`를 추가한다.
+- `commonMain`에 `implementation(libs.jetbrains.compose.material3)`를 추가한다.
 
 ### `divecamera.kmp.common.test`
 
