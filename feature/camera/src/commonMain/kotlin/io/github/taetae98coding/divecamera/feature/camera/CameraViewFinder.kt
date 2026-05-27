@@ -18,7 +18,10 @@ private const val VIEW_FINDER_CONTENT_DESCRIPTION = "ViewFinder"
 private const val VIEW_FINDER_ASPECT_RATIO = 9f / 16f
 
 @Composable
-internal fun CameraViewFinder(modifier: Modifier = Modifier) {
+internal fun CameraViewFinder(
+    modifier: Modifier = Modifier,
+    isCameraPreviewActive: Boolean = true,
+) {
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center,
@@ -32,11 +35,13 @@ internal fun CameraViewFinder(modifier: Modifier = Modifier) {
                     contentDescription = VIEW_FINDER_CONTENT_DESCRIPTION
                 },
         ) {
-            CameraPreview(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag(CAMERA_PREVIEW_TEST_TAG),
-            )
+            if (isCameraPreviewActive) {
+                CameraPreview(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag(CAMERA_PREVIEW_TEST_TAG),
+                )
+            }
         }
     }
 }
