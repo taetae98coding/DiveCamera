@@ -82,14 +82,42 @@ class CameraScreenTest {
     }
 
     @Test
-    fun cameraScreenDisplaysViewFinderWithPortraitCameraAspectRatio() {
+    fun cameraScreenDisplaysViewFinderWithPortraitPhotoAspectRatio() {
         setFixedSizeCameraScreen()
         val viewFinderBounds = viewFinderBounds()
-        val expectedHeight = viewFinderBounds.width() * 16F / 9F
+        val expectedHeight = viewFinderBounds.width() * 4F / 3F
 
         assertEquals(
             expectedHeight.value,
             viewFinderBounds.height().value,
+            POSITION_TOLERANCE_DP,
+        )
+    }
+
+    @Test
+    fun cameraScreenDisplaysCameraPreviewInsideViewFinderBounds() {
+        setFixedSizeCameraScreen()
+        val viewFinderBounds = viewFinderBounds()
+        val cameraPreviewBounds = cameraPreviewBounds()
+
+        assertEquals(
+            viewFinderBounds.left.value,
+            cameraPreviewBounds.left.value,
+            POSITION_TOLERANCE_DP,
+        )
+        assertEquals(
+            viewFinderBounds.top.value,
+            cameraPreviewBounds.top.value,
+            POSITION_TOLERANCE_DP,
+        )
+        assertEquals(
+            viewFinderBounds.right.value,
+            cameraPreviewBounds.right.value,
+            POSITION_TOLERANCE_DP,
+        )
+        assertEquals(
+            viewFinderBounds.bottom.value,
+            cameraPreviewBounds.bottom.value,
             POSITION_TOLERANCE_DP,
         )
     }
@@ -233,6 +261,10 @@ class CameraScreenTest {
 
     private fun viewFinderBounds(): DpRect = composeRule
         .onNodeWithTag(VIEW_FINDER_TEST_TAG)
+        .getUnclippedBoundsInRoot()
+
+    private fun cameraPreviewBounds(): DpRect = composeRule
+        .onNodeWithTag(CAMERA_PREVIEW_TEST_TAG)
         .getUnclippedBoundsInRoot()
 
     private fun captureButtonBounds(): DpRect = composeRule
