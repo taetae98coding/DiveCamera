@@ -1,13 +1,8 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.content.Context
-import android.util.Rational
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.SurfaceRequest
-import androidx.camera.core.UseCaseGroup
-import androidx.camera.core.ViewPort
-import androidx.camera.core.resolutionselector.AspectRatioStrategy
-import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.lifecycle.LifecycleOwner
@@ -33,28 +28,13 @@ internal class AndroidCameraSession(
     val surfaceRequest: SurfaceRequest?
         get() = cameraPreview.surfaceRequest
 
-    private val resolutionSelector = ResolutionSelector.Builder()
-        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-        .build()
     private val cameraPreview = AndroidCameraPreview(
         targetRotation = targetRotation,
-        resolutionSelector = resolutionSelector,
     )
     private val imageCapture = AndroidImageCapture(
         context = context,
         targetRotation = targetRotation,
-        resolutionSelector = resolutionSelector,
     )
-    private val useCaseGroup = UseCaseGroup.Builder()
-        .addUseCase(cameraPreview.useCase)
-        .addUseCase(imageCapture.useCase)
-        .setViewPort(
-            ViewPort.Builder(
-                Rational(VIEW_FINDER_ASPECT_RATIO_WIDTH, VIEW_FINDER_ASPECT_RATIO_HEIGHT),
-                targetRotation,
-            ).build(),
-        )
-        .build()
     private var cameraProvider: ProcessCameraProvider? = null
 
     suspend fun bind() {
@@ -65,7 +45,8 @@ internal class AndroidCameraSession(
             provider.bindToLifecycle(
                 lifecycleOwner,
                 CameraSelector.DEFAULT_BACK_CAMERA,
-                useCaseGroup,
+                cameraPreview.useCase,
+                imageCapture.useCase,
             )
             cameraProvider = provider
             cameraController.updateImageCapture(imageCapture)
@@ -85,5 +66,3 @@ internal class AndroidCameraSession(
         cameraPreview.release()
     }
 }
-private const val VIEW_FINDER_ASPECT_RATIO_WIDTH = 9
-private const val VIEW_FINDER_ASPECT_RATIO_HEIGHT = 16

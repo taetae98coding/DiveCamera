@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.provider.MediaStore
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.takePicture
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -14,10 +13,8 @@ import kotlin.coroutines.cancellation.CancellationException
 internal class AndroidImageCapture(
     private val context: Context,
     targetRotation: Int,
-    resolutionSelector: ResolutionSelector,
 ) {
     val useCase: ImageCapture = ImageCapture.Builder()
-        .setResolutionSelector(resolutionSelector)
         .setTargetRotation(targetRotation)
         .build()
 
