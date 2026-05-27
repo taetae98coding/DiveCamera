@@ -52,6 +52,10 @@ internal class IosPermissionManager(
 
     override fun openAppSettings() {
         val settingsUrl = NSURL.URLWithString(UIApplicationOpenSettingsURLString) ?: return
-        UIApplication.sharedApplication.openURL(settingsUrl)
+        UIApplication.sharedApplication.openURL(
+            url = settingsUrl,
+            options = emptyMap<Any?, Any?>(),
+            completionHandler = null,
+        )
     }
 }
