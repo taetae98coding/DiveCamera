@@ -22,3 +22,4 @@
 18. Robolectric `androidHostTest`에서 Android 카메라 메타데이터에 단일 조리개와 단일 초점거리가 있으면 EXIF에 F값과 초점거리가 기록된다.
 19. Robolectric `androidHostTest`에서 Android 카메라 메타데이터를 EXIF에 기록할 때 기존 F값, 초점거리, 35mm 환산 초점거리는 덮어쓰지 않는다.
 20. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 ISO와 노출 시간이 있으면 EXIF에 ISO와 노출 시간이 기록된다.
+21. Robolectric `androidHostTest`에서 Android 카메라 메타데이터를 GPS 위치와 함께 EXIF에 기록하면 EXIF 위도와 경도가 GPS 위치와 같다.
