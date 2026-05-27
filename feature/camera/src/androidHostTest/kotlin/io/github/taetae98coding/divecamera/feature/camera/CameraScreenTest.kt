@@ -14,6 +14,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
@@ -127,6 +128,22 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysCameraOffTextWithoutCaptureButtonAfterIdleTimeout() {
+        composeRule.setContent {
+            CameraScreen(cameraResourceIdleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS)
+        }
+
+        waitUntilCameraPreviewDoesNotExist()
+
+        composeRule
+            .onAllNodesWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+        composeRule
+            .onNodeWithTag(CAMERA_OFF_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun cameraScreenRestartsCameraPreviewWhenInputReceivedAfterIdleTimeout() {
         var idleTimeoutMillis by mutableStateOf(IDLE_TEST_TIMEOUT_MILLIS)
 
@@ -148,6 +165,55 @@ class CameraScreenTest {
         composeRule
             .onNodeWithTag(CAMERA_PREVIEW_TEST_TAG)
             .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag(CAMERA_OFF_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun cameraScreenDisplaysCaptureButton() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysCaptureButtonAtHorizontalCenter() {
+        setFixedSizeCameraScreen()
+        val screenBounds = cameraScreenBounds()
+        val captureButtonBounds = captureButtonBounds()
+
+        assertEquals(
+            screenBounds.centerX().value,
+            captureButtonBounds.centerX().value,
+            POSITION_TOLERANCE_DP,
+        )
+    }
+
+    @Test
+    fun cameraScreenCallsCameraControllerCapturePhotoWhenCaptureButtonClicked() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.photoCaptureCount)
+        }
     }
 
     private fun setFixedSizeCameraScreen() {
@@ -167,6 +233,10 @@ class CameraScreenTest {
 
     private fun viewFinderBounds(): DpRect = composeRule
         .onNodeWithTag(VIEW_FINDER_TEST_TAG)
+        .getUnclippedBoundsInRoot()
+
+    private fun captureButtonBounds(): DpRect = composeRule
+        .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
         .getUnclippedBoundsInRoot()
 
     private fun DpRect.centerX(): Dp = left + (right - left) / 2
@@ -193,5 +263,14 @@ class CameraScreenTest {
         private const val IDLE_TEST_TIMEOUT_MILLIS = 1L
         private const val LONG_IDLE_TEST_TIMEOUT_MILLIS = 10_000L
         private const val WAIT_UNTIL_TIMEOUT_MILLIS = 5_000L
+    }
+}
+
+private class FakeCameraController : CameraController {
+    var photoCaptureCount = 0
+        private set
+
+    override suspend fun capturePhoto() {
+        photoCaptureCount += 1
     }
 }

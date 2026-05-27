@@ -21,6 +21,7 @@ private const val VIEW_FINDER_ASPECT_RATIO = 9f / 16f
 internal fun CameraViewFinder(
     modifier: Modifier = Modifier,
     isCameraPreviewActive: Boolean = true,
+    cameraController: CameraController,
 ) {
     Box(
         modifier = modifier,
@@ -37,6 +38,7 @@ internal fun CameraViewFinder(
         ) {
             if (isCameraPreviewActive) {
                 CameraPreview(
+                    cameraController = cameraController,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag(CAMERA_PREVIEW_TEST_TAG),

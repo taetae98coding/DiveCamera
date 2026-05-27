@@ -1,57 +1,42 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
-import android.util.Log
+import android.view.Surface
 import androidx.camera.compose.CameraXViewfinder
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.core.SurfaceRequest
-import androidx.camera.core.resolutionselector.AspectRatioStrategy
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.lifecycle.awaitInstance
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
-internal actual fun CameraPreview(modifier: Modifier) {
+internal actual fun CameraPreview(
+    cameraController: CameraController,
+    modifier: Modifier,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var cameraProvider by remember {
-        mutableStateOf<ProcessCameraProvider?>(null)
-    }
-    val currentCameraProvider by rememberUpdatedState(cameraProvider)
-    var surfaceRequest by remember {
-        mutableStateOf<SurfaceRequest?>(null)
-    }
-    val preview = remember {
-        Preview.Builder()
-            .setResolutionSelector(
-                ResolutionSelector.Builder()
-                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                    .build(),
-            )
-            .build()
-            .apply {
-                setSurfaceProvider { newSurfaceRequest ->
-                    surfaceRequest = newSurfaceRequest
-                }
-            }
+    val view = LocalView.current
+    val targetRotation = view.display?.rotation ?: Surface.ROTATION_0
+    val cameraSession = remember(
+        cameraController,
+        context,
+        lifecycleOwner,
+        targetRotation,
+    ) {
+        cameraController.createCameraSession(
+            context = context,
+            lifecycleOwner = lifecycleOwner,
+            targetRotation = targetRotation,
+        )
     }
 
     Box(modifier = modifier) {
-        surfaceRequest?.let { currentSurfaceRequest ->
+        cameraSession.surfaceRequest?.let { currentSurfaceRequest ->
             CameraXViewfinder(
                 surfaceRequest = currentSurfaceRequest,
                 modifier = Modifier.fillMaxSize(),
@@ -59,36 +44,13 @@ internal actual fun CameraPreview(modifier: Modifier) {
         }
     }
 
-    LaunchedEffect(
-        context,
-        lifecycleOwner,
-        preview,
-    ) {
-        try {
-            val provider = ProcessCameraProvider.awaitInstance(context)
-
-            provider.unbind(preview)
-            provider.bindToLifecycle(
-                lifecycleOwner,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                preview,
-            )
-            cameraProvider = provider
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) {
-                throw throwable
-            }
-
-            Log.w(TAG, "Failed to start camera preview.", throwable)
-        }
+    LaunchedEffect(cameraSession) {
+        cameraSession.bind()
     }
 
-    DisposableEffect(preview) {
+    DisposableEffect(cameraSession) {
         onDispose {
-            currentCameraProvider?.unbind(preview)
-            surfaceRequest = null
+            cameraSession.release()
         }
     }
 }
-
-private const val TAG = "CameraPreview"
