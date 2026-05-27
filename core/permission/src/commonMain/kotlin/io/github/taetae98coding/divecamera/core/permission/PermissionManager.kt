@@ -19,6 +19,8 @@ interface PermissionManager {
     fun requestLocationPermission()
 
     fun requestPhotoSavePermission()
+
+    fun openAppSettings()
 }
 
 @Composable

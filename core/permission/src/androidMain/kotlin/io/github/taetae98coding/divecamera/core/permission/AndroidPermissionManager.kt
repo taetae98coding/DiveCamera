@@ -1,16 +1,22 @@
 package io.github.taetae98coding.divecamera.core.permission
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 internal class AndroidPermissionManager(
+    private val context: Context,
     permissionState: AndroidPermissionState,
     private val cameraPermissionLauncher: ActivityResultLauncher<String>,
     private val microphonePermissionLauncher: ActivityResultLauncher<String>,
     private val locationPermissionLauncher: ActivityResultLauncher<Array<String>>,
+    private val appSettingsLauncher: ActivityResultLauncher<Intent>,
 ) : PermissionManager {
     override val hasCameraPermission: StateFlow<Boolean> =
         permissionState.hasCameraPermission
@@ -42,4 +48,13 @@ internal class AndroidPermissionManager(
     }
 
     override fun requestPhotoSavePermission() = Unit
+
+    override fun openAppSettings() {
+        appSettingsLauncher.launch(context.createAppSettingsIntent())
+    }
 }
+
+private fun Context.createAppSettingsIntent(): Intent = Intent(
+    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+    Uri.fromParts("package", packageName, null),
+)

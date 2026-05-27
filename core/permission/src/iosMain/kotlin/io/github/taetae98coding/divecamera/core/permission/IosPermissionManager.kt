@@ -6,8 +6,11 @@ import platform.AVFoundation.AVMediaTypeAudio
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.requestAccessForMediaType
 import platform.CoreLocation.CLLocationManager
+import platform.Foundation.NSURL
 import platform.Photos.PHAccessLevelAddOnly
 import platform.Photos.PHPhotoLibrary
+import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationOpenSettingsURLString
 
 internal class IosPermissionManager(
     private val permissionState: IosPermissionState,
@@ -45,5 +48,10 @@ internal class IosPermissionManager(
         PHPhotoLibrary.requestAuthorizationForAccessLevel(PHAccessLevelAddOnly) {
             permissionState.refreshPhotoSavePermission()
         }
+    }
+
+    override fun openAppSettings() {
+        val settingsUrl = NSURL.URLWithString(UIApplicationOpenSettingsURLString) ?: return
+        UIApplication.sharedApplication.openURL(settingsUrl)
     }
 }

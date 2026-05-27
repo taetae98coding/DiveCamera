@@ -28,18 +28,27 @@ actual fun rememberPermissionManager(): PermissionManager {
     ) {
         permissionState.refreshPermissions()
     }
+    val appSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        permissionState.refreshPermissions()
+    }
 
     return remember(
+        applicationContext,
         permissionState,
         cameraPermissionLauncher,
         microphonePermissionLauncher,
         locationPermissionLauncher,
+        appSettingsLauncher,
     ) {
         AndroidPermissionManager(
+            context = applicationContext,
             permissionState = permissionState,
             cameraPermissionLauncher = cameraPermissionLauncher,
             microphonePermissionLauncher = microphonePermissionLauncher,
             locationPermissionLauncher = locationPermissionLauncher,
+            appSettingsLauncher = appSettingsLauncher,
         )
     }
 }

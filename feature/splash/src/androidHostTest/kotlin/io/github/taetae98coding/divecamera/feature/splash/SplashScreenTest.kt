@@ -143,5 +143,7 @@ class SplashScreenTest {
         override fun requestLocationPermission() = Unit
 
         override fun requestPhotoSavePermission() = Unit
+
+        override fun openAppSettings() = Unit
     }
 }
