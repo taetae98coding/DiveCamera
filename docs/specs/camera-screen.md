@@ -12,9 +12,43 @@
 - 사진 촬영 버튼을 누르면 현재 카메라 사진을 촬영한다.
 - 촬영한 사진은 기기의 기본 갤러리 앱에서 볼 수 있도록 저장한다.
 - 촬영한 사진은 카메라 사진 기본 프레임 전체를 담는다.
+- 촬영한 사진은 앱이 사용하는 플랫폼 카메라 API가 일반 사진 파일로 제공할 수 있는 최고 품질 우선순위와 최대 사진 해상도 우선순위로 저장한다.
+- 촬영한 사진은 플랫폼이 제공하는 촬영 메타데이터를 최대한 많이 보존한다.
+- 촬영한 사진은 앱이 확인할 수 있는 카메라와 렌즈 메타데이터를 최대한 많이 추가 기록한다.
 - 카메라 화면이 표시되는 동안 기기의 화면 자동 꺼짐을 방지한다.
 - 마지막 사용자 입력 후 30초가 지나면 카메라 미리보기 리소스를 반납한다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 ViewFinder 영역을 표시하지 않는다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 사진 촬영 버튼을 표시하지 않는다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 `Camera Off` 텍스트를 표시한다.
 - 카메라 미리보기 리소스를 반납한 상태에서 사용자가 입력하면 ViewFinder 영역과 카메라 미리보기를 다시 표시한다.
+
+## 정책
+
+- Android 사진은 CameraX가 지원하는 최대 화질 캡처 모드와 JPEG 압축 품질 100으로 저장한다.
+- Android 사진은 CameraX가 접근할 수 있는 일반 JPEG 출력과 고해상도 JPEG 출력 후보 중 가장 높은 해상도를 우선하여 저장한다.
+- Android 사진은 CameraX가 선택할 수 없는 OEM 기본 카메라 앱의 전용 초고해상도 촬영 모드와 동일한 해상도를 보장하지 않는다.
+- Android 사진은 기기가 지원하면 Ultra HDR JPEG로 저장한다.
+- Android 사진은 Ultra HDR JPEG를 지원하지 않으면 표준 JPEG로 저장한다.
+- Android 사진은 EXIF 방향, 촬영 시각, 이미지 크기, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 35mm 환산 초점거리, 렌즈 사양, 렌즈 모델 중 플랫폼이 제공하는 값을 보존한다.
+- Android 사진은 실제 캡처 결과가 제공하는 ISO 감도, 조리개 F값, 셔터 스피드, 초점거리를 EXIF 표준 태그에 우선 기록한다.
+- Android 사진은 센서 물리 크기, 지원 ISO 범위, 지원 조리개 범위, 지원 초점거리, 계산 가능한 카메라 화각, 카메라 식별자, 렌즈 방향을 앱 메타데이터로 추가 기록한다.
+- Android 사진은 실제 캡처 결과가 제공하는 자동 노출 모드, 자동 노출 상태, 자동 노출 영역 수를 앱 메타데이터로 추가 기록한다.
+- Android에서 실제 촬영 프레임의 ISO 감도, 셔터 스피드, 측광 모드처럼 CameraX 저장 결과가 이미 제공하는 값은 덮어쓰지 않는다.
+- iOS 사진은 AVFoundation의 최고 화질 우선순위로 저장한다.
+- iOS 사진은 기기가 지원하는 최대 사진 해상도로 저장한다.
+- iOS 사진은 기기가 지원하면 HEVC/HEIF 처리 사진으로 저장한다.
+- iOS 사진은 HEVC/HEIF를 지원하지 않으면 JPEG 처리 사진으로 저장한다.
+- iOS 사진은 방향, TIFF 정보, EXIF 카메라 속성, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 렌즈 정보, Live Photo 메타데이터 중 플랫폼이 제공하는 값을 보존한다.
+- iOS 사진은 기기가 지원하면 깊이 데이터와 카메라 보정 데이터를 포함한다.
+- iOS 사진은 카메라 장치 이름, 카메라 장치 유형, 수평 화각, 왜곡 보정 수평 화각, 지원 ISO 범위, 지원 노출 시간 범위, 지원 노출 보정 범위, 최대 사진 해상도를 앱 메타데이터로 추가 기록한다.
+
+## 참고
+
+- [Android CameraX 사진 촬영 옵션](https://developer.android.com/media/camera/camerax/take-photo/options?hl=ko)
+- [Android CameraX 해상도 설정](https://developer.android.com/media/camera/camerax/configuration)
+- [AndroidX ImageCapture](https://developer.android.com/reference/androidx/camera/core/ImageCapture)
+- [AndroidX ResolutionSelector](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)
+- [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
+- [Apple AVCapturePhotoOutput](https://developer.apple.com/documentation/avfoundation/avcapturephotooutput)
+- [Apple AVCapturePhotoSettings](https://developer.apple.com/documentation/avfoundation/avcapturephotosettings)
+- [Apple AVCapturePhoto](https://developer.apple.com/documentation/AVFoundation/AVCapturePhoto)
