@@ -69,12 +69,14 @@ internal class IosCameraSession(private val cameraController: CameraController) 
 
         session.beginConfiguration()
         session.preferPhotoSessionPreset()
-        configureInput()
-        imageCapture.configure(session)
+        val device = configureInput()
+        if (device != null) {
+            imageCapture.configure(session, device)
+        }
         session.commitConfiguration()
     }
 
-    private fun configureInput() {
+    private fun configureInput(): AVCaptureDevice? {
         val device = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
         val input = device
             ?.let { cameraDevice ->
@@ -86,7 +88,10 @@ internal class IosCameraSession(private val cameraController: CameraController) 
 
         if (input != null && session.canAddInput(input)) {
             session.addInput(input)
+            return device
         }
+
+        return null
     }
 
     private fun AVCaptureSession.preferPhotoSessionPreset() {
