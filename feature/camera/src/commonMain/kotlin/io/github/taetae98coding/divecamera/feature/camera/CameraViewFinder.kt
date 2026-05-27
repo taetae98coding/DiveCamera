@@ -20,9 +20,8 @@ private const val VIEW_FINDER_ASPECT_RATIO = 3F / 4F
 
 @Composable
 internal fun CameraViewFinder(
-    modifier: Modifier = Modifier,
-    isCameraPreviewActive: Boolean = true,
     cameraController: CameraController,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier,
@@ -38,14 +37,12 @@ internal fun CameraViewFinder(
                     contentDescription = VIEW_FINDER_CONTENT_DESCRIPTION
                 },
         ) {
-            if (isCameraPreviewActive) {
-                CameraPreview(
-                    cameraController = cameraController,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .testTag(CAMERA_PREVIEW_TEST_TAG),
-                )
-            }
+            CameraPreview(
+                cameraController = cameraController,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag(CAMERA_PREVIEW_TEST_TAG),
+            )
         }
     }
 }

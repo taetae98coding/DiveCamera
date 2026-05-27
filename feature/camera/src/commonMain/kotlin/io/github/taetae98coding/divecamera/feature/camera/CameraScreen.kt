@@ -81,13 +81,12 @@ internal fun CameraScreen(
         color = Color.Black,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            CameraViewFinder(
-                isCameraPreviewActive = isCameraPreviewActive,
-                cameraController = cameraController,
-                modifier = Modifier.fillMaxSize(),
-            )
-
             if (isCameraPreviewActive) {
+                CameraViewFinder(
+                    cameraController = cameraController,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
                 CaptureButton(
                     onClick = {
                         currentRegisterInput()

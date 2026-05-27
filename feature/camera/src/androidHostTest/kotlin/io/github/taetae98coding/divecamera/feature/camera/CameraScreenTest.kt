@@ -140,16 +140,16 @@ class CameraScreenTest {
     }
 
     @Test
-    fun cameraScreenReleasesCameraPreviewAfterIdleTimeout() {
+    fun cameraScreenRemovesViewFinderAndCameraPreviewAfterIdleTimeout() {
         composeRule.setContent {
             CameraScreen(cameraResourceIdleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS)
         }
 
-        waitUntilCameraPreviewDoesNotExist()
+        waitUntilCameraOffTextExists()
 
         composeRule
-            .onNodeWithTag(VIEW_FINDER_TEST_TAG)
-            .assertIsDisplayed()
+            .onAllNodesWithTag(VIEW_FINDER_TEST_TAG)
+            .assertCountEquals(0)
         composeRule
             .onAllNodesWithTag(CAMERA_PREVIEW_TEST_TAG)
             .assertCountEquals(0)
@@ -161,7 +161,7 @@ class CameraScreenTest {
             CameraScreen(cameraResourceIdleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS)
         }
 
-        waitUntilCameraPreviewDoesNotExist()
+        waitUntilCameraOffTextExists()
 
         composeRule
             .onAllNodesWithTag(CAPTURE_BUTTON_TEST_TAG)
@@ -178,7 +178,7 @@ class CameraScreenTest {
         composeRule.setContent {
             CameraScreen(cameraResourceIdleTimeoutMillis = idleTimeoutMillis)
         }
-        waitUntilCameraPreviewDoesNotExist()
+        waitUntilCameraOffTextExists()
         composeRule.runOnIdle {
             idleTimeoutMillis = LONG_IDLE_TEST_TIMEOUT_MILLIS
         }
@@ -190,6 +190,9 @@ class CameraScreenTest {
                 click(center)
             }
 
+        composeRule
+            .onNodeWithTag(VIEW_FINDER_TEST_TAG)
+            .assertIsDisplayed()
         composeRule
             .onNodeWithTag(CAMERA_PREVIEW_TEST_TAG)
             .assertIsDisplayed()
@@ -279,12 +282,12 @@ class CameraScreenTest {
 
     private fun DpRect.height(): Dp = bottom - top
 
-    private fun waitUntilCameraPreviewDoesNotExist() {
+    private fun waitUntilCameraOffTextExists() {
         composeRule.waitUntil(timeoutMillis = WAIT_UNTIL_TIMEOUT_MILLIS) {
             composeRule
-                .onAllNodesWithTag(CAMERA_PREVIEW_TEST_TAG)
+                .onAllNodesWithTag(CAMERA_OFF_TEST_TAG)
                 .fetchSemanticsNodes()
-                .isEmpty()
+                .isNotEmpty()
         }
     }
 
