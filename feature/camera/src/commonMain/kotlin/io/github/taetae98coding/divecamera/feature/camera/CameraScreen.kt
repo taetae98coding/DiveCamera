@@ -1,10 +1,8 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -19,11 +17,8 @@ fun EntryProviderScope<NavKey>.cameraScreen() {
 }
 
 @Composable
-internal fun CameraScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(CAMERA_SCREEN_TEXT)
+internal fun CameraScreen(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier) {
+        Text(CAMERA_SCREEN_TEXT)
     }
 }

@@ -1,5 +1,6 @@
 package io.github.taetae98coding.divecamera.shared
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.NavBackStack
@@ -13,16 +14,18 @@ import io.github.taetae98coding.divecamera.feature.splash.splashScreen
 
 @Composable
 fun App() {
-    val backStack = remember {
-        NavBackStack<NavKey>(SplashNavKey)
-    }
+    MaterialTheme {
+        val backStack = remember {
+            NavBackStack<NavKey>(SplashNavKey)
+        }
 
-    NavDisplay(
-        backStack = backStack,
-        entryProvider = entryProvider {
-            splashScreen(backStack)
-            permissionScreen()
-            cameraScreen()
-        },
-    )
+        NavDisplay(
+            backStack = backStack,
+            entryProvider = entryProvider {
+                splashScreen(backStack)
+                permissionScreen()
+                cameraScreen()
+            },
+        )
+    }
 }

@@ -1,7 +1,6 @@
 package io.github.taetae98coding.divecamera.feature.splash
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,13 +14,13 @@ import kotlinx.coroutines.flow.combine
 internal fun SplashScreen(
     navigateToCamera: () -> Unit,
     navigateToPermission: () -> Unit,
-    modifier: Modifier = Modifier.fillMaxSize(),
+    modifier: Modifier = Modifier,
     permissionManager: PermissionManager = rememberPermissionManager(),
 ) {
     val currentNavigateToCamera by rememberUpdatedState(navigateToCamera)
     val currentNavigateToPermission by rememberUpdatedState(navigateToPermission)
 
-    Box(modifier = modifier)
+    Surface(modifier = modifier) {}
 
     LaunchedEffect(permissionManager) {
         combine(

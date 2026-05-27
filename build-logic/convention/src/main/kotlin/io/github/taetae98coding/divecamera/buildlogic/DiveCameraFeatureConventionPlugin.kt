@@ -17,7 +17,7 @@ class DiveCameraFeatureConventionPlugin : Plugin<Project> {
                     dependencies {
                         implementation(project(":core:navigation"))
 
-                        implementation(library("jetbrains-compose-foundation"))
+                        implementation(library("jetbrains-compose-material3"))
                         api(library("androidx-navigation3-runtime"))
                     }
                 }

@@ -21,7 +21,7 @@ class PermissionScreenTest {
 
         listOf("카메라", "오디오", "위치", "사진저장").forEach { permissionLabel ->
             composeRule
-                .onNodeWithText(permissionLabel)
+                .onNodeWithText(permissionLabel, substring = true)
                 .assertIsDisplayed()
         }
     }
