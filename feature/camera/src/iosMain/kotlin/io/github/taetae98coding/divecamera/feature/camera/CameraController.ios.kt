@@ -2,8 +2,6 @@ package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import kotlin.coroutines.resume
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 @Composable
 internal actual fun rememberCameraController(): CameraController = remember {
@@ -11,48 +9,19 @@ internal actual fun rememberCameraController(): CameraController = remember {
 }
 
 private class IosCameraController : CameraController {
-    private var previewView: IosCameraPreviewView? = null
+    private var imageCapture: IosImageCapture? = null
 
     override suspend fun capturePhoto() {
-        val currentPreviewView = previewView ?: return
-        suspendCancellableCoroutine { continuation ->
-            val isCaptureRequested = currentPreviewView.capturePhoto { isCaptured ->
-                if (continuation.isActive) {
-                    continuation.resume(isCaptured)
-                }
-            }
-
-            if (!isCaptureRequested && continuation.isActive) {
-                continuation.resume(false)
-            }
-        }
+        val currentImageCapture = imageCapture
+            ?: return
+        currentImageCapture.capturePhoto()
     }
 
-    fun updatePreviewView(previewView: IosCameraPreviewView?) {
-        this.previewView = previewView
+    fun updateImageCapture(imageCapture: IosImageCapture?) {
+        this.imageCapture = imageCapture
     }
 }
 
-internal fun CameraController.createCameraSession(): IosCameraSession = IosCameraSession(
-    cameraController = this,
-)
-
-internal class IosCameraSession(cameraController: CameraController) {
-    val view = IosCameraPreviewView()
-
-    private val cameraController = cameraController as? IosCameraController
-
-    fun start() {
-        cameraController?.updatePreviewView(view)
-        view.start()
-    }
-
-    fun updatePreviewFrame() {
-        view.updatePreviewFrame()
-    }
-
-    fun release() {
-        cameraController?.updatePreviewView(null)
-        view.stop()
-    }
+internal fun CameraController.updateImageCapture(imageCapture: IosImageCapture?) {
+    (this as? IosCameraController)?.updateImageCapture(imageCapture)
 }
