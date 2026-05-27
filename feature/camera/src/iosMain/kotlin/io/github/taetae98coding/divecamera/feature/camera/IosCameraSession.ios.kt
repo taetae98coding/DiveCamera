@@ -5,9 +5,8 @@ import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureSession
-import platform.AVFoundation.AVCaptureSessionPreset1280x720
-import platform.AVFoundation.AVCaptureSessionPreset1920x1080
 import platform.AVFoundation.AVCaptureSessionPresetHigh
+import platform.AVFoundation.AVCaptureSessionPresetPhoto
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.authorizationStatusForMediaType
 import platform.UIKit.UIView
@@ -28,7 +27,6 @@ internal class IosCameraSession(private val cameraController: CameraController) 
     )
     private val cameraPreview = IosCameraPreview(session = session)
     private val imageCapture = IosImageCapture(
-        cameraPreview = cameraPreview,
         dispatchOnSessionQueue = { block ->
             dispatch_async(sessionQueue) {
                 block()
@@ -70,7 +68,7 @@ internal class IosCameraSession(private val cameraController: CameraController) 
         }
 
         session.beginConfiguration()
-        session.preferWideSessionPreset()
+        session.preferPhotoSessionPreset()
         configureInput()
         imageCapture.configure(session)
         session.commitConfiguration()
@@ -91,10 +89,9 @@ internal class IosCameraSession(private val cameraController: CameraController) 
         }
     }
 
-    private fun AVCaptureSession.preferWideSessionPreset() {
+    private fun AVCaptureSession.preferPhotoSessionPreset() {
         val preset = listOf(
-            AVCaptureSessionPreset1920x1080,
-            AVCaptureSessionPreset1280x720,
+            AVCaptureSessionPresetPhoto,
             AVCaptureSessionPresetHigh,
         ).firstOrNull(::canSetSessionPreset)
 

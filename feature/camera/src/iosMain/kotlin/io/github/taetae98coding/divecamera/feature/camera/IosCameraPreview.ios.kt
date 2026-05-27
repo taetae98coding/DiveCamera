@@ -1,13 +1,13 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
-import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.cinterop.useContents
 import platform.AVFoundation.AVCaptureSession
+import platform.AVFoundation.AVCaptureVideoOrientationLandscapeRight
+import platform.AVFoundation.AVCaptureVideoOrientationPortrait
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
-import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
-import platform.CoreGraphics.CGRect
+import platform.AVFoundation.AVLayerVideoGravityResizeAspect
 import platform.CoreGraphics.CGRectZero
 import platform.UIKit.UIView
 
@@ -19,21 +19,19 @@ internal class IosCameraPreview(session: AVCaptureSession) {
     val view: UIView = previewView
 
     init {
-        previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill
+        previewLayer.videoGravity = AVLayerVideoGravityResizeAspect
     }
 
     fun updatePreviewFrame() {
         previewView.updatePreviewFrame()
     }
-
-    fun visibleRect(): CValue<CGRect> = previewLayer.metadataOutputRectOfInterestForRect(previewLayer.bounds)
-
-    fun targetAspectRatio(): Double? = previewLayer.bounds.aspectRatio()
 }
 
 @OptIn(ExperimentalForeignApi::class)
 private class IosCameraPreviewView(private val previewLayer: AVCaptureVideoPreviewLayer) : UIView(frame = CGRectZero.readValue()) {
     init {
+        clipsToBounds = true
+        layer.masksToBounds = true
         layer.addSublayer(previewLayer)
     }
 
@@ -43,15 +41,22 @@ private class IosCameraPreviewView(private val previewLayer: AVCaptureVideoPrevi
     }
 
     fun updatePreviewFrame() {
+        updateVideoOrientation()
         previewLayer.frame = bounds
     }
-}
 
-@OptIn(ExperimentalForeignApi::class)
-private fun CValue<CGRect>.aspectRatio(): Double? = useContents {
-    if (size.width <= 0.0 || size.height <= 0.0) {
-        null
-    } else {
-        size.width / size.height
+    private fun updateVideoOrientation() {
+        val connection = previewLayer.connection ?: return
+        if (!connection.supportsVideoOrientation) {
+            return
+        }
+
+        connection.videoOrientation = bounds.useContents {
+            if (size.height >= size.width) {
+                AVCaptureVideoOrientationPortrait
+            } else {
+                AVCaptureVideoOrientationLandscapeRight
+            }
+        }
     }
 }
