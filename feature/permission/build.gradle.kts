@@ -6,4 +6,12 @@ kotlin {
     android {
         namespace = "io.github.taetae98coding.divecamera.feature.permission"
     }
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(project(":core:permission"))
+            }
+        }
+    }
 }
