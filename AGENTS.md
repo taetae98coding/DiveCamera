@@ -17,8 +17,8 @@
 
 ## 작업 순서
 
-1. 스펙 문서 작성.
-2. 스펙 충돌 검증.
+1. 스펙 문서 작성. 스펙 문서는 [스펙 문서 작성 가이드](docs/guides/spec-documentation.md)를 따른다.
+2. 스펙 충돌 검증. 스펙 충돌 검증은 [스펙 충돌 검증 가이드](docs/guides/spec-conflict-validation.md)를 따른다.
 3. TC 문서 작성. TC 문서는 [테스트케이스 문서 작성 가이드](docs/guides/testcase-documentation.md)를 따른다.
 4. TC 작성. TC는 [테스트케이스 작성 가이드](docs/guides/testcase-writing.md)를 따른다.
 5. 코드 구현.
