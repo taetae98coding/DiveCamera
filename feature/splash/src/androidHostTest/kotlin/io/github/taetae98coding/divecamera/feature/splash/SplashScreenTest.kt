@@ -1,6 +1,8 @@
 package io.github.taetae98coding.divecamera.feature.splash
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.taetae98coding.divecamera.core.navigation.CameraNavKey
@@ -17,6 +19,31 @@ import org.junit.runner.RunWith
 class SplashScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun splashScreenDisplaysEmptyContent() {
+        composeRule.setContent {
+            SplashScreen(
+                navigateToCamera = {},
+                navigateToPermission = {},
+                permissionManager = FakePermissionManager(),
+            )
+        }
+
+        listOf(
+            "Permissions",
+            "Camera",
+            "Microphone",
+            "Location",
+            "Save Photos",
+            "Open app settings",
+            "Camera Off",
+        ).forEach { screenText ->
+            composeRule
+                .onAllNodesWithText(screenText)
+                .assertCountEquals(0)
+        }
+    }
 
     @Test
     fun splashScreenNavigatesToCameraWhenPermissionsGranted() {

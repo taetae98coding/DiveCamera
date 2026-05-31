@@ -2,6 +2,7 @@ package io.github.taetae98coding.divecamera.feature.permission
 
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.taetae98coding.divecamera.core.permission.PermissionManager
 import kotlin.test.assertEquals
@@ -195,6 +197,56 @@ class PermissionScreenTest {
         composeRule.runOnIdle {
             assertEquals(
                 expected = 1,
+                actual = permissionManager.photoSavePermissionRequestCount,
+            )
+        }
+    }
+
+    @Test
+    fun permissionScreenDoesNotRequestGrantedPermissionsWhenPermissionItemsClicked() {
+        val permissionManager = FakePermissionManager(
+            hasCameraPermission = true,
+            hasMicrophonePermission = true,
+            hasLocationPermission = true,
+            hasPhotoSavePermission = true,
+        )
+
+        composeRule.setContent {
+            PermissionScreen(
+                navigateToCamera = {},
+                permissionManager = permissionManager,
+            )
+        }
+
+        listOf(
+            CAMERA_PERMISSION_ITEM_TEST_TAG,
+            MICROPHONE_PERMISSION_ITEM_TEST_TAG,
+            LOCATION_PERMISSION_ITEM_TEST_TAG,
+            PHOTO_SAVE_PERMISSION_ITEM_TEST_TAG,
+        ).forEach { permissionItemTestTag ->
+            composeRule
+                .onNodeWithTag(permissionItemTestTag)
+                .performScrollTo()
+                .performTouchInput {
+                    click(center)
+                }
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(
+                expected = 0,
+                actual = permissionManager.cameraPermissionRequestCount,
+            )
+            assertEquals(
+                expected = 0,
+                actual = permissionManager.microphonePermissionRequestCount,
+            )
+            assertEquals(
+                expected = 0,
+                actual = permissionManager.locationPermissionRequestCount,
+            )
+            assertEquals(
+                expected = 0,
                 actual = permissionManager.photoSavePermissionRequestCount,
             )
         }
