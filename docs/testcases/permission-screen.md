@@ -8,5 +8,6 @@
 4. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 없는 fake `PermissionManager`를 전달하고 오디오 항목을 클릭하면 `requestMicrophonePermission()`이 호출된다.
 5. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 없는 fake `PermissionManager`를 전달하고 위치 항목을 클릭하면 `requestLocationPermission()`이 호출된다.
 6. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 없는 fake `PermissionManager`를 전달하고 사진저장 항목을 클릭하면 `requestPhotoSavePermission()`이 호출된다.
-7. Robolectric `androidHostTest`에서 `PermissionScreen`에 fake `PermissionManager`를 전달하고 `Open app settings` 버튼을 클릭하면 `openAppSettings()`가 호출된다.
-8. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 허용된 fake `PermissionManager`를 전달하면 카메라 화면 이동 람다가 호출된다.
+7. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 허용된 fake `PermissionManager`를 전달하고 각 권한 항목을 클릭해도 `requestCameraPermission()`, `requestMicrophonePermission()`, `requestLocationPermission()`, `requestPhotoSavePermission()`이 호출되지 않는다.
+8. Robolectric `androidHostTest`에서 `PermissionScreen`에 fake `PermissionManager`를 전달하고 `Open app settings` 버튼을 클릭하면 `openAppSettings()`가 호출된다.
+9. Robolectric `androidHostTest`에서 `PermissionScreen`에 모든 권한이 허용된 fake `PermissionManager`를 전달하면 카메라 화면 이동 람다가 호출된다.
