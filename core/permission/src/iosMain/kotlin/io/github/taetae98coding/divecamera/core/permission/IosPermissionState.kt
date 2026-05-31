@@ -52,6 +52,13 @@ internal class IosPermissionState {
     fun refreshPhotoSavePermission() {
         mutableHasPhotoSavePermission.value = hasPhotoSavePermission()
     }
+
+    fun refreshPermissions() {
+        refreshCameraPermission()
+        refreshMicrophonePermission()
+        refreshLocationPermission()
+        refreshPhotoSavePermission()
+    }
 }
 
 internal class LocationPermissionDelegate(private val onAuthorizationChanged: () -> Unit) :
