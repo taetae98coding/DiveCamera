@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -406,6 +407,46 @@ class CameraScreenTest {
         composeRule
             .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
             .assertTextEquals("4.2mm")
+    }
+
+    @Test
+    fun cameraScreenDisplaysLensInfoAsClickableButton() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        focalLengthIn35mmFilmMillimeters = 24,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG)
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun cameraScreenChangesLensWhenLensButtonClicked() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                focalLengthIn35mmFilmMillimeters = 24,
+            ),
+        )
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.changeCameraLensCount)
+        }
     }
 
     @Test
@@ -829,6 +870,8 @@ private class FakeCameraController(
         MutableStateFlow(captureReadinessState)
     override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
         mutableCameraExposureInfoState
+    override val cameraLensState: StateFlow<CameraLensState> =
+        MutableStateFlow(CameraLensState())
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages
 
@@ -836,10 +879,16 @@ private class FakeCameraController(
         private set
     var lastCaptureMode: CameraCaptureMode? = null
         private set
+    var changeCameraLensCount = 0
+        private set
 
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
         lastCaptureMode = captureMode
+    }
+
+    override fun changeCameraLens() {
+        changeCameraLensCount += 1
     }
 
     fun emitPhotoSaveErrorMessage(message: String) {

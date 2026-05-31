@@ -10,10 +10,11 @@ import androidx.compose.ui.viewinterop.UIKitView
 internal actual fun CameraPreview(
     cameraController: CameraController,
     captureMode: CameraCaptureMode,
+    selectedCameraLens: CameraLens?,
     modifier: Modifier,
 ) {
-    val cameraSession = remember(cameraController) {
-        cameraController.createCameraSession()
+    val cameraSession = remember(cameraController, selectedCameraLens) {
+        cameraController.createCameraSession(selectedCameraLens = selectedCameraLens)
     }
 
     key(cameraSession) {

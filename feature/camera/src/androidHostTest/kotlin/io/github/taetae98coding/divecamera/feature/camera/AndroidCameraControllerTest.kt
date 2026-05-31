@@ -1,11 +1,13 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
+import android.hardware.camera2.CameraCharacteristics
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -145,6 +147,37 @@ class AndroidCameraControllerTest {
         assertEquals(
             errorMessage,
             errorMessageDeferred.await(),
+        )
+    }
+
+    @Test
+    fun androidCameraLensSelectorDoesNotRequireLensFacing() {
+        val selector = CameraLens(cameraId = "0").toCameraSelector()
+
+        assertNull(selector.lensFacing)
+    }
+
+    @Test
+    fun androidCameraCharacteristicsWithNirColorFilterIsFaceAuthenticationCamera() {
+        assertEquals(
+            true,
+            isAndroidFaceAuthenticationCamera(
+                colorFilterArrangement = CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_NIR,
+                capabilities = intArrayOf(),
+            ),
+        )
+    }
+
+    @Test
+    fun androidCameraCharacteristicsWithSecureImageDataIsFaceAuthenticationCamera() {
+        assertEquals(
+            true,
+            isAndroidFaceAuthenticationCamera(
+                colorFilterArrangement = CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_RGGB,
+                capabilities = intArrayOf(
+                    CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_SECURE_IMAGE_DATA,
+                ),
+            ),
         )
     }
 }

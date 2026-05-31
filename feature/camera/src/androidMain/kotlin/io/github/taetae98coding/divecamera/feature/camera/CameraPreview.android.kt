@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 internal actual fun CameraPreview(
     cameraController: CameraController,
     captureMode: CameraCaptureMode,
+    selectedCameraLens: CameraLens?,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -30,12 +31,14 @@ internal actual fun CameraPreview(
         lifecycleOwner,
         targetRotation,
         captureMode,
+        selectedCameraLens,
     ) {
         cameraController.createCameraSession(
             context = context,
             lifecycleOwner = lifecycleOwner,
             targetRotation = targetRotation,
             captureMode = captureMode,
+            selectedCameraLens = selectedCameraLens,
         )
     }
 

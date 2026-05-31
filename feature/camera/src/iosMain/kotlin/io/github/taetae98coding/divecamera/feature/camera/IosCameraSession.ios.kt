@@ -7,7 +7,12 @@ import kotlin.math.tan
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVCaptureDevice
+import platform.AVFoundation.AVCaptureDeviceDiscoverySession
 import platform.AVFoundation.AVCaptureDeviceInput
+import platform.AVFoundation.AVCaptureDevicePositionUnspecified
+import platform.AVFoundation.AVCaptureDeviceTypeBuiltInTelephotoCamera
+import platform.AVFoundation.AVCaptureDeviceTypeBuiltInUltraWideCamera
+import platform.AVFoundation.AVCaptureDeviceTypeBuiltInWideAngleCamera
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
@@ -33,12 +38,17 @@ import platform.darwin.dispatch_source_set_timer
 import platform.darwin.dispatch_time
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun CameraController.createCameraSession(): IosCameraSession = IosCameraSession(
+internal fun CameraController.createCameraSession(selectedCameraLens: CameraLens?): IosCameraSession = IosCameraSession(
     cameraController = this,
+    selectedCameraLens = selectedCameraLens,
 )
 
 @OptIn(ExperimentalForeignApi::class)
-internal class IosCameraSession(private val cameraController: CameraController) {
+internal class IosCameraSession(
+    private val cameraController: CameraController,
+    private val selectedCameraLens: CameraLens?,
+) {
+    private val cameraSessionId = cameraController.registerCameraSession()
     private val session = AVCaptureSession()
     private val sessionQueue = dispatch_queue_create(
         label = "io.github.taetae98coding.divecamera.camera.preview",
@@ -64,9 +74,13 @@ internal class IosCameraSession(private val cameraController: CameraController) 
     fun start() {
         cameraController.updateImageCapture(
             imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
+            cameraSessionId = cameraSessionId,
         )
         cameraDevice?.let { device ->
-            cameraController.updateCameraExposureInfo(device.toCameraExposureInfo())
+            cameraController.updateCameraExposureInfo(
+                cameraExposureInfo = device.toCameraExposureInfo(),
+                cameraSessionId = cameraSessionId,
+            )
         }
         dispatch_async(sessionQueue) {
             if (!session.running) {
@@ -81,8 +95,14 @@ internal class IosCameraSession(private val cameraController: CameraController) 
     }
 
     fun release() {
-        cameraController.updateImageCapture(null)
-        cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
+        cameraController.updateImageCapture(
+            imageCapture = null,
+            cameraSessionId = cameraSessionId,
+        )
+        cameraController.updateCameraExposureInfo(
+            cameraExposureInfo = CameraExposureInfo.Unknown,
+            cameraSessionId = cameraSessionId,
+        )
         stopExposureInfoUpdates()
         cameraDevice = null
         imageCapture.release()
@@ -101,18 +121,30 @@ internal class IosCameraSession(private val cameraController: CameraController) 
 
         session.beginConfiguration()
         session.preferPhotoSessionPreset()
-        val device = configureInput()
+        val cameraLensCandidates = supportedCameraLensCandidates()
+        val device = configureInput(cameraLensCandidates)
         if (device != null) {
             cameraDevice = device
             imageCapture.configure(session, device)
             cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
-            cameraController.updateCameraExposureInfo(device.toCameraExposureInfo())
+            cameraController.updateCameraLenses(
+                availableLenses = cameraLensCandidates.map(IosCameraLensCandidate::cameraLens),
+            )
+            cameraController.updateCameraExposureInfo(
+                cameraExposureInfo = device.toCameraExposureInfo(),
+                cameraSessionId = cameraSessionId,
+            )
         }
         session.commitConfiguration()
     }
 
-    private fun configureInput(): AVCaptureDevice? {
-        val device = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
+    private fun configureInput(cameraLensCandidates: List<IosCameraLensCandidate>): AVCaptureDevice? {
+        val device = selectedCameraLens
+            ?.let { lens ->
+                cameraLensCandidates.firstOrNull { it.cameraLens == lens }?.device
+            }
+            ?: cameraLensCandidates.firstOrNull()?.device
+            ?: AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
         val input = device
             ?.let { cameraDevice ->
                 AVCaptureDeviceInput.deviceInputWithDevice(
@@ -164,7 +196,10 @@ internal class IosCameraSession(private val cameraController: CameraController) 
 
     private fun updateExposureInfo() {
         cameraDevice?.let { device ->
-            cameraController.updateCameraExposureInfo(device.toCameraExposureInfo())
+            cameraController.updateCameraExposureInfo(
+                cameraExposureInfo = device.toCameraExposureInfo(),
+                cameraSessionId = cameraSessionId,
+            )
         }
     }
 
@@ -179,6 +214,32 @@ internal class IosCameraSession(private val cameraController: CameraController) 
         }
     }
 }
+
+private data class IosCameraLensCandidate(
+    val cameraLens: CameraLens,
+    val device: AVCaptureDevice,
+)
+
+@OptIn(ExperimentalForeignApi::class)
+private fun supportedCameraLensCandidates(): List<IosCameraLensCandidate> {
+    val discoverySession = AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
+        deviceTypes = IOS_CAMERA_LENS_DEVICE_TYPES,
+        mediaType = AVMediaTypeVideo,
+        position = AVCaptureDevicePositionUnspecified,
+    )
+
+    return discoverySession.devices
+        .filterIsInstance<AVCaptureDevice>()
+        .distinctBy { device -> device.uniqueID }
+        .map { device ->
+            IosCameraLensCandidate(
+                cameraLens = device.toCameraLens(),
+                device = device,
+            )
+        }
+}
+
+private fun AVCaptureDevice.toCameraLens(): CameraLens = CameraLens(cameraId = uniqueID)
 
 @OptIn(ExperimentalForeignApi::class)
 private fun AVCaptureDevice.toCameraExposureInfo(): CameraExposureInfo {
@@ -221,3 +282,8 @@ private const val FULL_FRAME_WIDTH_MM = 36.0
 private const val DEGREES_PER_HALF_CIRCLE = 180.0
 private const val EXPOSURE_INFO_UPDATE_INTERVAL_NANOS = 250_000_000UL
 private const val EXPOSURE_INFO_UPDATE_LEEWAY_NANOS = 50_000_000UL
+private val IOS_CAMERA_LENS_DEVICE_TYPES = listOf(
+    AVCaptureDeviceTypeBuiltInUltraWideCamera,
+    AVCaptureDeviceTypeBuiltInWideAngleCamera,
+    AVCaptureDeviceTypeBuiltInTelephotoCamera,
+)

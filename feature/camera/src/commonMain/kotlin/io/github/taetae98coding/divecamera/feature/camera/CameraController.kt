@@ -8,9 +8,12 @@ internal interface CameraController {
     val rawCaptureSupportState: StateFlow<RawCaptureSupportState>
     val captureReadinessState: StateFlow<CaptureReadinessState>
     val cameraExposureInfoState: StateFlow<CameraExposureInfo>
+    val cameraLensState: StateFlow<CameraLensState>
     val photoSaveErrorMessages: SharedFlow<String>
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)
+
+    fun changeCameraLens()
 }
 
 internal enum class CaptureReadinessState {

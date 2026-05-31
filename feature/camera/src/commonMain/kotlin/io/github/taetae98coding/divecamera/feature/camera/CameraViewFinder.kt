@@ -22,6 +22,7 @@ private const val VIEW_FINDER_ASPECT_RATIO = 3F / 4F
 internal fun CameraViewFinder(
     cameraController: CameraController,
     captureMode: CameraCaptureMode,
+    selectedCameraLens: CameraLens?,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -41,6 +42,7 @@ internal fun CameraViewFinder(
             CameraPreview(
                 cameraController = cameraController,
                 captureMode = captureMode,
+                selectedCameraLens = selectedCameraLens,
                 modifier = Modifier
                     .fillMaxSize()
                     .testTag(CAMERA_PREVIEW_TEST_TAG),

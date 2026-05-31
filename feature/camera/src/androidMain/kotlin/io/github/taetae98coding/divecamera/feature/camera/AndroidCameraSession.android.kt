@@ -13,18 +13,21 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.lifecycle.LifecycleOwner
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.hypot
 
 internal fun CameraController.createCameraSession(
     context: Context,
     lifecycleOwner: LifecycleOwner,
     targetRotation: Int,
     captureMode: CameraCaptureMode,
+    selectedCameraLens: CameraLens?,
 ): AndroidCameraSession = AndroidCameraSession(
     cameraController = this,
     context = context,
     lifecycleOwner = lifecycleOwner,
     targetRotation = targetRotation,
     captureMode = captureMode,
+    selectedCameraLens = selectedCameraLens,
 )
 
 internal class AndroidCameraSession(
@@ -33,11 +36,11 @@ internal class AndroidCameraSession(
     private val lifecycleOwner: LifecycleOwner,
     private val targetRotation: Int,
     private val captureMode: CameraCaptureMode,
+    private val selectedCameraLens: CameraLens?,
 ) {
     val surfaceRequest: SurfaceRequest?
         get() = cameraPreview.surfaceRequest
 
-    private val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private val cameraPreview = AndroidCameraPreview(
         targetRotation = targetRotation,
         onCaptureResult = { captureResultMetadata ->
@@ -67,6 +70,13 @@ internal class AndroidCameraSession(
             cameraController.updateImageCapture(null)
             cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
+            val cameraLensCandidates = context.cameraLensCandidates(provider)
+            val selectedLensForBind = selectedCameraLens
+                ?: cameraLensCandidates.firstOrNull()?.cameraLens
+            val cameraSelector = selectedLensForBind
+                ?.toCameraSelector()
+                ?: provider.availableCameraInfos.firstOrNull()?.cameraSelector
+                ?: CameraSelector.Builder().build()
             val currentImageCapture = imageCapture
             if (currentImageCapture == null) {
                 provider.unbind(cameraPreview.useCase)
@@ -111,6 +121,9 @@ internal class AndroidCameraSession(
             imageCapture = nextImageCapture
             cameraProvider = provider
             cameraController.updateRawCaptureSupported(isRawCaptureSupported)
+            cameraController.updateCameraLenses(
+                availableLenses = cameraLensCandidates.map(AndroidCameraLensCandidate::cameraLens),
+            )
             cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
             cameraController.updateImageCapture(nextImageCapture)
             Log.d(
@@ -175,7 +188,128 @@ private fun Context.cameraCharacteristics(cameraInfo: CameraInfo): CameraCharact
     }.getOrNull()
 }
 
+private data class AndroidCameraLensCandidate(
+    val cameraLens: CameraLens,
+    val sortKey: Double,
+)
+
+private fun Context.cameraLensCandidates(provider: ProcessCameraProvider): List<AndroidCameraLensCandidate> {
+    return provider.availableCameraInfos
+        .filterNot(CameraInfo::isFaceAuthenticationCamera)
+        .flatMap { cameraInfo ->
+            val cameraId = cameraInfo.cameraId()
+                ?: return@flatMap emptyList()
+            val physicalCandidates = cameraInfo.physicalCameraInfos
+                .filterNot(CameraInfo::isFaceAuthenticationCamera)
+                .mapNotNull { physicalCameraInfo ->
+                    val physicalCameraId = physicalCameraInfo.cameraId()
+                        ?: return@mapNotNull null
+                    AndroidCameraLensCandidate(
+                        cameraLens = CameraLens(
+                            cameraId = cameraId,
+                            physicalCameraId = physicalCameraId,
+                        ),
+                        sortKey = physicalCameraInfo.focalLengthSortKey(),
+                    )
+                }
+
+            if (physicalCandidates.isNotEmpty()) {
+                physicalCandidates
+            } else {
+                listOf(
+                    AndroidCameraLensCandidate(
+                        cameraLens = CameraLens(cameraId = cameraId),
+                        sortKey = cameraInfo.focalLengthSortKey(),
+                    ),
+                )
+            }
+        }
+        .sortedWith(
+            compareBy<AndroidCameraLensCandidate> { it.sortKey }
+                .thenBy { it.cameraLens.cameraId }
+                .thenBy { it.cameraLens.physicalCameraId.orEmpty() },
+        )
+        .distinctBy(AndroidCameraLensCandidate::cameraLens)
+}
+
+internal fun CameraLens.toCameraSelector(): CameraSelector = CameraSelector.Builder()
+    .addCameraFilter { cameraInfos ->
+        cameraInfos.filter { cameraInfo ->
+            cameraInfo.cameraId() == cameraId
+        }
+    }
+    .apply {
+        physicalCameraId?.let(::setPhysicalCameraId)
+    }
+    .build()
+
+private fun CameraInfo.cameraId(): String? {
+    return runCatching {
+        Camera2CameraInfo.from(this).cameraId
+    }.getOrNull()
+}
+
+private fun CameraInfo.isFrontFacing(): Boolean {
+    return lensFacing == CameraSelector.LENS_FACING_FRONT
+}
+
+internal fun CameraInfo.isFaceAuthenticationCamera(): Boolean {
+    val camera2Info = runCatching {
+        Camera2CameraInfo.from(this)
+    }.getOrNull() ?: return false
+    return camera2Info.isFaceAuthenticationCamera()
+}
+
+internal fun Camera2CameraInfo.isFaceAuthenticationCamera(): Boolean {
+    val colorFilterArrangement = getCameraCharacteristic(
+        CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT,
+    )
+    val capabilities: IntArray = getCameraCharacteristic(
+        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES,
+    ) ?: IntArray(0)
+    return isAndroidFaceAuthenticationCamera(
+        colorFilterArrangement = colorFilterArrangement,
+        capabilities = capabilities,
+    )
+}
+
+internal fun isAndroidFaceAuthenticationCamera(
+    colorFilterArrangement: Int?,
+    capabilities: IntArray,
+): Boolean {
+    if (colorFilterArrangement == CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_NIR) {
+        return true
+    }
+
+    return CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_SECURE_IMAGE_DATA in capabilities
+}
+
+private fun CameraInfo.focalLengthSortKey(): Double {
+    val camera2Info = runCatching {
+        Camera2CameraInfo.from(this)
+    }.getOrNull() ?: return UNKNOWN_CAMERA_LENS_SORT_KEY
+    val focalLength = camera2Info
+        .getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+        ?.minOrNull()
+        ?: return UNKNOWN_CAMERA_LENS_SORT_KEY
+    val sensorPhysicalSize = camera2Info
+        .getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+    val sensorDiagonal = sensorPhysicalSize?.let { size ->
+        hypot(size.width.toDouble(), size.height.toDouble())
+    }
+
+    return if (sensorDiagonal != null && sensorDiagonal > 0.0) {
+        val fullFrameDiagonal = hypot(FULL_FRAME_WIDTH_MM, FULL_FRAME_HEIGHT_MM)
+        focalLength * fullFrameDiagonal / sensorDiagonal
+    } else {
+        focalLength.toDouble()
+    }
+}
+
 private const val CAMERA_SESSION_LOG_TAG = "DiveCameraSession"
+private const val UNKNOWN_CAMERA_LENS_SORT_KEY = Double.MAX_VALUE
+private const val FULL_FRAME_WIDTH_MM = 36.0
+private const val FULL_FRAME_HEIGHT_MM = 24.0
 
 private fun Collection<Int>.toOutputFormatNames(): String = joinToString(
     separator = ",",

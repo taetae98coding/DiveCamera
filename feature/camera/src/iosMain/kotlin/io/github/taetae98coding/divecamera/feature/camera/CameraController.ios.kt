@@ -18,7 +18,9 @@ private class IosCameraController : CameraController {
     private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
+    private val mutableCameraLensState = MutableStateFlow(CameraLensState())
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
+    private val cameraSessionOwner = CameraSessionOwner()
     private var imageCapture: IosImageCapture? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
@@ -27,6 +29,8 @@ private class IosCameraController : CameraController {
         mutableCaptureReadinessState.asStateFlow()
     override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
         mutableCameraExposureInfoState.asStateFlow()
+    override val cameraLensState: StateFlow<CameraLensState> =
+        mutableCameraLensState.asStateFlow()
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages.asSharedFlow()
 
@@ -56,7 +60,25 @@ private class IosCameraController : CameraController {
         }
     }
 
-    fun updateImageCapture(imageCapture: IosImageCapture?) {
+    override fun changeCameraLens() {
+        mutableCameraLensState.value = mutableCameraLensState.value.changeLens()
+    }
+
+    fun registerCameraSession(): Long {
+        val cameraSessionId = cameraSessionOwner.registerSession()
+        imageCapture = null
+        mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+        return cameraSessionId
+    }
+
+    fun updateImageCapture(
+        imageCapture: IosImageCapture?,
+        cameraSessionId: Long,
+    ) {
+        if (!cameraSessionOwner.isCurrentSession(cameraSessionId)) {
+            return
+        }
+
         this.imageCapture = imageCapture
         mutableCaptureReadinessState.value = if (imageCapture == null) {
             CaptureReadinessState.Busy
@@ -69,8 +91,21 @@ private class IosCameraController : CameraController {
         mutableRawCaptureSupportState.value = RawCaptureSupportState.from(isSupported)
     }
 
-    fun updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
+    fun updateCameraExposureInfo(
+        cameraExposureInfo: CameraExposureInfo,
+        cameraSessionId: Long,
+    ) {
+        if (!cameraSessionOwner.isCurrentSession(cameraSessionId)) {
+            return
+        }
+
         mutableCameraExposureInfoState.value = cameraExposureInfo
+    }
+
+    fun updateCameraLenses(availableLenses: List<CameraLens>) {
+        mutableCameraLensState.value = mutableCameraLensState.value.withInitialAvailableLenses(
+            availableLenses = availableLenses,
+        )
     }
 
     private fun emitPhotoSaveErrorMessage(message: String) {
@@ -80,16 +115,36 @@ private class IosCameraController : CameraController {
     }
 }
 
-internal fun CameraController.updateImageCapture(imageCapture: IosImageCapture?) {
-    (this as? IosCameraController)?.updateImageCapture(imageCapture)
+internal fun CameraController.registerCameraSession(): Long {
+    return (this as? IosCameraController)?.registerCameraSession() ?: 0L
+}
+
+internal fun CameraController.updateImageCapture(
+    imageCapture: IosImageCapture?,
+    cameraSessionId: Long,
+) {
+    (this as? IosCameraController)?.updateImageCapture(
+        imageCapture = imageCapture,
+        cameraSessionId = cameraSessionId,
+    )
 }
 
 internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
     (this as? IosCameraController)?.updateRawCaptureSupported(isSupported)
 }
 
-internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
-    (this as? IosCameraController)?.updateCameraExposureInfo(cameraExposureInfo)
+internal fun CameraController.updateCameraExposureInfo(
+    cameraExposureInfo: CameraExposureInfo,
+    cameraSessionId: Long,
+) {
+    (this as? IosCameraController)?.updateCameraExposureInfo(
+        cameraExposureInfo = cameraExposureInfo,
+        cameraSessionId = cameraSessionId,
+    )
+}
+
+internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
+    (this as? IosCameraController)?.updateCameraLenses(availableLenses)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

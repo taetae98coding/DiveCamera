@@ -57,6 +57,7 @@ internal fun CameraScreen(
     val rawCaptureSupportState by cameraController.rawCaptureSupportState.collectAsState()
     val captureReadinessState by cameraController.captureReadinessState.collectAsState()
     val cameraExposureInfo by cameraController.cameraExposureInfoState.collectAsState()
+    val cameraLensState by cameraController.cameraLensState.collectAsState()
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -103,11 +104,16 @@ internal fun CameraScreen(
                 CameraViewFinder(
                     cameraController = cameraController,
                     captureMode = captureMode,
+                    selectedCameraLens = cameraLensState.selectedLens,
                     modifier = Modifier.fillMaxSize(),
                 )
 
                 CameraExposureInfoOverlay(
                     cameraExposureInfo = cameraExposureInfo,
+                    onLensClick = {
+                        currentRegisterInput()
+                        cameraController.changeCameraLens()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()

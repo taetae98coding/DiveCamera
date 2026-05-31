@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +35,7 @@ internal const val CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG = "camera-exposure-in
 internal const val CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG = "camera-exposure-info-aperture-value"
 internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG = "camera-exposure-info-shutter-speed-value"
 internal const val CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG = "camera-exposure-info-ev-value"
+internal const val CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG = "camera-exposure-info-lens-button"
 internal const val CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG = "camera-exposure-info-lens-value"
 internal const val UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT = "--"
 
@@ -41,6 +48,7 @@ private const val LENS_LABEL = "LENS"
 @Composable
 internal fun CameraExposureInfoOverlay(
     cameraExposureInfo: CameraExposureInfo,
+    onLensClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -100,6 +108,8 @@ internal fun CameraExposureInfoOverlay(
                 CameraExposureInfoItem(
                     label = LENS_LABEL,
                     value = cameraExposureInfo.focalLengthText(),
+                    onItemClick = onLensClick,
+                    containerTestTag = CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),
                 )
@@ -113,11 +123,36 @@ private fun CameraExposureInfoItem(
     label: String,
     value: String,
     valueTestTag: String,
+    containerTestTag: String? = null,
+    onItemClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val actionModifier = if (onItemClick == null) {
+        Modifier
+    } else {
+        Modifier
+            .pointerInput(onItemClick) {
+                detectTapGestures {
+                    onItemClick()
+                }
+            }
+            .semantics {
+                role = Role.Button
+                onClick {
+                    onItemClick()
+                    true
+                }
+            }
+    }
+    val tagModifier = containerTestTag
+        ?.let { Modifier.testTag(it) }
+        ?: Modifier
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+        modifier = modifier
+            .then(actionModifier)
+            .then(tagModifier),
     ) {
         Text(
             text = label,

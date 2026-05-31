@@ -18,6 +18,7 @@ internal class AndroidCameraController : CameraController {
     private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
+    private val mutableCameraLensState = MutableStateFlow(CameraLensState())
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: AndroidPhotoCapture? = null
 
@@ -27,6 +28,8 @@ internal class AndroidCameraController : CameraController {
         mutableCaptureReadinessState.asStateFlow()
     override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
         mutableCameraExposureInfoState.asStateFlow()
+    override val cameraLensState: StateFlow<CameraLensState> =
+        mutableCameraLensState.asStateFlow()
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages.asSharedFlow()
 
@@ -53,6 +56,10 @@ internal class AndroidCameraController : CameraController {
         }
     }
 
+    override fun changeCameraLens() {
+        mutableCameraLensState.value = mutableCameraLensState.value.changeLens()
+    }
+
     fun updateImageCapture(imageCapture: AndroidPhotoCapture?) {
         this.imageCapture = imageCapture
         mutableCaptureReadinessState.value = if (imageCapture == null) {
@@ -68,6 +75,12 @@ internal class AndroidCameraController : CameraController {
 
     fun updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
         mutableCameraExposureInfoState.value = cameraExposureInfo
+    }
+
+    fun updateCameraLenses(availableLenses: List<CameraLens>) {
+        mutableCameraLensState.value = mutableCameraLensState.value.withInitialAvailableLenses(
+            availableLenses = availableLenses,
+        )
     }
 
     private fun emitPhotoSaveErrorMessage(message: String) {
@@ -93,6 +106,10 @@ internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
 
 internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
     (this as? AndroidCameraController)?.updateCameraExposureInfo(cameraExposureInfo)
+}
+
+internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
+    (this as? AndroidCameraController)?.updateCameraLenses(availableLenses)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8
