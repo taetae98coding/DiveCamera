@@ -62,4 +62,24 @@
 58. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 활성 physical 카메라 ID가 있으면 촬영 정보 상태의 35mm 환산 초점거리는 활성 physical 카메라 기준 값이다.
 59. Robolectric `androidHostTest`에서 fake `CameraController`의 촬영 정보 상태가 변경되면 촬영 정보 오버레이는 변경된 최신 촬영 정보를 표시한다.
 60. Robolectric `androidHostTest`에서 Android DNG 사진 파일 포맷은 EXIF 메타데이터 후처리 쓰기 저장 대상으로 분류되지 않는다.
-61. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 위치를 확인할 수 있으면 인메모리 RAW 위치 기록 저장 대상으로 분류된다.
+61. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 위치를 확인할 수 있으면 인메모리 RAW 저장 대상으로 분류된다.
+62. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `LENS` 표시 영역은 클릭 가능한 버튼이다.
+63. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `LENS` 표시 영역을 클릭하면 `CameraController.changeCameraLens()`가 호출된다.
+64. Robolectric `androidHostTest`에서 Android 렌즈 선택자는 lens facing을 요구하지 않는다.
+65. Robolectric `androidHostTest`에서 Android 카메라 특성이 NIR color filter arrangement이면 얼굴 인식용 카메라로 분류된다.
+66. Robolectric `androidHostTest`에서 Android 카메라 특성이 secure image data capability를 포함하면 얼굴 인식용 카메라로 분류된다.
+67. Robolectric `androidHostTest`에서 Android 전면 카메라 저장 메타데이터는 horizontal reverse를 사용한다.
+68. Robolectric `androidHostTest`에서 Android 후면 카메라 저장 메타데이터는 horizontal reverse를 사용하지 않는다.
+69. Robolectric `androidHostTest`에서 Android 전면 카메라 JPEG 보정은 horizontal reverse를 픽셀에 반영하고 EXIF orientation을 normal로 정리한다.
+70. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 전면 카메라이면 위치가 없어도 인메모리 RAW 저장 대상으로 분류된다.
+71. Robolectric `androidHostTest`에서 Android 전면 카메라 DNG orientation은 rotation에 horizontal reverse를 함께 반영한다.
+
+## unitTest
+
+1. `CameraLensState`에 지원 렌즈 목록을 최초 갱신하면 선택 index는 0이다.
+2. `CameraLensState`에 지원 렌즈 목록을 최초 갱신하면 선택 렌즈는 지원 렌즈 목록의 첫 번째 렌즈이다.
+3. `CameraLensState`에서 렌즈 변경을 호출하면 선택 index는 1 증가한다.
+4. `CameraLensState`에서 마지막 index 렌즈 다음으로 렌즈 변경을 호출하면 선택 index는 0이다.
+5. `CameraLensState`에서 지원 렌즈가 하나뿐이면 렌즈 변경 후에도 선택 index는 0이다.
+6. `CameraLensState`에 지원 렌즈 목록이 이미 있으면 지원 렌즈 목록을 다시 갱신해도 선택 index를 유지한다.
+7. 새 카메라 세션이 등록되면 이전 카메라 세션 식별자는 현재 세션으로 분류되지 않는다.
