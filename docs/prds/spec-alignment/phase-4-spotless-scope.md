@@ -9,6 +9,8 @@
 ## 요구사항
 
 - Kotlin 소스 포맷 대상이 하위 프로젝트의 `src/**/*.kt` 파일인지, root 프로젝트까지 포함하는지 명확히 한다.
+- 현재 구조를 유지해 Kotlin 소스 포맷 대상은 각 Gradle 빌드의 하위 프로젝트 `src/**/*.kt` 파일로 좁힌다.
+- root 프로젝트와 `build-logic` root 프로젝트는 Kotlin Gradle script 포맷 대상에는 포함하지만 Kotlin 소스 포맷 대상에는 포함하지 않는다.
 
 ## 스펙 변경 권장사항
 
