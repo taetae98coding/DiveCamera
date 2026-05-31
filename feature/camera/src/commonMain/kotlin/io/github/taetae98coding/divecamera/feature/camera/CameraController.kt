@@ -1,12 +1,35 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 internal interface CameraController {
-    val isRawCaptureSupported: StateFlow<Boolean>
+    val rawCaptureSupportState: StateFlow<RawCaptureSupportState>
+    val captureReadinessState: StateFlow<CaptureReadinessState>
+    val photoSaveErrorMessages: SharedFlow<String>
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)
+}
+
+internal enum class CaptureReadinessState {
+    Busy,
+    Ready,
+}
+
+internal enum class RawCaptureSupportState {
+    Checking,
+    Supported,
+    Unsupported,
+    ;
+
+    companion object {
+        fun from(isSupported: Boolean): RawCaptureSupportState = if (isSupported) {
+            Supported
+        } else {
+            Unsupported
+        }
+    }
 }
 
 @Composable

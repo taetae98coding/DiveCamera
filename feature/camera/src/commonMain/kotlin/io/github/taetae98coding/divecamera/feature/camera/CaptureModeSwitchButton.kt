@@ -28,7 +28,7 @@ private const val RAW_UNSUPPORTED_WARNING_CONTENT_DESCRIPTION = "RAW capture is 
 @Composable
 internal fun CaptureModeSwitchButton(
     captureMode: CameraCaptureMode,
-    isRawCaptureSupported: Boolean,
+    rawCaptureSupportState: RawCaptureSupportState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,7 +53,7 @@ internal fun CaptureModeSwitchButton(
             color = Color.White,
         )
 
-        if (captureMode == CameraCaptureMode.Raw && !isRawCaptureSupported) {
+        if (captureMode == CameraCaptureMode.Raw && rawCaptureSupportState == RawCaptureSupportState.Unsupported) {
             RawUnsupportedWarningIcon(
                 modifier = Modifier
                     .align(Alignment.TopEnd)

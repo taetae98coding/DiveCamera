@@ -41,9 +41,9 @@ internal class AndroidImageCapture(
         .also(captureResultExifMetadata::attachTo)
         .build()
 
-    override suspend fun capturePhoto() {
+    override suspend fun capturePhoto(onError: (String) -> Unit) {
+        val location = locationProvider.currentLocation()?.let(::Location)
         try {
-            val location = locationProvider.currentLocation()
             val outputFileResults = useCase.takePicture(
                 context.createImageOutputOptions(
                     location = location,
@@ -56,14 +56,16 @@ internal class AndroidImageCapture(
                     uri = uri,
                     captureResultMetadata = captureResultExifMetadata.snapshot(),
                     gpsLocation = location,
-                )
+                )?.let { throwable ->
+                    onError(throwable.platformErrorMessage())
+                }
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
                 throw throwable
             }
 
-            return
+            onError(throwable.platformErrorMessage())
         }
     }
 
@@ -71,6 +73,8 @@ internal class AndroidImageCapture(
         locationProvider.stop()
     }
 }
+
+private fun Throwable.platformErrorMessage(): String = message ?: toString()
 
 private fun Context.createImageOutputOptions(
     location: Location?,

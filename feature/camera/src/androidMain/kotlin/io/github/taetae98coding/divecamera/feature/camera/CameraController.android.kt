@@ -2,8 +2,11 @@ package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @Composable
@@ -12,32 +15,65 @@ internal actual fun rememberCameraController(): CameraController = remember {
 }
 
 internal class AndroidCameraController : CameraController {
-    private val mutableIsRawCaptureSupported = MutableStateFlow(false)
+    private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
+    private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
+    private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: AndroidPhotoCapture? = null
 
-    override val isRawCaptureSupported: StateFlow<Boolean> =
-        mutableIsRawCaptureSupported.asStateFlow()
+    override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
+        mutableRawCaptureSupportState.asStateFlow()
+    override val captureReadinessState: StateFlow<CaptureReadinessState> =
+        mutableCaptureReadinessState.asStateFlow()
+    override val photoSaveErrorMessages: SharedFlow<String> =
+        mutablePhotoSaveErrorMessages.asSharedFlow()
 
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
+        if (mutableCaptureReadinessState.value == CaptureReadinessState.Busy) {
+            return
+        }
+
         val currentImageCapture = imageCapture
             ?.takeIf { it.captureMode == captureMode }
-            ?: return
-        currentImageCapture.capturePhoto()
+            ?: run {
+                mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+                return
+            }
+        mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+        try {
+            currentImageCapture.capturePhoto(::emitPhotoSaveErrorMessage)
+        } catch (throwable: Throwable) {
+            emitPhotoSaveErrorMessage(throwable.platformErrorMessage())
+        } finally {
+            if (imageCapture === currentImageCapture) {
+                mutableCaptureReadinessState.value = CaptureReadinessState.Ready
+            }
+        }
     }
 
     fun updateImageCapture(imageCapture: AndroidPhotoCapture?) {
         this.imageCapture = imageCapture
+        mutableCaptureReadinessState.value = if (imageCapture == null) {
+            CaptureReadinessState.Busy
+        } else {
+            CaptureReadinessState.Ready
+        }
     }
 
     fun updateRawCaptureSupported(isSupported: Boolean) {
-        mutableIsRawCaptureSupported.value = isSupported
+        mutableRawCaptureSupportState.value = RawCaptureSupportState.from(isSupported)
+    }
+
+    private fun emitPhotoSaveErrorMessage(message: String) {
+        if (message.isNotBlank()) {
+            mutablePhotoSaveErrorMessages.tryEmit(message)
+        }
     }
 }
 
 internal interface AndroidPhotoCapture {
     val captureMode: CameraCaptureMode
 
-    suspend fun capturePhoto()
+    suspend fun capturePhoto(onError: (String) -> Unit)
 }
 
 internal fun CameraController.updateImageCapture(imageCapture: AndroidPhotoCapture?) {
@@ -47,3 +83,7 @@ internal fun CameraController.updateImageCapture(imageCapture: AndroidPhotoCaptu
 internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
     (this as? AndroidCameraController)?.updateRawCaptureSupported(isSupported)
 }
+
+private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8
+
+private fun Throwable.platformErrorMessage(): String = message ?: toString()

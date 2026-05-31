@@ -41,7 +41,9 @@ internal class IosCameraSession(private val cameraController: CameraController) 
     }
 
     fun start() {
-        cameraController.updateImageCapture(imageCapture)
+        cameraController.updateImageCapture(
+            imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
+        )
         dispatch_async(sessionQueue) {
             if (!session.running) {
                 session.startRunning()

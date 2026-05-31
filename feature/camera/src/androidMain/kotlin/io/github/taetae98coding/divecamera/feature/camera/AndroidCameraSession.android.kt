@@ -41,6 +41,7 @@ internal class AndroidCameraSession(
 
     suspend fun bind() {
         try {
+            cameraController.updateImageCapture(null)
             val provider = ProcessCameraProvider.awaitInstance(context)
             val currentImageCapture = imageCapture
             if (currentImageCapture == null) {

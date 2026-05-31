@@ -37,8 +37,8 @@ internal data class AndroidCameraExifMetadata(
         uri: Uri,
         captureResultMetadata: AndroidCaptureResultMetadata? = null,
         gpsLocation: Location? = null,
-    ) {
-        runCatching {
+    ): Throwable? {
+        return runCatching {
             context.contentResolver.openFileDescriptor(uri, "rw")?.use { descriptor ->
                 val exif = ExifInterface(descriptor.fileDescriptor)
                 writeTo(
@@ -48,7 +48,7 @@ internal data class AndroidCameraExifMetadata(
                 )
                 exif.saveAttributes()
             }
-        }
+        }.exceptionOrNull()
     }
 
     internal fun writeTo(

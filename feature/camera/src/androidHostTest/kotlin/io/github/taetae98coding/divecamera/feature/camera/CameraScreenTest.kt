@@ -9,10 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,7 +24,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -235,6 +240,65 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysEnabledCaptureButtonWhenCaptureIsReady() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    captureReadinessState = CaptureReadinessState.Ready,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .assertIsEnabled()
+        composeRule
+            .onAllNodesWithTag(CAPTURE_BUTTON_BUSY_INDICATOR_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun cameraScreenDisplaysBusyCaptureButtonWhenCaptureIsBusy() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    captureReadinessState = CaptureReadinessState.Busy,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .assertIsNotEnabled()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_BUSY_INDICATOR_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDoesNotCapturePhotoWhenCaptureIsBusy() {
+        val cameraController = FakeCameraController(
+            captureReadinessState = CaptureReadinessState.Busy,
+        )
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performTouchInput {
+                click()
+            }
+
+        composeRule.runOnIdle {
+            assertEquals(0, cameraController.photoCaptureCount)
+        }
+    }
+
+    @Test
     fun cameraScreenDisplaysCaptureModeSwitchButton() {
         composeRule.setContent {
             CameraScreen()
@@ -299,10 +363,31 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDoesNotDisplayRawUnsupportedWarningWhenRawSupportIsChecking() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Checking,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun cameraScreenDisplaysRawUnsupportedWarningWhenRawModeIsUnsupported() {
         composeRule.setContent {
             CameraScreen(
-                cameraController = FakeCameraController(isRawCaptureSupported = false),
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Unsupported,
+                ),
             )
         }
 
@@ -319,7 +404,9 @@ class CameraScreenTest {
     fun cameraScreenDoesNotDisplayRawUnsupportedWarningWhenRawModeIsSupported() {
         composeRule.setContent {
             CameraScreen(
-                cameraController = FakeCameraController(isRawCaptureSupported = true),
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Supported,
+                ),
             )
         }
 
@@ -373,6 +460,27 @@ class CameraScreenTest {
             assertEquals(1, cameraController.photoCaptureCount)
             assertEquals(CameraCaptureMode.Raw, cameraController.lastCaptureMode)
         }
+    }
+
+    @Test
+    fun cameraScreenDisplaysPhotoSaveErrorMessageAsSnackbar() {
+        val cameraController = FakeCameraController()
+        val errorMessage = "CameraX save failed"
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule.runOnIdle {
+            cameraController.emitPhotoSaveErrorMessage(errorMessage)
+        }
+        waitUntilTextExists(errorMessage)
+
+        composeRule
+            .onNodeWithText(errorMessage)
+            .assertIsDisplayed()
     }
 
     @Test
@@ -436,6 +544,15 @@ class CameraScreenTest {
         }
     }
 
+    private fun waitUntilTextExists(text: String) {
+        composeRule.waitUntil(timeoutMillis = WAIT_UNTIL_TIMEOUT_MILLIS) {
+            composeRule
+                .onAllNodesWithText(text)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
     private companion object {
         private val FIXED_SCREEN_WIDTH = 360.dp
         private val FIXED_SCREEN_HEIGHT = 640.dp
@@ -446,9 +563,18 @@ class CameraScreenTest {
     }
 }
 
-private class FakeCameraController(isRawCaptureSupported: Boolean = false) : CameraController {
-    override val isRawCaptureSupported: StateFlow<Boolean> =
-        MutableStateFlow(isRawCaptureSupported)
+private class FakeCameraController(
+    rawCaptureSupportState: RawCaptureSupportState = RawCaptureSupportState.Checking,
+    captureReadinessState: CaptureReadinessState = CaptureReadinessState.Ready,
+) : CameraController {
+    private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = 1)
+
+    override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
+        MutableStateFlow(rawCaptureSupportState)
+    override val captureReadinessState: StateFlow<CaptureReadinessState> =
+        MutableStateFlow(captureReadinessState)
+    override val photoSaveErrorMessages: SharedFlow<String> =
+        mutablePhotoSaveErrorMessages
 
     var photoCaptureCount = 0
         private set
@@ -458,5 +584,9 @@ private class FakeCameraController(isRawCaptureSupported: Boolean = false) : Cam
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
         lastCaptureMode = captureMode
+    }
+
+    fun emitPhotoSaveErrorMessage(message: String) {
+        mutablePhotoSaveErrorMessages.tryEmit(message)
     }
 }

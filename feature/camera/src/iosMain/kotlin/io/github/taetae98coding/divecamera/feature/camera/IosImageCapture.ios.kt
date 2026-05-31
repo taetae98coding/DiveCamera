@@ -48,6 +48,8 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
 
     var isRawCaptureSupported = false
         private set
+    val isCaptureConfigured: Boolean
+        get() = isConfigured
 
     fun configure(
         session: AVCaptureSession,
@@ -69,22 +71,29 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
         }
     }
 
-    suspend fun capturePhoto(captureMode: CameraCaptureMode) {
-        suspendCancellableCoroutine { continuation ->
-            val isCaptureRequested = requestCapturePhoto(captureMode) {
+    suspend fun capturePhoto(
+        captureMode: CameraCaptureMode,
+        onError: (String) -> Unit,
+    ): Boolean {
+        return suspendCancellableCoroutine { continuation ->
+            val isCaptureRequested = requestCapturePhoto(
+                captureMode = captureMode,
+                onError = onError,
+            ) {
                 if (continuation.isActive) {
-                    continuation.resume(Unit)
+                    continuation.resume(true)
                 }
             }
 
             if (!isCaptureRequested && continuation.isActive) {
-                continuation.resume(Unit)
+                continuation.resume(false)
             }
         }
     }
 
     private fun requestCapturePhoto(
         captureMode: CameraCaptureMode,
+        onError: (String) -> Unit,
         onComplete: () -> Unit,
     ): Boolean {
         if (!isConfigured) {
@@ -102,6 +111,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             lateinit var delegate: PhotoCaptureDelegate
             delegate = PhotoCaptureDelegate(
                 location = location,
+                onError = onError,
                 onComplete = {
                     dispatchOnSessionQueue {
                         photoCaptureDelegates.remove(delegate)
@@ -392,6 +402,7 @@ private const val METADATA_DECIMAL_SCALE = 1000.0
 
 private class PhotoCaptureDelegate(
     private val location: CLLocation?,
+    private val onError: (String) -> Unit,
     private val onComplete: () -> Unit,
 ) : NSObject(),
     AVCapturePhotoCaptureDelegateProtocol {
@@ -403,7 +414,7 @@ private class PhotoCaptureDelegate(
         error: NSError?,
     ) {
         if (error != null) {
-            complete()
+            completeWithError(error.localizedDescription)
             return
         }
 
@@ -423,7 +434,10 @@ private class PhotoCaptureDelegate(
                     options = null,
                 )
             },
-            completionHandler = { _, _ ->
+            completionHandler = { _, error ->
+                if (error != null) {
+                    onError(error.localizedDescription)
+                }
                 complete()
             },
         )
@@ -435,8 +449,17 @@ private class PhotoCaptureDelegate(
         error: NSError?,
     ) {
         if (error != null) {
-            complete()
+            completeWithError(error.localizedDescription)
         }
+    }
+
+    private fun completeWithError(message: String) {
+        if (isComplete) {
+            return
+        }
+
+        onError(message)
+        complete()
     }
 
     private fun complete() {

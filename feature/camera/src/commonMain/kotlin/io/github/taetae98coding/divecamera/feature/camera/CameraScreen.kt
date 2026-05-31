@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 internal const val CAMERA_SCREEN_TEST_TAG = "camera-screen"
@@ -49,7 +52,9 @@ internal fun CameraScreen(
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
-    val isRawCaptureSupported by cameraController.isRawCaptureSupported.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val rawCaptureSupportState by cameraController.rawCaptureSupportState.collectAsState()
+    val captureReadinessState by cameraController.captureReadinessState.collectAsState()
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -62,6 +67,12 @@ internal fun CameraScreen(
     LaunchedEffect(inputVersion, cameraResourceIdleTimeoutMillis) {
         delay(cameraResourceIdleTimeoutMillis)
         isCameraPreviewActive = false
+    }
+
+    LaunchedEffect(cameraController) {
+        cameraController.photoSaveErrorMessages.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
     }
 
     Surface(
@@ -95,7 +106,7 @@ internal fun CameraScreen(
 
                 CaptureModeSwitchButton(
                     captureMode = captureMode,
-                    isRawCaptureSupported = isRawCaptureSupported,
+                    rawCaptureSupportState = rawCaptureSupportState,
                     onClick = {
                         currentRegisterInput()
                         captureMode = captureMode.next()
@@ -108,10 +119,13 @@ internal fun CameraScreen(
                 )
 
                 CaptureButton(
+                    captureReadinessState = captureReadinessState,
                     onClick = {
                         currentRegisterInput()
-                        coroutineScope.launch {
-                            cameraController.capturePhoto(captureMode)
+                        if (captureReadinessState == CaptureReadinessState.Ready) {
+                            coroutineScope.launch {
+                                cameraController.capturePhoto(captureMode)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -128,6 +142,14 @@ internal fun CameraScreen(
                         .testTag(CAMERA_OFF_TEST_TAG),
                 )
             }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 132.dp),
+            )
         }
     }
 }
