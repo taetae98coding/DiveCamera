@@ -10,6 +10,15 @@
 - 카메라 미리보기는 ViewFinder 영역 밖에 표시되지 않는다.
 - 카메라 화면은 화면 하단 가운데에 사진 촬영 버튼을 표시한다.
 - 카메라 화면은 사진 촬영 버튼 왼쪽에 캡처 모드 전환 버튼을 표시한다.
+- 카메라 화면은 카메라 미리보기 위쪽에 촬영 정보 오버레이를 표시한다.
+- 촬영 정보 오버레이는 ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정 EV값, 렌즈 초점거리 mm를 표시한다.
+- 촬영 정보 오버레이의 조리개 F값은 숫자 앞에 `F`를 붙여 표시한다.
+- 촬영 정보 오버레이의 렌즈 초점거리 mm는 플랫폼 갤러리 앱의 표시와 맞도록 35mm 환산 초점거리를 우선 표시한다.
+- Android 촬영 정보 오버레이의 35mm 환산 초점거리는 실제 활성 physical 카메라를 확인할 수 있으면 해당 physical 카메라의 센서 정보를 기준으로 표시한다.
+- iOS 촬영 정보 오버레이의 렌즈 초점거리 mm는 AVFoundation이 제공하는 수평 화각과 현재 줌 배율로 계산한 35mm 환산 초점거리를 표시한다.
+- iOS 촬영 정보 오버레이는 카메라 미리보기 리소스가 활성화된 동안 AVFoundation의 현재 카메라 상태를 반복 갱신해 표시한다.
+- 35mm 환산 초점거리를 확인할 수 없으면 촬영 정보 오버레이의 렌즈 초점거리 mm는 물리 초점거리를 표시한다.
+- 촬영 정보 오버레이에서 플랫폼 카메라 API가 확인할 수 없는 항목은 `--`로 표시한다.
 - 사진 촬영 버튼 상태는 `Busy`, `Ready`로 구분한다.
 - 카메라 화면 최초 진입 후 카메라가 사진 촬영 준비를 완료하기 전까지 사진 촬영 버튼은 `Busy` 상태이다.
 - 사진 촬영 요청 후 사진 저장과 메타데이터 후처리가 완료되어 다음 사진 촬영 준비가 완료되기 전까지 사진 촬영 버튼은 `Busy` 상태이다.
@@ -33,10 +42,53 @@
 - 카메라 미리보기 리소스를 반납한 상태에서는 ViewFinder 영역을 표시하지 않는다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 사진 촬영 버튼을 표시하지 않는다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 캡처 모드 전환 버튼을 표시하지 않는다.
+- 카메라 미리보기 리소스를 반납한 상태에서는 촬영 정보 오버레이를 표시하지 않는다.
 - 카메라 미리보기 리소스를 반납한 상태에서는 `Camera Off` 텍스트를 표시한다.
 - 카메라 미리보기 리소스를 반납한 상태에서 사용자가 입력하면 ViewFinder 영역, 카메라 미리보기, 사진 촬영 버튼, 캡처 모드 전환 버튼을 다시 표시한다.
 
 ## 정책
+
+- 카메라 화면의 촬영 정보는 플랫폼 카메라 API가 제공하는 현재 값 또는 최신 확인 값을 표시한다.
+- 카메라 화면의 촬영 정보는 플랫폼 카메라 API가 제공하지 않는 값을 앱이 임의로 생성해 보장하지 않는다.
+
+## 촬영 정보 수집 방식
+
+### Android 촬영 정보
+
+- Android 화면 표시용 촬영 정보는 CameraX `Preview` UseCase에 Camera2Interop `CameraCaptureSession.CaptureCallback`을 연결해 미리보기 세션의 `TotalCaptureResult`가 완료될 때마다 갱신한다.
+- Android ISO 감도는 `CaptureResult.SENSOR_SENSITIVITY` 값을 사용한다.
+- Android 조리개 F값은 `CaptureResult.LENS_APERTURE` 값을 사용한다.
+- Android 셔터 스피드는 `CaptureResult.SENSOR_EXPOSURE_TIME` 값을 나노초 단위로 사용한다.
+- Android 물리 초점거리는 `CaptureResult.LENS_FOCAL_LENGTH` 값을 mm 단위로 사용한다.
+- Android 활성 physical 카메라 ID는 `CaptureResult.LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID` 값을 사용한다.
+- Android 35mm 환산 초점거리는 캡처 결과의 물리 초점거리와 센서 대각선 길이로 계산한다.
+- Android 35mm 환산 초점거리 계산 시 활성 physical 카메라 ID와 해당 physical 카메라의 `CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE`를 확인할 수 있으면 그 센서 크기를 우선 사용한다.
+- Android 활성 physical 카메라 센서 크기를 확인할 수 없으면 logical 카메라의 `CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE`를 사용한다.
+- Android 노출 보정 EV값은 현재 캡처 결과에서 직접 읽지 않고 CameraX `CameraInfo.exposureState`의 `exposureCompensationIndex`와 `exposureCompensationStep`을 곱한 값을 사용한다.
+- Android 미리보기 캡처 결과가 일부 값을 제공하지 않으면 `CameraCharacteristics`와 `CameraInfo.exposureState`에서 만든 fallback 촬영 정보를 사용한다.
+- Android fallback 촬영 정보의 조리개와 물리 초점거리는 지원 값이 하나로 확정될 때만 사용한다.
+- Android 사진 저장 후처리는 CameraX `ImageCapture` UseCase에도 Camera2Interop 캡처 콜백을 연결해 최신 캡처 결과 메타데이터를 보관하고, 저장 완료 후 EXIF 표준 태그가 비어 있을 때 ISO, 조리개 F값, 셔터 스피드, 물리 초점거리, 35mm 환산 초점거리를 추가 기록한다.
+- Android 사진 저장 후처리는 CameraX나 기기 카메라 파이프라인이 이미 기록한 EXIF 표준 태그 값을 덮어쓰지 않는다.
+- Android 앱 메타데이터에는 logical 카메라 ID, lens facing, 센서 물리 크기, 지원 ISO 범위, 지원 조리개 범위, 지원 초점거리, 계산 가능한 화각, 활성 physical 카메라 ID, 자동 노출 모드, 자동 노출 상태, 자동 노출 영역 수를 가능한 범위에서 기록한다.
+
+### iOS 촬영 정보
+
+- iOS 화면 표시용 촬영 정보는 `AVCaptureDevice`의 현재 상태를 카메라 미리보기 리소스가 활성화된 동안 반복 조회해 갱신한다.
+- iOS 촬영 정보는 세션 구성 시와 미리보기 시작 시 즉시 한 번 갱신하고, 이후 dispatch source timer로 250ms마다 갱신한다.
+- iOS 촬영 정보 오버레이는 사진 촬영 전후 모두 실제 저장 사진 EXIF 값으로 대체하지 않고 미리보기 기준 값을 표시한다.
+- iOS 미리보기 기준 ISO 감도는 `AVCaptureDevice.ISO` 값을 사용한다.
+- iOS 미리보기 기준 조리개 F값은 `AVCaptureDevice.lensAperture` 값을 사용한다.
+- iOS 미리보기 기준 셔터 스피드는 `AVCaptureDevice.exposureDuration` 값을 `CMTimeGetSeconds`로 초 단위로 변환한 뒤 나노초로 환산해 사용한다.
+- iOS 미리보기 기준 노출 보정 EV값은 `AVCaptureDevice.exposureTargetBias` 값을 사용한다.
+- iOS 미리보기 기준 렌즈 mm 표시는 `AVCaptureDevice.activeFormat.videoFieldOfView`의 수평 화각과 `AVCaptureDevice.videoZoomFactor`를 사용해 35mm 환산 초점거리로 계산한다.
+- iOS 35mm 환산 초점거리는 full-frame 가로 폭 36mm 기준으로 `36 / (2 * tan(horizontalFieldOfView / 2)) * videoZoomFactor`를 계산한 뒤 정수 mm로 반올림한다.
+- iOS 미리보기 기준 렌즈 mm 값은 AVFoundation이 현재 구현에서 직접 제공하는 저장 사진의 갤러리 표시 초점거리 값이 아니라, 현재 수평 화각과 줌 배율 기반 추정값이다.
+- iOS에서 미리보기 기준 촬영 정보와 실제 저장 사진 EXIF 값은 AVFoundation 사진 캡처 파이프라인의 자동 노출 및 후처리 정책 때문에 다를 수 있다.
+- iOS 사진 저장은 `AVCapturePhotoSettings.metadata`에 앱 메타데이터와 GPS 메타데이터를 설정하고, `AVCapturePhoto.fileDataRepresentation()` 결과를 Photos 라이브러리에 등록한다.
+- iOS 앱 메타데이터에는 카메라 장치 이름, 장치 타입, 수평 화각, 왜곡 보정 수평 화각, 지원 ISO 범위, 지원 노출 시간 범위, 지원 노출 보정 범위, 최대 사진 해상도를 가능한 범위에서 기록한다.
+- iOS 저장 사진의 ISO, 조리개 F값, 셔터 스피드, 초점거리 같은 표준 사진 메타데이터는 AVFoundation이 생성한 사진 데이터에 포함된 값을 보존한다.
+
+## 캡처 모드 정책
 
 - `JPG` 모드는 플랫폼의 처리 사진 출력으로 저장한다.
 - `RAW` 모드는 플랫폼이 RAW DNG 출력을 지원하는 경우 RAW DNG로 저장한다.
@@ -124,8 +176,13 @@
 - [AndroidX ResolutionSelector](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)
 - [AndroidX ImageCapture.Metadata](https://developer.android.com/reference/androidx/camera/core/ImageCapture.Metadata)
 - [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
+- [AndroidX Camera2Interop](https://developer.android.com/reference/androidx/camera/camera2/interop/Camera2Interop)
+- [Android CaptureResult](https://developer.android.com/reference/android/hardware/camera2/CaptureResult)
+- [Android CameraCharacteristics](https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics)
 - [Apple AVCapturePhotoOutput](https://developer.apple.com/documentation/avfoundation/avcapturephotooutput)
 - [Apple AVCapturePhotoSettings](https://developer.apple.com/documentation/avfoundation/avcapturephotosettings)
+- [Apple AVCaptureDevice](https://developer.apple.com/documentation/avfoundation/avcapturedevice)
+- [Apple AVCaptureDevice.Format](https://developer.apple.com/documentation/avfoundation/avcapturedevice/format)
 - [Apple GPS Dictionary Keys](https://developer.apple.com/documentation/imageio/gps-dictionary-keys)
 - [Apple PHAssetChangeRequest location](https://developer.apple.com/documentation/photos/phassetchangerequest/location)
 - [Apple AVCapturePhoto](https://developer.apple.com/documentation/AVFoundation/AVCapturePhoto)

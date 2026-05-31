@@ -51,3 +51,13 @@
 47. Robolectric `androidHostTest`에서 Android 카메라 메타데이터를 EXIF에 기록할 때 기존 F값, 초점거리, 35mm 환산 초점거리는 덮어쓰지 않는다.
 48. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 ISO와 노출 시간이 있으면 EXIF에 ISO와 노출 시간이 기록된다.
 49. Robolectric `androidHostTest`에서 Android 카메라 메타데이터를 GPS 위치와 함께 EXIF에 기록하면 EXIF 위도와 경도가 GPS 위치와 같다.
+50. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이는 ISO, `F` 접두사가 붙은 F값, 셔터 스피드, EV값, 35mm 환산 렌즈 초점거리 mm를 표시한다.
+51. Robolectric `androidHostTest`에서 촬영 정보가 없는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 각 값은 `--`로 표시된다.
+52. Robolectric `androidHostTest`에서 짧은 무입력 제한 시간을 둔 `CameraScreen`을 Compose로 렌더링하고 제한 시간이 지나면 촬영 정보 오버레이가 제거된다.
+53. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러를 생성하면 촬영 정보 상태는 확인할 수 없는 값이다.
+54. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러에 촬영 정보를 갱신하면 촬영 정보 상태는 갱신한 값이다.
+55. Robolectric `androidHostTest`에서 촬영 정보에 35mm 환산 렌즈 초점거리가 없고 물리 초점거리가 있으면 촬영 정보 오버레이는 물리 초점거리 mm를 표시한다.
+56. Robolectric `androidHostTest`에서 Android 카메라 메타데이터를 캡처 결과 메타데이터와 함께 EXIF에 기록하면 35mm 환산 초점거리는 캡처 결과의 초점거리를 기준으로 기록된다.
+57. Robolectric `androidHostTest`에서 Android 카메라 메타데이터에 활성 physical 카메라 메타데이터가 있으면 35mm 환산 초점거리는 활성 physical 카메라의 센서 크기를 기준으로 계산된다.
+58. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 활성 physical 카메라 ID가 있으면 촬영 정보 상태의 35mm 환산 초점거리는 활성 physical 카메라 기준 값이다.
+59. Robolectric `androidHostTest`에서 fake `CameraController`의 촬영 정보 상태가 변경되면 촬영 정보 오버레이는 변경된 최신 촬영 정보를 표시한다.
