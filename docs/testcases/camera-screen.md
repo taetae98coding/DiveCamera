@@ -10,14 +10,14 @@
 6. Robolectric `androidHostTest`에서 `CameraScreen`을 Compose로 렌더링하면 화면 자동 꺼짐 방지 정책이 활성화된다.
 7. Robolectric `androidHostTest`에서 짧은 무입력 제한 시간을 둔 `CameraScreen`을 Compose로 렌더링하고 제한 시간이 지나면 ViewFinder와 카메라 미리보기 호스트가 제거된다.
 8. Robolectric `androidHostTest`에서 짧은 무입력 제한 시간을 둔 `CameraScreen`을 Compose로 렌더링하고 제한 시간이 지나면 사진 촬영 버튼이 제거되고 `Camera Off` 텍스트가 표시된다.
-9. Robolectric `androidHostTest`에서 ViewFinder와 카메라 미리보기 호스트가 제거된 `CameraScreen`에 터치 입력을 보내면 ViewFinder, 카메라 미리보기 호스트, 사진 촬영 버튼, 캡처 모드 전환 버튼이 다시 표시되고 `Camera Off` 텍스트가 제거된다.
+9. Robolectric `androidHostTest`에서 ViewFinder와 카메라 미리보기 호스트가 제거된 `CameraScreen`에 터치 입력을 보내면 ViewFinder, 카메라 미리보기 호스트, 사진 촬영 버튼, 캡처 모드 전환 버튼, 촬영 정보 오버레이가 다시 표시되고 `Camera Off` 텍스트가 제거된다.
 10. Robolectric `androidHostTest`에서 `CameraScreen`을 Compose로 렌더링하면 사진 촬영 버튼이 표시된다.
 11. Robolectric `androidHostTest`에서 고정 크기의 `CameraScreen`을 Compose로 렌더링하면 사진 촬영 버튼 중심 X 좌표가 카메라 화면 중심 X 좌표와 같다.
 12. Robolectric `androidHostTest`에서 `CameraScreen`을 Compose로 렌더링하면 캡처 모드 전환 버튼이 표시된다.
 13. Robolectric `androidHostTest`에서 고정 크기의 `CameraScreen`을 Compose로 렌더링하면 캡처 모드 전환 버튼은 사진 촬영 버튼 왼쪽에 표시된다.
 14. Robolectric `androidHostTest`에서 `CameraScreen`을 Compose로 렌더링하면 캡처 모드 전환 버튼은 `JPG`를 표시한다.
 15. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드 전환 버튼을 클릭하면 캡처 모드 전환 버튼은 `RAW`를 표시한다.
-16. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드 전환 버튼을 두 번 클릭하면 캡처 모드 전환 버튼은 `RAW+JPG`를 표시한다.
+16. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드 전환 버튼을 두 번 클릭하면 캡처 모드 전환 버튼은 `RAW\nJPG`를 표시한다.
 17. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드 전환 버튼을 세 번 클릭하면 캡처 모드 전환 버튼은 `JPG`를 표시한다.
 18. Robolectric `androidHostTest`에서 `Ready` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하면 사진 촬영 버튼은 enabled 상태이다.
 19. Robolectric `androidHostTest`에서 `Busy` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하면 사진 촬영 버튼은 disabled 상태이고 로딩 UI가 표시된다.

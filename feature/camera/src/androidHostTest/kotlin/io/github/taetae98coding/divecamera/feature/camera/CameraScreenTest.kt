@@ -212,6 +212,9 @@ class CameraScreenTest {
             .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
             .assertIsDisplayed()
         composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
             .onAllNodesWithTag(CAMERA_OFF_TEST_TAG)
             .assertCountEquals(0)
     }
@@ -481,7 +484,7 @@ class CameraScreenTest {
             .performClick()
 
         composeRule
-            .onNodeWithText(CameraCaptureMode.RawJpg.label)
+            .onNodeWithText("RAW\nJPG")
             .assertIsDisplayed()
     }
 
