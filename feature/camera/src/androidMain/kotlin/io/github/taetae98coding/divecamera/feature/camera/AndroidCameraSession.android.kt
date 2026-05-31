@@ -1,6 +1,11 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.util.Log
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.SurfaceRequest
@@ -55,6 +60,10 @@ internal class AndroidCameraSession(
 
     suspend fun bind() {
         try {
+            Log.d(
+                CAMERA_SESSION_LOG_TAG,
+                "bind start captureMode=$captureMode targetRotation=$targetRotation",
+            )
             cameraController.updateImageCapture(null)
             cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
@@ -73,6 +82,12 @@ internal class AndroidCameraSession(
             val supportedOutputFormats = ImageCapture.getImageCaptureCapabilities(camera.cameraInfo)
                 .supportedOutputFormats
             val isRawCaptureSupported = supportedOutputFormats.supportsRawCapture()
+            val selectedOutputFormat = supportedOutputFormats.preferredImageOutputFormat(captureMode)
+            val cameraCharacteristics = context.cameraCharacteristics(camera.cameraInfo)
+            Log.d(
+                CAMERA_SESSION_LOG_TAG,
+                "capabilities captureMode=$captureMode rawSupported=$isRawCaptureSupported supported=${supportedOutputFormats.toOutputFormatNames()} selected=${selectedOutputFormat.toImageCaptureOutputFormatName()} hasCameraCharacteristics=${cameraCharacteristics != null}",
+            )
             cameraExifMetadata = AndroidCameraExifMetadata.from(
                 context = context,
                 cameraInfo = camera.cameraInfo,
@@ -82,8 +97,9 @@ internal class AndroidCameraSession(
                 context = context,
                 captureMode = captureMode,
                 targetRotation = targetRotation,
-                outputFormat = supportedOutputFormats.preferredImageOutputFormat(captureMode),
+                outputFormat = selectedOutputFormat,
                 cameraExifMetadata = cameraExifMetadata,
+                cameraCharacteristics = cameraCharacteristics,
             )
 
             provider.bindToLifecycle(
@@ -97,11 +113,20 @@ internal class AndroidCameraSession(
             cameraController.updateRawCaptureSupported(isRawCaptureSupported)
             cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
             cameraController.updateImageCapture(nextImageCapture)
+            Log.d(
+                CAMERA_SESSION_LOG_TAG,
+                "bind complete captureMode=$captureMode outputFormat=${selectedOutputFormat.toImageCaptureOutputFormatName()}",
+            )
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
                 throw throwable
             }
 
+            Log.e(
+                CAMERA_SESSION_LOG_TAG,
+                "bind failed captureMode=$captureMode targetRotation=$targetRotation",
+                throwable,
+            )
             return
         }
     }
@@ -139,4 +164,31 @@ private fun Collection<Int>.preferredImageOutputFormat(captureMode: CameraCaptur
     } else {
         ImageCapture.OUTPUT_FORMAT_JPEG
     }
+}
+
+private fun Context.cameraCharacteristics(cameraInfo: CameraInfo): CameraCharacteristics? {
+    val cameraId = runCatching {
+        Camera2CameraInfo.from(cameraInfo).cameraId
+    }.getOrNull() ?: return null
+    return runCatching {
+        getSystemService(CameraManager::class.java)?.getCameraCharacteristics(cameraId)
+    }.getOrNull()
+}
+
+private const val CAMERA_SESSION_LOG_TAG = "DiveCameraSession"
+
+private fun Collection<Int>.toOutputFormatNames(): String = joinToString(
+    separator = ",",
+    prefix = "[",
+    postfix = "]",
+) { outputFormat ->
+    outputFormat.toImageCaptureOutputFormatName()
+}
+
+private fun Int.toImageCaptureOutputFormatName(): String = when (this) {
+    ImageCapture.OUTPUT_FORMAT_JPEG -> "JPEG"
+    ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR -> "JPEG_ULTRA_HDR"
+    ImageCapture.OUTPUT_FORMAT_RAW -> "RAW"
+    ImageCapture.OUTPUT_FORMAT_RAW_JPEG -> "RAW_JPEG"
+    else -> "unknown($this)"
 }

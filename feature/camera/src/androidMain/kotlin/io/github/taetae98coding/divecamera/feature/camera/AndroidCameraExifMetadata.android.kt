@@ -9,6 +9,7 @@ import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
 import android.location.Location
 import android.net.Uri
+import android.util.Log
 import android.util.Range
 import android.util.SizeF
 import androidx.camera.camera2.interop.Camera2CameraInfo
@@ -17,6 +18,7 @@ import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.exifinterface.media.ExifInterface
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.PI
 import kotlin.math.atan
@@ -259,6 +261,8 @@ internal data class AndroidCameraExifMetadata(
 
 internal class AndroidCaptureResultExifMetadata {
     private val latestMetadata = AtomicReference<AndroidCaptureResultMetadata?>()
+    private val latestCaptureResult = AtomicReference<CaptureResult?>()
+    private val timestampedCaptureResults = ConcurrentHashMap<Long, CaptureResult>()
 
     val captureCallback: CameraCaptureSession.CaptureCallback = object : CameraCaptureSession.CaptureCallback() {
         override fun onCaptureCompleted(
@@ -267,6 +271,11 @@ internal class AndroidCaptureResultExifMetadata {
             result: TotalCaptureResult,
         ) {
             latestMetadata.set(AndroidCaptureResultMetadata.from(result))
+            latestCaptureResult.set(result)
+            result.get(CaptureResult.SENSOR_TIMESTAMP)?.let { timestamp ->
+                timestampedCaptureResults[timestamp] = result
+                trimTimestampedCaptureResults()
+            }
         }
     }
 
@@ -276,6 +285,28 @@ internal class AndroidCaptureResultExifMetadata {
     }
 
     fun snapshot(): AndroidCaptureResultMetadata? = latestMetadata.get()
+
+    fun snapshotCaptureResult(timestampNanoseconds: Long): CaptureResult? {
+        return timestampedCaptureResults[timestampNanoseconds]
+            ?: latestCaptureResult.get()
+                ?.also {
+                    Log.w(
+                        ANDROID_CAPTURE_RESULT_METADATA_LOG_TAG,
+                        "Using latest CaptureResult because timestamp match was unavailable imageTimestamp=$timestampNanoseconds",
+                    )
+                }
+    }
+
+    private fun trimTimestampedCaptureResults() {
+        if (timestampedCaptureResults.size <= MAX_CAPTURE_RESULT_CACHE_SIZE) {
+            return
+        }
+
+        timestampedCaptureResults.keys
+            .sorted()
+            .take(timestampedCaptureResults.size - MAX_CAPTURE_RESULT_CACHE_SIZE)
+            .forEach(timestampedCaptureResults::remove)
+    }
 }
 
 internal data class AndroidCaptureResultMetadata(
@@ -521,3 +552,5 @@ private const val EXPOSURE_TIME_DENOMINATOR_NANOS = 1_000_000_000L
 private const val METADATA_DECIMAL_SCALE = 100.0
 private const val FULL_FRAME_WIDTH_MM = 36.0
 private const val FULL_FRAME_HEIGHT_MM = 24.0
+private const val MAX_CAPTURE_RESULT_CACHE_SIZE = 8
+private const val ANDROID_CAPTURE_RESULT_METADATA_LOG_TAG = "DiveCameraCapture"

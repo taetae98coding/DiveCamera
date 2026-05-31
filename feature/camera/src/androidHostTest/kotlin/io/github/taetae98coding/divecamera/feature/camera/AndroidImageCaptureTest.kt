@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.location.Location
 import android.view.Surface
 import androidx.camera.core.ImageCapture
@@ -11,6 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -87,6 +89,27 @@ class AndroidImageCaptureTest {
             ImageCapture.OUTPUT_FORMAT_RAW_JPEG,
             imageCapture.useCase.outputFormat,
         )
+    }
+
+    @Test
+    fun androidDngPhotoFileFormatDoesNotSupportExifMetadataWrite() {
+        val photoFileFormat = AndroidPhotoFileFormat.fromImageFormat(ImageFormat.RAW_SENSOR)
+
+        assertEquals(AndroidPhotoFileFormat.Dng, photoFileFormat)
+        assertFalse(photoFileFormat.supportsExifMetadataWrite)
+    }
+
+    @Test
+    fun androidRawOutputUsesInMemoryRawLocationWriteWhenLocationIsAvailable() {
+        val location = Location(GPS_PROVIDER).apply {
+            latitude = GPS_LATITUDE
+            longitude = GPS_LONGITUDE
+        }
+
+        assertTrue(ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawLocationWrite(location))
+        assertTrue(ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawLocationWrite(location))
+        assertFalse(ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawLocationWrite(location))
+        assertFalse(ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawLocationWrite(null))
     }
 
     @Test
