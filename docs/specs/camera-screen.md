@@ -18,8 +18,8 @@
 - 사진 촬영 버튼이 `Ready` 상태이면 사용자가 선택할 때 현재 캡처 모드로 카메라 사진 촬영을 요청할 수 있다.
 - 카메라 화면의 기본 캡처 모드는 `JPG`이다.
 - 캡처 모드 전환 버튼은 현재 캡처 모드를 표시한다.
-- 사용자가 캡처 모드 전환 버튼을 선택하면 현재 캡처 모드는 `JPG`, `RAW` 순서로 반복 변경된다.
-- 현재 캡처 모드가 `RAW`이고 RAW 사진 촬영 지원 여부 확인이 완료된 뒤 기기가 RAW 사진 촬영을 지원하지 않는 것으로 확인되면 캡처 모드 전환 버튼의 우측 상단에 작은 노란색 주의 아이콘을 표시한다.
+- 사용자가 캡처 모드 전환 버튼을 선택하면 현재 캡처 모드는 `JPG`, `RAW`, `RAW+JPG` 순서로 반복 변경된다.
+- 현재 캡처 모드가 `RAW` 또는 `RAW+JPG`이고 RAW 사진 촬영 지원 여부 확인이 완료된 뒤 기기가 RAW 사진 촬영을 지원하지 않는 것으로 확인되면 캡처 모드 전환 버튼의 우측 상단에 작은 노란색 주의 아이콘을 표시한다.
 - `Ready` 상태의 사진 촬영 버튼을 누르면 현재 캡처 모드로 카메라 사진을 촬영한다.
 - 촬영 결과는 현재 캡처 모드와 플랫폼 정책에 따라 기기의 기본 갤러리 앱에서 볼 수 있도록 저장한다.
 - 촬영 결과는 플랫폼 카메라 API가 해당 출력 포맷에서 제공하는 프레임, 해상도, 후처리 결과를 따른다.
@@ -41,10 +41,13 @@
 - `JPG` 모드는 플랫폼의 처리 사진 출력으로 저장한다.
 - `RAW` 모드는 플랫폼이 RAW DNG 출력을 지원하는 경우 RAW DNG로 저장한다.
 - `RAW` 모드에서 플랫폼이 RAW DNG 출력을 지원하지 않으면 `JPG` 모드의 처리 사진 출력 정책으로 저장한다.
-- `RAW` 모드에서 플랫폼이 RAW DNG 출력을 지원하지 않으면 캡처 모드 전환 버튼에 RAW 미지원 주의 아이콘을 표시한다.
+- `RAW+JPG` 모드는 플랫폼이 RAW DNG와 처리 사진의 페어 출력을 지원하는 경우 RAW DNG와 처리 사진을 함께 저장한다.
+- `RAW+JPG` 모드에서 플랫폼이 RAW DNG 출력을 지원하지 않으면 `JPG` 모드의 처리 사진 출력 정책으로 저장한다.
+- `RAW` 또는 `RAW+JPG` 모드에서 플랫폼이 RAW DNG 출력을 지원하지 않으면 캡처 모드 전환 버튼에 RAW 미지원 주의 아이콘을 표시한다.
 - `RAW` 모드는 RAW DNG와 처리 사진을 동시에 저장하는 RAW+JPG 페어 저장을 보장하지 않는다.
-- `JPG`와 `RAW` 모두 카메라 미리보기와 저장 결과의 해상도, 픽셀 단위 프레이밍, 압축, 후처리 결과가 완전히 동일함을 보장하지 않는다.
-- `JPG`와 `RAW` 모두 플랫폼이 제공하지 않는 메타데이터 값을 앱이 임의로 생성해 보장하지 않는다.
+- `RAW+JPG` 모드는 RAW DNG와 처리 사진의 해상도, 픽셀 단위 프레이밍, 압축, 후처리 결과가 완전히 동일함을 보장하지 않는다.
+- `JPG`, `RAW`, `RAW+JPG` 모두 카메라 미리보기와 저장 결과의 해상도, 픽셀 단위 프레이밍, 압축, 후처리 결과가 완전히 동일함을 보장하지 않는다.
+- `JPG`, `RAW`, `RAW+JPG` 모두 플랫폼이 제공하지 않는 메타데이터 값을 앱이 임의로 생성해 보장하지 않는다.
 
 ### Android JPG
 
@@ -61,6 +64,14 @@
 - Android `RAW` 모드는 기기가 CameraX RAW 출력을 지원하지 않으면 Android `JPG` 모드 정책에 따라 Ultra HDR JPEG 또는 표준 JPEG로 저장한다.
 - Android `RAW` 모드는 CameraX RAW 출력이 제공하지 않는 JPEG 압축 품질, Ultra HDR 후처리, OEM 전용 초고해상도 처리를 보장하지 않는다.
 - Android `RAW` 모드는 CameraX RAW 출력과 별도의 처리 사진을 동시에 저장한다고 보장하지 않는다.
+
+### Android RAW+JPG
+
+- Android `RAW+JPG` 모드는 기기가 CameraX RAW+JPEG 출력을 지원하면 DNG 파일과 표준 JPEG 파일을 함께 저장한다.
+- Android `RAW+JPG` 모드의 표준 JPEG 파일은 JPEG 압축 품질 100을 요청한다.
+- Android `RAW+JPG` 모드는 CameraX가 접근할 수 있는 RAW+JPEG 출력 후보 중 가장 높은 해상도를 우선하여 저장한다.
+- Android `RAW+JPG` 모드는 CameraX RAW+JPEG 출력이 Ultra HDR JPEG를 제공한다고 보장하지 않는다.
+- Android `RAW+JPG` 모드는 기기가 CameraX RAW+JPEG 출력을 지원하지 않으면 Android `JPG` 모드 정책에 따라 Ultra HDR JPEG 또는 표준 JPEG로 저장한다.
 
 ### Android 메타데이터
 
@@ -90,11 +101,18 @@
 - iOS `RAW` 모드는 깊이 데이터와 카메라 보정 데이터 포함을 보장하지 않는다.
 - iOS `RAW` 모드는 RAW DNG와 별도의 처리 사진을 동시에 저장한다고 보장하지 않는다.
 
+### iOS RAW+JPG
+
+- iOS `RAW+JPG` 모드는 기기가 AVFoundation DNG RAW 사진 출력을 지원하면 DNG 파일과 iOS `JPG` 모드 정책의 처리 사진을 함께 저장한다.
+- iOS `RAW+JPG` 모드는 기기가 AVFoundation DNG RAW 사진 출력을 지원하지 않으면 iOS `JPG` 모드 정책에 따라 HEVC/HEIF 또는 JPEG 처리 사진으로 저장한다.
+- iOS `RAW+JPG` 모드는 `AVCapturePhotoSettings.photoQualityPrioritization`을 설정하지 않는다.
+- iOS `RAW+JPG` 모드는 깊이 데이터와 카메라 보정 데이터 포함을 보장하지 않는다.
+
 ### iOS 메타데이터
 
 - iOS 촬영 결과는 방향, TIFF 정보, GPS 위치, EXIF 카메라 속성, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 렌즈 정보, Live Photo 메타데이터 중 AVFoundation과 Photos가 제공하는 값을 보존한다.
 - iOS 촬영 결과는 카메라 장치 이름, 카메라 장치 유형, 수평 화각, 왜곡 보정 수평 화각, 지원 ISO 범위, 지원 노출 시간 범위, 지원 노출 보정 범위, 최대 사진 해상도를 앱 메타데이터로 추가 기록한다.
-- 비디오 캡처가 제공되는 경우 캡처 모드 전환 순서는 `JPG`, `RAW`, `VIDEO` 순서로 반복된다.
+- 비디오 캡처가 제공되는 경우 캡처 모드 전환 순서는 `JPG`, `RAW`, `RAW+JPG`, `VIDEO` 순서로 반복된다.
 
 ## 참고
 
@@ -102,6 +120,7 @@
 - [Android CameraX 해상도 설정](https://developer.android.com/media/camera/camerax/configuration)
 - [AndroidX ImageCapture](https://developer.android.com/reference/androidx/camera/core/ImageCapture)
 - [AndroidX ImageCaptureCapabilities](https://developer.android.com/reference/androidx/camera/core/ImageCaptureCapabilities)
+- [AndroidX ImageCapture.OutputFileResults](https://developer.android.com/reference/androidx/camera/core/ImageCapture.OutputFileResults)
 - [AndroidX ResolutionSelector](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)
 - [AndroidX ImageCapture.Metadata](https://developer.android.com/reference/androidx/camera/core/ImageCapture.Metadata)
 - [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
