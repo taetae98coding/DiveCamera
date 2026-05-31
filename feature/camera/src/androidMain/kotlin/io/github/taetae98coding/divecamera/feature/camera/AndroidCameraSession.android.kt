@@ -110,6 +110,7 @@ internal class AndroidCameraSession(
                 outputFormat = selectedOutputFormat,
                 cameraExifMetadata = cameraExifMetadata,
                 cameraCharacteristics = cameraCharacteristics,
+                isFrontFacingCamera = camera.cameraInfo.isFrontFacing(),
             )
 
             provider.bindToLifecycle(

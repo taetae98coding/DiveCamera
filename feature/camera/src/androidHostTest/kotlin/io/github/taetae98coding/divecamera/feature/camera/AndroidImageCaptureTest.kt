@@ -1,8 +1,11 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.ImageFormat
 import android.location.Location
+import android.media.ExifInterface as PlatformExifInterface
 import android.view.Surface
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -10,15 +13,19 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.exifinterface.media.ExifInterface
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.awt.image.BufferedImage
 import java.io.File
+import javax.imageio.ImageIO
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class AndroidImageCaptureTest {
     @Test
     fun androidImageCaptureUsesMaximizeQualityMode() {
@@ -106,10 +113,132 @@ class AndroidImageCaptureTest {
             longitude = GPS_LONGITUDE
         }
 
-        assertTrue(ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawLocationWrite(location))
-        assertTrue(ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawLocationWrite(location))
-        assertFalse(ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawLocationWrite(location))
-        assertFalse(ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawLocationWrite(null))
+        assertTrue(
+            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
+                location = location,
+                isFrontFacingCamera = false,
+            ),
+        )
+        assertTrue(
+            ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawWrite(
+                location = location,
+                isFrontFacingCamera = false,
+            ),
+        )
+        assertFalse(
+            ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawWrite(
+                location = location,
+                isFrontFacingCamera = false,
+            ),
+        )
+        assertFalse(
+            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
+                location = null,
+                isFrontFacingCamera = false,
+            ),
+        )
+    }
+
+    @Test
+    fun androidFrontRawOutputUsesInMemoryRawWriteWithoutLocation() {
+        assertTrue(
+            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
+                location = null,
+                isFrontFacingCamera = true,
+            ),
+        )
+        assertTrue(
+            ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawWrite(
+                location = null,
+                isFrontFacingCamera = true,
+            ),
+        )
+        assertFalse(
+            ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawWrite(
+                location = null,
+                isFrontFacingCamera = true,
+            ),
+        )
+    }
+
+    @Test
+    fun androidFrontCameraImageCaptureMetadataUsesHorizontalReverse() {
+        val metadata = androidImageCaptureMetadata(
+            location = null,
+            isFrontFacingCamera = true,
+        )
+
+        assertTrue(metadata.isReversedHorizontal)
+    }
+
+    @Test
+    fun androidBackCameraImageCaptureMetadataDoesNotUseHorizontalReverse() {
+        val metadata = androidImageCaptureMetadata(
+            location = null,
+            isFrontFacingCamera = false,
+        )
+
+        assertFalse(metadata.isReversedHorizontal)
+    }
+
+    @Test
+    fun androidFrontFacingJpegNormalizationBakesHorizontalReverseIntoPixels() {
+        val normalizedJpeg = normalizeAndroidFrontFacingJpeg(
+            bytes = createTwoColorJpegBytes(
+                exifOrientation = ExifInterface.ORIENTATION_FLIP_HORIZONTAL,
+            ),
+        )
+
+        val bitmap = BitmapFactory.decodeByteArray(
+            normalizedJpeg.bytes,
+            0,
+            normalizedJpeg.bytes.size,
+        )
+
+        assertEquals(ExifInterface.ORIENTATION_NORMAL, normalizedJpeg.exifOrientation)
+        val leftPixel = bitmap.pixelAt(LEFT_SAMPLE_X)
+        val rightPixel = bitmap.pixelAt(RIGHT_SAMPLE_X)
+        assertTrue(leftPixel.colorMessage("left"), leftPixel.isBlueDominant())
+        assertTrue(rightPixel.colorMessage("right"), rightPixel.isRedDominant())
+    }
+
+    @Test
+    fun androidFrontFacingJpegDisplayOrientationAddsMirrorToRotation() {
+        assertEquals(
+            ExifInterface.ORIENTATION_TRANSPOSE,
+            androidFrontFacingJpegDisplayOrientation(
+                exifOrientation = ExifInterface.ORIENTATION_ROTATE_90,
+            ),
+        )
+    }
+
+    @Test
+    fun androidFrontFacingDngOrientationAddsMirrorToRotation() {
+        assertEquals(
+            PlatformExifInterface.ORIENTATION_FLIP_HORIZONTAL,
+            androidDngExifOrientation(
+                rotationDegrees = 0,
+                isFrontFacingCamera = true,
+            ),
+        )
+        assertEquals(
+            PlatformExifInterface.ORIENTATION_TRANSPOSE,
+            androidDngExifOrientation(
+                rotationDegrees = 90,
+                isFrontFacingCamera = true,
+            ),
+        )
+    }
+
+    @Test
+    fun androidBackFacingDngOrientationKeepsRotation() {
+        assertEquals(
+            PlatformExifInterface.ORIENTATION_ROTATE_90,
+            androidDngExifOrientation(
+                rotationDegrees = 90,
+                isFrontFacingCamera = false,
+            ),
+        )
     }
 
     @Test
@@ -297,8 +426,43 @@ class AndroidImageCaptureTest {
         return ExifInterface(file)
     }
 
+    private fun createTwoColorJpegBytes(exifOrientation: Int): ByteArray {
+        val file = File.createTempFile("divecamera-orientation-test", ".jpg")
+        val image = BufferedImage(TEST_JPEG_WIDTH, TEST_JPEG_HEIGHT, BufferedImage.TYPE_INT_RGB)
+        for (x in 0 until TEST_JPEG_WIDTH) {
+            for (y in 0 until TEST_JPEG_HEIGHT) {
+                image.setRGB(
+                    x,
+                    y,
+                    if (x < TEST_JPEG_WIDTH / 2) AWT_RED else AWT_BLUE,
+                )
+            }
+        }
+        ImageIO.write(image, "jpg", file)
+        ExifInterface(file).apply {
+            setAttribute(ExifInterface.TAG_ORIENTATION, exifOrientation.toString())
+            saveAttributes()
+        }
+
+        return file.readBytes()
+    }
+
+    private fun Bitmap.pixelAt(x: Int): Int = getPixel(x, height / 2)
+
+    private fun Int.isRedDominant(): Boolean = Color.red(this) > Color.blue(this)
+
+    private fun Int.isBlueDominant(): Boolean = Color.blue(this) > Color.red(this)
+
+    private fun Int.colorMessage(label: String): String = "$label red=${Color.red(this)} blue=${Color.blue(this)}"
+
     private companion object {
         private const val MAX_JPEG_QUALITY = 100
+        private const val TEST_JPEG_WIDTH = 40
+        private const val TEST_JPEG_HEIGHT = 10
+        private const val LEFT_SAMPLE_X = 4
+        private const val RIGHT_SAMPLE_X = 35
+        private const val AWT_RED = 0xFF0000
+        private const val AWT_BLUE = 0x0000FF
         private const val SENSOR_WIDTH_MM = 6.4F
         private const val SENSOR_HEIGHT_MM = 4.8F
         private const val APERTURE = 1.8F

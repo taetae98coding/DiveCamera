@@ -8,6 +8,7 @@ import kotlinx.cinterop.CValue
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFoundation.AVCaptureDevice
+import platform.AVFoundation.AVCaptureDevicePositionFront
 import platform.AVFoundation.AVCapturePhoto
 import platform.AVFoundation.AVCapturePhotoCaptureDelegateProtocol
 import platform.AVFoundation.AVCapturePhotoOutput
@@ -16,6 +17,7 @@ import platform.AVFoundation.AVCapturePhotoSettings
 import platform.AVFoundation.AVCaptureResolvedPhotoSettings
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVFileTypeDNG
+import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.AVVideoCodecKey
 import platform.AVFoundation.AVVideoCodecTypeHEVC
 import platform.AVFoundation.AVVideoCodecTypeJPEG
@@ -25,6 +27,7 @@ import platform.AVFoundation.depthDataDeliverySupported
 import platform.AVFoundation.deviceType
 import platform.AVFoundation.fileDataRepresentation
 import platform.AVFoundation.geometricDistortionCorrectedVideoFieldOfView
+import platform.AVFoundation.position
 import platform.CoreLocation.CLLocation
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.CLLocationManagerDelegateProtocol
@@ -58,6 +61,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     ) {
         if (session.canAddOutput(photoOutput)) {
             session.addOutput(photoOutput)
+            photoOutput.configureVideoMirroring(device)
             cameraMetadata = IosCameraMetadata.from(device)
             photoOutput.maxPhotoQualityPrioritization = AVCapturePhotoQualityPrioritizationQuality
             device.bestPhotoDimensions()?.let { dimensions ->
@@ -134,6 +138,17 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     fun release() {
         locationProvider.stopUpdating()
     }
+}
+
+private fun AVCapturePhotoOutput.configureVideoMirroring(device: AVCaptureDevice) {
+    val connection = connectionWithMediaType(AVMediaTypeVideo)
+        ?: return
+    if (!connection.supportsVideoMirroring) {
+        return
+    }
+
+    connection.automaticallyAdjustsVideoMirroring = false
+    connection.videoMirrored = device.position == AVCaptureDevicePositionFront
 }
 
 private data class IosCameraMetadata(
