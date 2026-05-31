@@ -10,24 +10,29 @@ import android.location.LocationManager
 import android.os.Looper
 import android.provider.MediaStore
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.takePicture
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class AndroidImageCapture(
     private val context: Context,
     override val captureMode: CameraCaptureMode = CameraCaptureMode.Jpg,
     targetRotation: Int,
-    outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG,
+    private val outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG,
     private val cameraExifMetadata: AndroidCameraExifMetadata = AndroidCameraExifMetadata.Empty,
 ) : AndroidPhotoCapture {
     private val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
-    private val photoFileFormat = AndroidPhotoFileFormat.fromOutputFormat(outputFormat)
     private val locationProvider = AndroidPhotoLocationProvider(context).apply {
         start()
     }
@@ -44,21 +49,16 @@ internal class AndroidImageCapture(
     override suspend fun capturePhoto(onError: (String) -> Unit) {
         val location = locationProvider.currentLocation()?.let(::Location)
         try {
-            val outputFileResults = useCase.takePicture(
-                context.createImageOutputOptions(
+            if (outputFormat == ImageCapture.OUTPUT_FORMAT_RAW_JPEG) {
+                captureRawJpegPhoto(
                     location = location,
-                    photoFileFormat = photoFileFormat,
-                ),
-            )
-            outputFileResults.savedUri?.let { uri ->
-                cameraExifMetadata.writeTo(
-                    context = context,
-                    uri = uri,
-                    captureResultMetadata = captureResultExifMetadata.snapshot(),
-                    gpsLocation = location,
-                )?.let { throwable ->
-                    onError(throwable.platformErrorMessage())
-                }
+                    onError = onError,
+                )
+            } else {
+                captureSinglePhoto(
+                    location = location,
+                    onError = onError,
+                )
             }
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
@@ -72,15 +72,118 @@ internal class AndroidImageCapture(
     fun release() {
         locationProvider.stop()
     }
+
+    private suspend fun captureSinglePhoto(
+        location: Location?,
+        onError: (String) -> Unit,
+    ) {
+        val outputFileResults = useCase.takePicture(
+            context.createImageOutputOptions(
+                location = location,
+                photoFileFormat = AndroidPhotoFileFormat.fromOutputFormat(outputFormat),
+            ),
+        )
+        outputFileResults.writeMetadata(
+            location = location,
+            onError = onError,
+        )
+    }
+
+    private suspend fun captureRawJpegPhoto(
+        location: Location?,
+        onError: (String) -> Unit,
+    ) {
+        val displayNameBase = PHOTO_FILE_NAME_FORMAT.format(Date())
+        val outputFileResults = useCase.takeRawJpegPicture(
+            rawOutputFileOptions = context.createImageOutputOptions(
+                location = location,
+                photoFileFormat = AndroidPhotoFileFormat.Dng,
+                displayNameBase = displayNameBase,
+            ),
+            jpegOutputFileOptions = context.createImageOutputOptions(
+                location = location,
+                photoFileFormat = AndroidPhotoFileFormat.Jpeg,
+                displayNameBase = displayNameBase,
+            ),
+        )
+        outputFileResults.forEach { result ->
+            result.writeMetadata(
+                location = location,
+                onError = onError,
+            )
+        }
+    }
+
+    private fun ImageCapture.OutputFileResults.writeMetadata(
+        location: Location?,
+        onError: (String) -> Unit,
+    ) {
+        savedUri?.let { uri ->
+            cameraExifMetadata.writeTo(
+                context = context,
+                uri = uri,
+                captureResultMetadata = captureResultExifMetadata.snapshot(),
+                gpsLocation = location,
+            )?.let { throwable ->
+                onError(throwable.platformErrorMessage())
+            }
+        }
+    }
 }
 
 private fun Throwable.platformErrorMessage(): String = message ?: toString()
 
+private suspend fun ImageCapture.takeRawJpegPicture(
+    rawOutputFileOptions: ImageCapture.OutputFileOptions,
+    jpegOutputFileOptions: ImageCapture.OutputFileOptions,
+): List<ImageCapture.OutputFileResults> = suspendCancellableCoroutine { continuation ->
+    val isComplete = AtomicBoolean(false)
+    val lock = Any()
+    val results = mutableListOf<ImageCapture.OutputFileResults>()
+    val callback = object : ImageCapture.OnImageSavedCallback {
+        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+            val completedResults = synchronized(lock) {
+                if (isComplete.get()) {
+                    null
+                } else {
+                    results += outputFileResults
+                    if (results.size == RAW_JPEG_OUTPUT_FILE_COUNT && isComplete.compareAndSet(false, true)) {
+                        results.toList()
+                    } else {
+                        null
+                    }
+                }
+            }
+
+            completedResults?.let { result ->
+                continuation.resume(result)
+            }
+        }
+
+        override fun onError(exception: ImageCaptureException) {
+            if (isComplete.compareAndSet(false, true)) {
+                continuation.resumeWithException(exception)
+            }
+        }
+    }
+    continuation.invokeOnCancellation {
+        isComplete.set(true)
+    }
+
+    takePicture(
+        rawOutputFileOptions,
+        jpegOutputFileOptions,
+        DIRECT_EXECUTOR,
+        callback,
+    )
+}
+
 private fun Context.createImageOutputOptions(
     location: Location?,
     photoFileFormat: AndroidPhotoFileFormat,
+    displayNameBase: String = PHOTO_FILE_NAME_FORMAT.format(Date()),
 ): ImageCapture.OutputFileOptions {
-    val displayName = "${PHOTO_FILE_NAME_FORMAT.format(Date())}.${photoFileFormat.extension}"
+    val displayName = "$displayNameBase.${photoFileFormat.extension}"
     val contentValues = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
         put(MediaStore.MediaColumns.MIME_TYPE, photoFileFormat.mimeType)
@@ -195,6 +298,11 @@ private const val MIN_EXIF_LONGITUDE = -180.0
 private const val MAX_EXIF_LONGITUDE = 180.0
 private const val LOCATION_UPDATE_MIN_TIME_MILLIS = 5_000L
 private const val LOCATION_UPDATE_MIN_DISTANCE_METERS = 0F
+
+private const val RAW_JPEG_OUTPUT_FILE_COUNT = 2
+private val DIRECT_EXECUTOR = Executor { command ->
+    command.run()
+}
 
 private const val PHOTO_RELATIVE_PATH = "Pictures/DiveCamera"
 private const val MAX_JPEG_QUALITY = 100

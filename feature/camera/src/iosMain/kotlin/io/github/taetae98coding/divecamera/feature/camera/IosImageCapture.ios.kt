@@ -18,6 +18,7 @@ import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVFileTypeDNG
 import platform.AVFoundation.AVVideoCodecKey
 import platform.AVFoundation.AVVideoCodecTypeHEVC
+import platform.AVFoundation.AVVideoCodecTypeJPEG
 import platform.AVFoundation.CMVideoDimensionsValue
 import platform.AVFoundation.depthDataDeliveryEnabled
 import platform.AVFoundation.depthDataDeliverySupported
@@ -108,9 +109,11 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
                 cameraMetadata = cameraMetadata,
                 location = location,
             )
+            val expectedPhotoResultCount = photoOutput.expectedPhotoResultCount(captureMode)
             lateinit var delegate: PhotoCaptureDelegate
             delegate = PhotoCaptureDelegate(
                 location = location,
+                expectedPhotoResultCount = expectedPhotoResultCount,
                 onError = onError,
                 onComplete = {
                     dispatchOnSessionQueue {
@@ -220,7 +223,7 @@ private fun AVCapturePhotoOutput.createPhotoSettings(
         AVCapturePhotoSettings.photoSettingsWithRawPixelFormatType(
             rawPixelFormatType = rawPhotoPixelFormatType,
             rawFileType = AVFileTypeDNG,
-            processedFormat = null,
+            processedFormat = processedPhotoFormat(captureMode),
             processedFileType = null,
         )
     } else if (AVVideoCodecTypeHEVC in availablePhotoCodecTypes) {
@@ -247,8 +250,41 @@ private fun AVCapturePhotoOutput.createPhotoSettings(
     return settings
 }
 
+private fun AVCapturePhotoOutput.processedPhotoFormat(captureMode: CameraCaptureMode): Map<Any?, *>? {
+    if (captureMode != CameraCaptureMode.RawJpg) {
+        return null
+    }
+
+    return when {
+        AVVideoCodecTypeHEVC in availablePhotoCodecTypes -> mapOf(
+            AVVideoCodecKey to AVVideoCodecTypeHEVC,
+        )
+
+        AVVideoCodecTypeJPEG in availablePhotoCodecTypes -> mapOf(
+            AVVideoCodecKey to AVVideoCodecTypeJPEG,
+        )
+
+        else -> null
+    }
+}
+
+private fun AVCapturePhotoOutput.expectedPhotoResultCount(captureMode: CameraCaptureMode): Int {
+    val canCaptureRawJpg = captureMode == CameraCaptureMode.RawJpg &&
+        supportsRawDngPhotoCapture() &&
+        processedPhotoFormat(captureMode) != null
+
+    return if (canCaptureRawJpg) {
+        RAW_JPG_PHOTO_RESULT_COUNT
+    } else {
+        SINGLE_PHOTO_RESULT_COUNT
+    }
+}
+
 private fun AVCapturePhotoOutput.rawPhotoPixelFormatType(captureMode: CameraCaptureMode): UInt? {
-    if (captureMode != CameraCaptureMode.Raw) {
+    if (captureMode != CameraCaptureMode.Raw && captureMode != CameraCaptureMode.RawJpg) {
+        return null
+    }
+    if (captureMode == CameraCaptureMode.RawJpg && processedPhotoFormat(captureMode) == null) {
         return null
     }
     if (!supportsRawDngPhotoCapture()) {
@@ -399,14 +435,18 @@ private const val MAX_GPS_LATITUDE = 90.0
 private const val MIN_GPS_LONGITUDE = -180.0
 private const val MAX_GPS_LONGITUDE = 180.0
 private const val METADATA_DECIMAL_SCALE = 1000.0
+private const val SINGLE_PHOTO_RESULT_COUNT = 1
+private const val RAW_JPG_PHOTO_RESULT_COUNT = 2
 
 private class PhotoCaptureDelegate(
     private val location: CLLocation?,
+    private val expectedPhotoResultCount: Int,
     private val onError: (String) -> Unit,
     private val onComplete: () -> Unit,
 ) : NSObject(),
     AVCapturePhotoCaptureDelegateProtocol {
     private var isComplete = false
+    private var remainingPhotoResultCount = expectedPhotoResultCount
 
     override fun captureOutput(
         output: AVCapturePhotoOutput,
@@ -420,7 +460,7 @@ private class PhotoCaptureDelegate(
 
         val photoData = didFinishProcessingPhoto.fileDataRepresentation()
         if (photoData == null) {
-            complete()
+            completePhotoResult()
             return
         }
 
@@ -438,7 +478,7 @@ private class PhotoCaptureDelegate(
                 if (error != null) {
                     onError(error.localizedDescription)
                 }
-                complete()
+                completePhotoResult()
             },
         )
     }
@@ -460,6 +500,17 @@ private class PhotoCaptureDelegate(
 
         onError(message)
         complete()
+    }
+
+    private fun completePhotoResult() {
+        if (isComplete) {
+            return
+        }
+
+        remainingPhotoResultCount -= 1
+        if (remainingPhotoResultCount <= 0) {
+            complete()
+        }
     }
 
     private fun complete() {

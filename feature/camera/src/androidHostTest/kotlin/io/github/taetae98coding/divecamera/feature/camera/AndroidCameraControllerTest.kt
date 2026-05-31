@@ -83,6 +83,20 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidCameraControllerCapturesRawJpgWhenRequestedModeMatches() = runBlocking {
+        val controller = AndroidCameraController()
+        val photoCapture = FakeAndroidPhotoCapture(captureMode = CameraCaptureMode.RawJpg)
+        controller.updateImageCapture(photoCapture)
+
+        controller.capturePhoto(CameraCaptureMode.RawJpg)
+
+        assertEquals(
+            1,
+            photoCapture.capturePhotoCount,
+        )
+    }
+
+    @Test
     fun androidCameraControllerEmitsPhotoSaveErrorMessage() = runBlocking {
         val errorMessage = "CameraX save failed"
         val controller = AndroidCameraController()

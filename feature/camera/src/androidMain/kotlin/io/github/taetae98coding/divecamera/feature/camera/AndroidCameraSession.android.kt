@@ -57,7 +57,7 @@ internal class AndroidCameraSession(
             )
             val supportedOutputFormats = ImageCapture.getImageCaptureCapabilities(camera.cameraInfo)
                 .supportedOutputFormats
-            val isRawCaptureSupported = ImageCapture.OUTPUT_FORMAT_RAW in supportedOutputFormats
+            val isRawCaptureSupported = supportedOutputFormats.supportsRawCapture()
             val nextImageCapture = AndroidImageCapture(
                 context = context,
                 captureMode = captureMode,
@@ -97,9 +97,17 @@ internal class AndroidCameraSession(
     }
 }
 
+private fun Collection<Int>.supportsRawCapture(): Boolean {
+    return ImageCapture.OUTPUT_FORMAT_RAW in this ||
+        ImageCapture.OUTPUT_FORMAT_RAW_JPEG in this
+}
+
 private fun Collection<Int>.preferredImageOutputFormat(captureMode: CameraCaptureMode): Int {
     if (captureMode == CameraCaptureMode.Raw && ImageCapture.OUTPUT_FORMAT_RAW in this) {
         return ImageCapture.OUTPUT_FORMAT_RAW
+    }
+    if (captureMode == CameraCaptureMode.RawJpg && ImageCapture.OUTPUT_FORMAT_RAW_JPEG in this) {
+        return ImageCapture.OUTPUT_FORMAT_RAW_JPEG
     }
 
     return if (ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR in this) {

@@ -18,7 +18,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 internal const val CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG = "camera-capture-mode-switch-button"
 internal const val RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG = "camera-raw-unsupported-warning-icon"
@@ -51,9 +53,10 @@ internal fun CaptureModeSwitchButton(
         Text(
             text = captureMode.label,
             color = Color.White,
+            textAlign = TextAlign.Center,
         )
 
-        if (captureMode == CameraCaptureMode.Raw && rawCaptureSupportState == RawCaptureSupportState.Unsupported) {
+        if (captureMode.requiresRawSupport() && rawCaptureSupportState == RawCaptureSupportState.Unsupported) {
             RawUnsupportedWarningIcon(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -63,7 +66,15 @@ internal fun CaptureModeSwitchButton(
     }
 }
 
-internal val CAPTURE_MODE_SWITCH_BUTTON_SIZE = 56.dp
+private fun CameraCaptureMode.requiresRawSupport(): Boolean = when (this) {
+    CameraCaptureMode.Jpg -> false
+
+    CameraCaptureMode.Raw,
+    CameraCaptureMode.RawJpg,
+    -> true
+}
+
+internal val CAPTURE_MODE_SWITCH_BUTTON_SIZE = 72.dp
 
 @Composable
 private fun RawUnsupportedWarningIcon(modifier: Modifier = Modifier) {

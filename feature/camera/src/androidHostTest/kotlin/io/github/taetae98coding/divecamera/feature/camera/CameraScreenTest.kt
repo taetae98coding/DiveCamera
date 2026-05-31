@@ -345,11 +345,32 @@ class CameraScreenTest {
     }
 
     @Test
-    fun cameraScreenChangesCaptureModeBackToJpgWhenModeSwitchButtonClickedTwice() {
+    fun cameraScreenChangesCaptureModeToRawJpgWhenModeSwitchButtonClickedTwice() {
         composeRule.setContent {
             CameraScreen()
         }
 
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.RawJpg.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenChangesCaptureModeBackToJpgWhenModeSwitchButtonClickedThreeTimes() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
         composeRule
             .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
             .performClick()
@@ -420,6 +441,72 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDoesNotDisplayRawUnsupportedWarningWhenRawJpgSupportIsChecking() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Checking,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun cameraScreenDisplaysRawUnsupportedWarningWhenRawJpgModeIsUnsupported() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Unsupported,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDoesNotDisplayRawUnsupportedWarningWhenRawJpgModeIsSupported() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    rawCaptureSupportState = RawCaptureSupportState.Supported,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun cameraScreenCallsCameraControllerCapturePhotoWhenCaptureButtonClicked() {
         val cameraController = FakeCameraController()
 
@@ -459,6 +546,32 @@ class CameraScreenTest {
         composeRule.runOnIdle {
             assertEquals(1, cameraController.photoCaptureCount)
             assertEquals(CameraCaptureMode.Raw, cameraController.lastCaptureMode)
+        }
+    }
+
+    @Test
+    fun cameraScreenCallsCameraControllerCapturePhotoWithRawJpgMode() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.photoCaptureCount)
+            assertEquals(CameraCaptureMode.RawJpg, cameraController.lastCaptureMode)
         }
     }
 
