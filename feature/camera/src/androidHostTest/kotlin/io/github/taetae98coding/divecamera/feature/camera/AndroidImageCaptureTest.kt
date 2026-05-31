@@ -251,9 +251,7 @@ class AndroidImageCaptureTest {
         outputFormat = outputFormat,
     )
 
-    private fun createAndroidCameraExifMetadata(
-        physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata> = emptyMap(),
-    ): AndroidCameraExifMetadata = AndroidCameraExifMetadata(
+    private fun createAndroidCameraExifMetadata(physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata> = emptyMap()): AndroidCameraExifMetadata = AndroidCameraExifMetadata(
         sensorPhysicalSize = AndroidSensorPhysicalSize(
             width = SENSOR_WIDTH_MM,
             height = SENSOR_HEIGHT_MM,
