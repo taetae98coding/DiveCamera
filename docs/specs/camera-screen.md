@@ -13,6 +13,7 @@
 - 카메라 화면의 기본 캡처 모드는 `JPG`이다.
 - 캡처 모드 전환 버튼은 현재 캡처 모드를 표시한다.
 - 사용자가 캡처 모드 전환 버튼을 선택하면 현재 캡처 모드는 `JPG`, `RAW` 순서로 반복 변경된다.
+- 현재 캡처 모드가 `RAW`이고 기기가 RAW 사진 촬영을 지원하지 않으면 캡처 모드 전환 버튼의 우측 상단에 작은 노란색 주의 아이콘을 표시한다.
 - 사진 촬영 버튼을 누르면 현재 캡처 모드로 카메라 사진을 촬영한다.
 - 촬영한 사진은 기기의 기본 갤러리 앱에서 볼 수 있도록 저장한다.
 - 촬영한 사진은 카메라 사진 기본 프레임 전체를 담는다.
@@ -37,6 +38,7 @@
 - Android 사진은 기기가 지원하면 Ultra HDR JPEG로 저장한다.
 - Android 사진은 Ultra HDR JPEG를 지원하지 않으면 표준 JPEG로 저장한다.
 - Android RAW 사진은 기기가 CameraX RAW 출력을 지원하면 DNG 파일로 저장한다.
+- Android RAW 사진은 기기가 CameraX RAW 출력을 지원하지 않으면 일반 사진 출력 정책에 따라 저장한다.
 - Android 사진은 EXIF 방향, 촬영 시각, 이미지 크기, GPS 위치, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 35mm 환산 초점거리, 렌즈 사양, 렌즈 모델 중 플랫폼이 제공하는 값을 보존한다.
 - Android 사진은 실제 캡처 결과가 제공하는 ISO 감도, 조리개 F값, 셔터 스피드, 초점거리를 EXIF 표준 태그에 우선 기록한다.
 - Android 사진은 센서 물리 크기, 지원 ISO 범위, 지원 조리개 범위, 지원 초점거리, 계산 가능한 카메라 화각, 카메라 식별자, 렌즈 방향을 앱 메타데이터로 추가 기록한다.
@@ -48,6 +50,7 @@
 - iOS 사진은 기기가 지원하면 HEVC/HEIF 처리 사진으로 저장한다.
 - iOS 사진은 HEVC/HEIF를 지원하지 않으면 JPEG 처리 사진으로 저장한다.
 - iOS RAW 사진은 기기가 AVFoundation DNG RAW 사진 출력을 지원하면 DNG 파일로 저장한다.
+- iOS RAW 사진은 기기가 AVFoundation DNG RAW 사진 출력을 지원하지 않으면 일반 사진 출력 정책에 따라 저장한다.
 - iOS RAW 사진은 `AVCapturePhotoSettings.photoQualityPrioritization`을 설정하지 않는다.
 - iOS RAW 촬영에서 `AVCapturePhotoSettings.photoQualityPrioritization`을 설정하면 AVFoundation이 `NSInvalidArgumentException`을 발생시킨다.
 - iOS 사진은 방향, TIFF 정보, GPS 위치, EXIF 카메라 속성, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 렌즈 정보, Live Photo 메타데이터 중 플랫폼이 제공하는 값을 보존한다.

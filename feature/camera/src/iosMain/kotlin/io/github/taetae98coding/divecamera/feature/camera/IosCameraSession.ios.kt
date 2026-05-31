@@ -73,6 +73,7 @@ internal class IosCameraSession(private val cameraController: CameraController) 
         val device = configureInput()
         if (device != null) {
             imageCapture.configure(session, device)
+            cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
         }
         session.commitConfiguration()
     }

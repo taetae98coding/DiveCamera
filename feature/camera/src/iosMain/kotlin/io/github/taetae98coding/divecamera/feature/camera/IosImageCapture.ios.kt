@@ -46,6 +46,9 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     private var cameraMetadata = IosCameraMetadata.Empty
     private var isConfigured = false
 
+    var isRawCaptureSupported = false
+        private set
+
     fun configure(
         session: AVCaptureSession,
         device: AVCaptureDevice,
@@ -57,6 +60,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             device.bestPhotoDimensions()?.let { dimensions ->
                 photoOutput.maxPhotoDimensions = dimensions
             }
+            isRawCaptureSupported = photoOutput.supportsRawDngPhotoCapture()
             if (photoOutput.depthDataDeliverySupported) {
                 photoOutput.depthDataDeliveryEnabled = true
             }
@@ -237,7 +241,7 @@ private fun AVCapturePhotoOutput.rawPhotoPixelFormatType(captureMode: CameraCapt
     if (captureMode != CameraCaptureMode.Raw) {
         return null
     }
-    if (AVFileTypeDNG !in availableRawPhotoFileTypes) {
+    if (!supportsRawDngPhotoCapture()) {
         return null
     }
 
@@ -246,6 +250,11 @@ private fun AVCapturePhotoOutput.rawPhotoPixelFormatType(captureMode: CameraCapt
         is UInt -> value
         else -> null
     }
+}
+
+private fun AVCapturePhotoOutput.supportsRawDngPhotoCapture(): Boolean {
+    return AVFileTypeDNG in availableRawPhotoFileTypes &&
+        supportedRawPhotoPixelFormatTypesForFileType(AVFileTypeDNG).isNotEmpty()
 }
 
 private class IosPhotoLocationProvider :

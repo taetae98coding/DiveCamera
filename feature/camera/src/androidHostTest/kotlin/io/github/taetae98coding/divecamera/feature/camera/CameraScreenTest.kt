@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -297,6 +299,40 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysRawUnsupportedWarningWhenRawModeIsUnsupported() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(isRawCaptureSupported = false),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDoesNotDisplayRawUnsupportedWarningWhenRawModeIsSupported() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(isRawCaptureSupported = true),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(RAW_UNSUPPORTED_WARNING_ICON_TEST_TAG, useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun cameraScreenCallsCameraControllerCapturePhotoWhenCaptureButtonClicked() {
         val cameraController = FakeCameraController()
 
@@ -410,7 +446,10 @@ class CameraScreenTest {
     }
 }
 
-private class FakeCameraController : CameraController {
+private class FakeCameraController(isRawCaptureSupported: Boolean = false) : CameraController {
+    override val isRawCaptureSupported: StateFlow<Boolean> =
+        MutableStateFlow(isRawCaptureSupported)
+
     var photoCaptureCount = 0
         private set
     var lastCaptureMode: CameraCaptureMode? = null

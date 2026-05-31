@@ -21,10 +21,11 @@ import kotlin.coroutines.cancellation.CancellationException
 
 internal class AndroidImageCapture(
     private val context: Context,
+    override val captureMode: CameraCaptureMode = CameraCaptureMode.Jpg,
     targetRotation: Int,
     outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG,
     private val cameraExifMetadata: AndroidCameraExifMetadata = AndroidCameraExifMetadata.Empty,
-) {
+) : AndroidPhotoCapture {
     private val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
     private val photoFileFormat = AndroidPhotoFileFormat.fromOutputFormat(outputFormat)
     private val locationProvider = AndroidPhotoLocationProvider(context).apply {
@@ -40,7 +41,7 @@ internal class AndroidImageCapture(
         .also(captureResultExifMetadata::attachTo)
         .build()
 
-    suspend fun capturePhoto() {
+    override suspend fun capturePhoto() {
         try {
             val location = locationProvider.currentLocation()
             val outputFileResults = useCase.takePicture(

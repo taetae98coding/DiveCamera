@@ -54,10 +54,14 @@ internal class AndroidCameraSession(
                 lifecycleOwner,
                 cameraSelector,
             )
+            val supportedOutputFormats = ImageCapture.getImageCaptureCapabilities(camera.cameraInfo)
+                .supportedOutputFormats
+            val isRawCaptureSupported = ImageCapture.OUTPUT_FORMAT_RAW in supportedOutputFormats
             val nextImageCapture = AndroidImageCapture(
                 context = context,
+                captureMode = captureMode,
                 targetRotation = targetRotation,
-                outputFormat = camera.cameraInfo.preferredImageOutputFormat(captureMode),
+                outputFormat = supportedOutputFormats.preferredImageOutputFormat(captureMode),
                 cameraExifMetadata = AndroidCameraExifMetadata.from(camera.cameraInfo),
             )
 
@@ -69,6 +73,7 @@ internal class AndroidCameraSession(
             )
             imageCapture = nextImageCapture
             cameraProvider = provider
+            cameraController.updateRawCaptureSupported(isRawCaptureSupported)
             cameraController.updateImageCapture(nextImageCapture)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
@@ -91,15 +96,12 @@ internal class AndroidCameraSession(
     }
 }
 
-private fun androidx.camera.core.CameraInfo.preferredImageOutputFormat(captureMode: CameraCaptureMode): Int {
-    val supportedFormats = ImageCapture.getImageCaptureCapabilities(this)
-        .supportedOutputFormats
-
-    if (captureMode == CameraCaptureMode.Raw && ImageCapture.OUTPUT_FORMAT_RAW in supportedFormats) {
+private fun Collection<Int>.preferredImageOutputFormat(captureMode: CameraCaptureMode): Int {
+    if (captureMode == CameraCaptureMode.Raw && ImageCapture.OUTPUT_FORMAT_RAW in this) {
         return ImageCapture.OUTPUT_FORMAT_RAW
     }
 
-    return if (ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR in supportedFormats) {
+    return if (ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR in this) {
         ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR
     } else {
         ImageCapture.OUTPUT_FORMAT_JPEG

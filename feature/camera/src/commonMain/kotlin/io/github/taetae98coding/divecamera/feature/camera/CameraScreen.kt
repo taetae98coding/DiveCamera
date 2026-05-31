@@ -10,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,7 @@ internal fun CameraScreen(
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
+    val isRawCaptureSupported by cameraController.isRawCaptureSupported.collectAsState()
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -93,6 +95,7 @@ internal fun CameraScreen(
 
                 CaptureModeSwitchButton(
                     captureMode = captureMode,
+                    isRawCaptureSupported = isRawCaptureSupported,
                     onClick = {
                         currentRegisterInput()
                         captureMode = captureMode.next()
