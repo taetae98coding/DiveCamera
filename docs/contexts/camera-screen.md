@@ -109,6 +109,13 @@
 
 - Android 촬영 결과는 EXIF 방향, 촬영 시각, 이미지 크기, GPS 위치, ISO 감도, 조리개 F값, 셔터 스피드, 노출 보정값, 측광 모드, 초점거리, 35mm 환산 초점거리, 렌즈 사양, 렌즈 모델 중 CameraX 저장 결과가 제공하는 값을 보존한다.
 - Android 촬영 결과는 실제 캡처 결과가 제공하는 ISO 감도, 조리개 F값, 셔터 스피드, 초점거리를 EXIF 표준 태그가 비어 있는 경우 추가 기록한다.
+- Android DNG 촬영 결과는 AndroidX `ExifInterface.saveAttributes()`가 DNG 쓰기 저장을 지원하지 않으므로 앱 메타데이터 후처리를 생략한다.
+- Android DNG 촬영 결과의 앱 메타데이터 후처리 생략은 저장 오류로 사용자에게 표시하지 않는다.
+- Android CameraX 1.6.1의 on-disk DNG 저장 경로는 `ImageCapture.OutputFileOptions.Metadata`의 위치를 `DngCreator`에 전달하지 않는다.
+- Android RAW 또는 RAW+JPG 촬영에서 위치를 확인할 수 있으면 앱이 RAW 프레임을 인메모리로 받아 `DngCreator.setLocation()`을 호출한 뒤 DNG 파일을 저장한다.
+- Android RAW 인메모리 저장은 `ImageProxy`의 `ImageInfo`에서 CameraX `CameraCaptureResult`를 우선 추출해 `DngCreator`에 필요한 Camera2 `CaptureResult`로 사용한다.
+- Android RAW 인메모리 저장에서 `ImageProxy`의 `ImageInfo`가 Camera2 `CaptureResult`를 제공하지 않으면 `ImageCapture`에 연결된 Camera2Interop 캡처 콜백의 `CaptureResult`를 사용한다.
+- Android RAW 인메모리 저장의 파일 쓰기 작업은 UI 스레드를 막지 않도록 IO dispatcher에서 수행한다.
 - Android 촬영 결과는 센서 물리 크기, 지원 ISO 범위, 지원 조리개 범위, 지원 초점거리, 계산 가능한 카메라 화각, 카메라 식별자, 렌즈 방향을 앱 메타데이터로 추가 기록한다.
 - Android 촬영 결과는 실제 캡처 결과가 제공하는 자동 노출 모드, 자동 노출 상태, 자동 노출 영역 수를 앱 메타데이터로 추가 기록한다.
 - Android 촬영 결과에서 실제 촬영 프레임의 ISO 감도, 조리개 F값, 셔터 스피드, 초점거리, 측광 모드처럼 CameraX 저장 결과가 이미 제공하는 값은 덮어쓰지 않는다.

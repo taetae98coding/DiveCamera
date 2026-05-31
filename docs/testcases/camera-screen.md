@@ -61,3 +61,5 @@
 57. Robolectric `androidHostTest`에서 Android 카메라 메타데이터에 활성 physical 카메라 메타데이터가 있으면 35mm 환산 초점거리는 활성 physical 카메라의 센서 크기를 기준으로 계산된다.
 58. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 활성 physical 카메라 ID가 있으면 촬영 정보 상태의 35mm 환산 초점거리는 활성 physical 카메라 기준 값이다.
 59. Robolectric `androidHostTest`에서 fake `CameraController`의 촬영 정보 상태가 변경되면 촬영 정보 오버레이는 변경된 최신 촬영 정보를 표시한다.
+60. Robolectric `androidHostTest`에서 Android DNG 사진 파일 포맷은 EXIF 메타데이터 후처리 쓰기 저장 대상으로 분류되지 않는다.
+61. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 위치를 확인할 수 있으면 인메모리 RAW 위치 기록 저장 대상으로 분류된다.
