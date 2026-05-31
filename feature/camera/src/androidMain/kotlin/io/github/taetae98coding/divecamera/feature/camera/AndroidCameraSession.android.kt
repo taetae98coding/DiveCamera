@@ -35,13 +35,28 @@ internal class AndroidCameraSession(
     private val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private val cameraPreview = AndroidCameraPreview(
         targetRotation = targetRotation,
+        onCaptureResult = { captureResultMetadata ->
+            cameraController.updateCameraExposureInfo(
+                captureResultMetadata
+                    .toCameraExposureInfo(
+                        focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
+                            focalLength = captureResultMetadata.focalLength,
+                            physicalCameraId = captureResultMetadata.activePhysicalCameraId,
+                        ),
+                    )
+                    .withFallback(cameraExposureInfoFallback),
+            )
+        },
     )
+    private var cameraExifMetadata = AndroidCameraExifMetadata.Empty
+    private var cameraExposureInfoFallback = CameraExposureInfo.Unknown
     private var imageCapture: AndroidImageCapture? = null
     private var cameraProvider: ProcessCameraProvider? = null
 
     suspend fun bind() {
         try {
             cameraController.updateImageCapture(null)
+            cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
             val currentImageCapture = imageCapture
             if (currentImageCapture == null) {
@@ -58,12 +73,17 @@ internal class AndroidCameraSession(
             val supportedOutputFormats = ImageCapture.getImageCaptureCapabilities(camera.cameraInfo)
                 .supportedOutputFormats
             val isRawCaptureSupported = supportedOutputFormats.supportsRawCapture()
+            cameraExifMetadata = AndroidCameraExifMetadata.from(
+                context = context,
+                cameraInfo = camera.cameraInfo,
+            )
+            cameraExposureInfoFallback = cameraExifMetadata.toCameraExposureInfo()
             val nextImageCapture = AndroidImageCapture(
                 context = context,
                 captureMode = captureMode,
                 targetRotation = targetRotation,
                 outputFormat = supportedOutputFormats.preferredImageOutputFormat(captureMode),
-                cameraExifMetadata = AndroidCameraExifMetadata.from(camera.cameraInfo),
+                cameraExifMetadata = cameraExifMetadata,
             )
 
             provider.bindToLifecycle(
@@ -75,6 +95,7 @@ internal class AndroidCameraSession(
             imageCapture = nextImageCapture
             cameraProvider = provider
             cameraController.updateRawCaptureSupported(isRawCaptureSupported)
+            cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
             cameraController.updateImageCapture(nextImageCapture)
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
@@ -87,12 +108,15 @@ internal class AndroidCameraSession(
 
     fun release() {
         cameraController.updateImageCapture(null)
+        cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
         imageCapture?.let { currentImageCapture ->
             currentImageCapture.release()
             cameraProvider?.unbind(cameraPreview.useCase, currentImageCapture.useCase)
         } ?: cameraProvider?.unbind(cameraPreview.useCase)
         imageCapture = null
         cameraProvider = null
+        cameraExifMetadata = AndroidCameraExifMetadata.Empty
+        cameraExposureInfoFallback = CameraExposureInfo.Unknown
         cameraPreview.release()
     }
 }

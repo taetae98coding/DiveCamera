@@ -149,6 +149,84 @@ class AndroidImageCaptureTest {
     }
 
     @Test
+    fun androidCameraExifMetadataWritesFocalLengthIn35mmFilmFromCaptureResult() {
+        val exif = createTestExifInterface()
+        val metadata = AndroidCaptureResultMetadata(
+            focalLength = CAPTURE_FOCAL_LENGTH_MM,
+        )
+
+        createAndroidCameraExifMetadata().writeTo(
+            exif = exif,
+            captureResultMetadata = metadata,
+        )
+
+        assertEquals(
+            EXPECTED_CAPTURE_FOCAL_LENGTH_IN_35MM_FILM,
+            exif.getAttributeInt(ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM, 0),
+        )
+    }
+
+    @Test
+    fun androidCameraExifMetadataWritesFocalLengthIn35mmFilmFromActivePhysicalCamera() {
+        val exif = createTestExifInterface()
+        val metadata = AndroidCaptureResultMetadata(
+            focalLength = CAPTURE_FOCAL_LENGTH_MM,
+            activePhysicalCameraId = PHYSICAL_CAMERA_ID,
+        )
+
+        createAndroidCameraExifMetadata(
+            physicalCameraMetadata = mapOf(
+                PHYSICAL_CAMERA_ID to AndroidPhysicalCameraMetadata(
+                    sensorPhysicalSize = AndroidSensorPhysicalSize(
+                        width = PHYSICAL_SENSOR_WIDTH_MM,
+                        height = PHYSICAL_SENSOR_HEIGHT_MM,
+                    ),
+                    availableFocalLengths = listOf(CAPTURE_FOCAL_LENGTH_MM),
+                ),
+            ),
+        ).writeTo(
+            exif = exif,
+            captureResultMetadata = metadata,
+        )
+
+        assertEquals(
+            EXPECTED_PHYSICAL_CAMERA_FOCAL_LENGTH_IN_35MM_FILM,
+            exif.getAttributeInt(ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM, 0),
+        )
+    }
+
+    @Test
+    fun androidCaptureResultMetadataConvertsToExposureInfoWithActivePhysicalFocalLength() {
+        val cameraMetadata = createAndroidCameraExifMetadata(
+            physicalCameraMetadata = mapOf(
+                PHYSICAL_CAMERA_ID to AndroidPhysicalCameraMetadata(
+                    sensorPhysicalSize = AndroidSensorPhysicalSize(
+                        width = PHYSICAL_SENSOR_WIDTH_MM,
+                        height = PHYSICAL_SENSOR_HEIGHT_MM,
+                    ),
+                    availableFocalLengths = listOf(CAPTURE_FOCAL_LENGTH_MM),
+                ),
+            ),
+        )
+        val metadata = AndroidCaptureResultMetadata(
+            focalLength = CAPTURE_FOCAL_LENGTH_MM,
+            activePhysicalCameraId = PHYSICAL_CAMERA_ID,
+        )
+
+        val exposureInfo = metadata.toCameraExposureInfo(
+            focalLengthIn35mmFilmMillimeters = cameraMetadata.focalLengthIn35mmFilm(
+                focalLength = metadata.focalLength,
+                physicalCameraId = metadata.activePhysicalCameraId,
+            ),
+        )
+
+        assertEquals(
+            EXPECTED_PHYSICAL_CAMERA_FOCAL_LENGTH_IN_35MM_FILM,
+            exposureInfo.focalLengthIn35mmFilmMillimeters,
+        )
+    }
+
+    @Test
     fun androidCameraExifMetadataWritesGpsLocation() {
         val exif = createTestExifInterface()
         val location = Location(GPS_PROVIDER).apply {
@@ -173,13 +251,16 @@ class AndroidImageCaptureTest {
         outputFormat = outputFormat,
     )
 
-    private fun createAndroidCameraExifMetadata(): AndroidCameraExifMetadata = AndroidCameraExifMetadata(
+    private fun createAndroidCameraExifMetadata(
+        physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata> = emptyMap(),
+    ): AndroidCameraExifMetadata = AndroidCameraExifMetadata(
         sensorPhysicalSize = AndroidSensorPhysicalSize(
             width = SENSOR_WIDTH_MM,
             height = SENSOR_HEIGHT_MM,
         ),
         availableApertures = listOf(APERTURE),
         availableFocalLengths = listOf(FOCAL_LENGTH_MM),
+        physicalCameraMetadata = physicalCameraMetadata,
     )
 
     private fun createTestExifInterface(): ExifInterface {
@@ -203,6 +284,12 @@ class AndroidImageCaptureTest {
         private const val FOCAL_LENGTH_MM = 4.2F
         private const val CAPTURE_ISO = 400
         private const val CAPTURE_EXPOSURE_TIME_NANOS = 10_000_000L
+        private const val CAPTURE_FOCAL_LENGTH_MM = 5.0F
+        private const val EXPECTED_CAPTURE_FOCAL_LENGTH_IN_35MM_FILM = 27
+        private const val PHYSICAL_CAMERA_ID = "2"
+        private const val PHYSICAL_SENSOR_WIDTH_MM = 4.8F
+        private const val PHYSICAL_SENSOR_HEIGHT_MM = 3.6F
+        private const val EXPECTED_PHYSICAL_CAMERA_FOCAL_LENGTH_IN_35MM_FILM = 36
         private const val GPS_PROVIDER = "gps"
         private const val GPS_LATITUDE = 37.5665
         private const val GPS_LONGITUDE = 126.978

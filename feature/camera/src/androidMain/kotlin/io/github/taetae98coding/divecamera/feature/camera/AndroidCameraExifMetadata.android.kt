@@ -5,6 +5,7 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.CameraManager
 import android.hardware.camera2.TotalCaptureResult
 import android.location.Location
 import android.net.Uri
@@ -30,6 +31,7 @@ internal data class AndroidCameraExifMetadata(
     val maxAnalogIso: Int? = null,
     val availableApertures: List<Float> = emptyList(),
     val availableFocalLengths: List<Float> = emptyList(),
+    private val physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata> = emptyMap(),
     private val exposureCompensation: AndroidExposureCompensation? = null,
 ) {
     fun writeTo(
@@ -58,6 +60,8 @@ internal data class AndroidCameraExifMetadata(
     ) {
         val singleAperture = availableApertures.singleOrNull()
         val singleFocalLength = availableFocalLengths.singleOrNull()
+        val focalLengthFor35mmFilm = captureResultMetadata?.focalLength ?: singleFocalLength
+        val activePhysicalCameraId = captureResultMetadata?.activePhysicalCameraId
 
         exif.setGpsInfoIfMissing(gpsLocation)
         captureResultMetadata?.writeTo(exif)
@@ -71,7 +75,10 @@ internal data class AndroidCameraExifMetadata(
         )
         exif.setAttributeIfMissing(
             tag = ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
-            value = focalLengthIn35mmFilm(singleFocalLength)?.toString(),
+            value = focalLengthIn35mmFilm(
+                focalLength = focalLengthFor35mmFilm,
+                physicalCameraId = activePhysicalCameraId,
+            )?.toString(),
         )
         exif.setAttributeIfMissing(
             tag = ExifInterface.TAG_LENS_SPECIFICATION,
@@ -117,6 +124,16 @@ internal data class AndroidCameraExifMetadata(
         captureResultMetadata?.metadataParts()?.let(::addAll)
     }.joinToString(separator = ";")
 
+    fun toCameraExposureInfo(): CameraExposureInfo = CameraExposureInfo(
+        aperture = availableApertures.singleOrNull(),
+        exposureCompensationEv = exposureCompensation?.ev,
+        focalLengthMillimeters = availableFocalLengths.singleOrNull(),
+        focalLengthIn35mmFilmMillimeters = focalLengthIn35mmFilm(
+            focalLength = availableFocalLengths.singleOrNull(),
+            physicalCameraId = physicalCameraMetadata.keys.singleOrNull(),
+        ),
+    )
+
     private fun lensSpecification(): String? {
         if (availableFocalLengths.isEmpty() || availableApertures.isEmpty()) {
             return null
@@ -130,8 +147,14 @@ internal data class AndroidCameraExifMetadata(
         ).joinToString(separator = ",")
     }
 
-    private fun focalLengthIn35mmFilm(focalLength: Float?): Int? {
-        val sensorSize = sensorPhysicalSize
+    fun focalLengthIn35mmFilm(
+        focalLength: Float?,
+        physicalCameraId: String? = null,
+    ): Int? {
+        val sensorSize = physicalCameraId
+            ?.let(physicalCameraMetadata::get)
+            ?.sensorPhysicalSize
+            ?: sensorPhysicalSize
             ?: return null
         if (focalLength == null) {
             return null
@@ -168,8 +191,43 @@ internal data class AndroidCameraExifMetadata(
     companion object {
         val Empty = AndroidCameraExifMetadata()
 
+        fun from(
+            context: Context,
+            cameraInfo: CameraInfo,
+        ): AndroidCameraExifMetadata {
+            val camera2Info = runCatching { Camera2CameraInfo.from(cameraInfo) }.getOrNull()
+            val cameraId = runCatching { camera2Info?.cameraId }.getOrNull()
+            val physicalCameraMetadata = context
+                .getSystemService(CameraManager::class.java)
+                ?.physicalCameraMetadata(cameraId)
+                .orEmpty()
+
+            return from(
+                cameraInfo = cameraInfo,
+                camera2Info = camera2Info,
+                cameraId = cameraId,
+                physicalCameraMetadata = physicalCameraMetadata,
+            )
+        }
+
         fun from(cameraInfo: CameraInfo): AndroidCameraExifMetadata {
             val camera2Info = runCatching { Camera2CameraInfo.from(cameraInfo) }.getOrNull()
+            val cameraId = runCatching { camera2Info?.cameraId }.getOrNull()
+
+            return from(
+                cameraInfo = cameraInfo,
+                camera2Info = camera2Info,
+                cameraId = cameraId,
+                physicalCameraMetadata = emptyMap(),
+            )
+        }
+
+        private fun from(
+            cameraInfo: CameraInfo,
+            camera2Info: Camera2CameraInfo?,
+            cameraId: String?,
+            physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata>,
+        ): AndroidCameraExifMetadata {
             val sensorPhysicalSize = camera2Info
                 ?.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
                 ?.toAndroidSensorPhysicalSize()
@@ -178,7 +236,7 @@ internal data class AndroidCameraExifMetadata(
                 ?.toAndroidIntRange()
 
             return AndroidCameraExifMetadata(
-                cameraId = runCatching { camera2Info?.cameraId }.getOrNull(),
+                cameraId = cameraId,
                 lensFacing = cameraInfo.lensFacing.toLensFacingName(),
                 sensorPhysicalSize = sensorPhysicalSize,
                 availableIsoRange = availableIsoRange,
@@ -192,6 +250,7 @@ internal data class AndroidCameraExifMetadata(
                     ?.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
                     ?.toList()
                     .orEmpty(),
+                physicalCameraMetadata = physicalCameraMetadata,
                 exposureCompensation = cameraInfo.exposureState.toAndroidExposureCompensation(),
             )
         }
@@ -224,6 +283,7 @@ internal data class AndroidCaptureResultMetadata(
     val aperture: Float? = null,
     val exposureTimeNanoseconds: Long? = null,
     val focalLength: Float? = null,
+    val activePhysicalCameraId: String? = null,
     val autoExposureMode: Int? = null,
     val autoExposureState: Int? = null,
     val autoExposureRegionCount: Int? = null,
@@ -258,10 +318,19 @@ internal data class AndroidCaptureResultMetadata(
         aperture?.let { add("capture_aperture=$it") }
         exposureTimeNanoseconds?.let { add("capture_exposure_time_ns=$it") }
         focalLength?.let { add("capture_focal_length_mm=$it") }
+        activePhysicalCameraId?.let { add("capture_active_physical_camera_id=$it") }
         autoExposureMode?.let { add("capture_ae_mode=$it") }
         autoExposureState?.let { add("capture_ae_state=$it") }
         autoExposureRegionCount?.let { add("capture_ae_region_count=$it") }
     }
+
+    fun toCameraExposureInfo(focalLengthIn35mmFilmMillimeters: Int? = null): CameraExposureInfo = CameraExposureInfo(
+        iso = iso,
+        aperture = aperture,
+        shutterSpeedNanoseconds = exposureTimeNanoseconds,
+        focalLengthMillimeters = focalLength,
+        focalLengthIn35mmFilmMillimeters = focalLengthIn35mmFilmMillimeters,
+    )
 
     companion object {
         fun from(captureResult: CaptureResult): AndroidCaptureResultMetadata = AndroidCaptureResultMetadata(
@@ -269,6 +338,7 @@ internal data class AndroidCaptureResultMetadata(
             aperture = captureResult.get(CaptureResult.LENS_APERTURE),
             exposureTimeNanoseconds = captureResult.get(CaptureResult.SENSOR_EXPOSURE_TIME),
             focalLength = captureResult.get(CaptureResult.LENS_FOCAL_LENGTH),
+            activePhysicalCameraId = captureResult.activePhysicalCameraId(),
             autoExposureMode = captureResult.get(CaptureResult.CONTROL_AE_MODE),
             autoExposureState = captureResult.get(CaptureResult.CONTROL_AE_STATE),
             autoExposureRegionCount = captureResult.get(CaptureResult.CONTROL_AE_REGIONS)?.size,
@@ -279,6 +349,11 @@ internal data class AndroidCaptureResultMetadata(
 internal data class AndroidSensorPhysicalSize(
     val width: Float,
     val height: Float,
+)
+
+internal data class AndroidPhysicalCameraMetadata(
+    val sensorPhysicalSize: AndroidSensorPhysicalSize? = null,
+    val availableFocalLengths: List<Float> = emptyList(),
 )
 
 internal data class AndroidIntRange(
@@ -334,6 +409,40 @@ private fun Range<Int>.toAndroidIntRange(): AndroidIntRange = AndroidIntRange(
     lower = lower,
     upper = upper,
 )
+
+private fun CameraManager.physicalCameraMetadata(cameraId: String?): Map<String, AndroidPhysicalCameraMetadata> {
+    if (cameraId == null) {
+        return emptyMap()
+    }
+
+    val cameraCharacteristics = runCatching {
+        getCameraCharacteristics(cameraId)
+    }.getOrNull() ?: return emptyMap()
+
+    return cameraCharacteristics.physicalCameraIds
+        .mapNotNull { physicalCameraId ->
+            val physicalCharacteristics = runCatching {
+                getCameraCharacteristics(physicalCameraId)
+            }.getOrNull() ?: return@mapNotNull null
+
+            physicalCameraId to AndroidPhysicalCameraMetadata(
+                sensorPhysicalSize = physicalCharacteristics
+                    .get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                    ?.toAndroidSensorPhysicalSize(),
+                availableFocalLengths = physicalCharacteristics
+                    .get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                    ?.toList()
+                    .orEmpty(),
+            )
+        }
+        .toMap()
+}
+
+private fun CaptureResult.activePhysicalCameraId(): String? {
+    return get(CaptureResult.LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID)
+        ?.trim { it.isWhitespace() || it == '\u0000' }
+        ?.takeIf { it.isNotBlank() }
+}
 
 private fun androidx.camera.core.ExposureState.toAndroidExposureCompensation(): AndroidExposureCompensation? {
     if (!isExposureCompensationSupported) {
