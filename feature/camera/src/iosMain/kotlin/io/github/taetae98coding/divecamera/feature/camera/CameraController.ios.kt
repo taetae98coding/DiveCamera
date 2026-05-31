@@ -17,6 +17,7 @@ internal actual fun rememberCameraController(): CameraController = remember {
 private class IosCameraController : CameraController {
     private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
+    private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: IosImageCapture? = null
 
@@ -24,6 +25,8 @@ private class IosCameraController : CameraController {
         mutableRawCaptureSupportState.asStateFlow()
     override val captureReadinessState: StateFlow<CaptureReadinessState> =
         mutableCaptureReadinessState.asStateFlow()
+    override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
+        mutableCameraExposureInfoState.asStateFlow()
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages.asSharedFlow()
 
@@ -66,6 +69,10 @@ private class IosCameraController : CameraController {
         mutableRawCaptureSupportState.value = RawCaptureSupportState.from(isSupported)
     }
 
+    fun updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
+        mutableCameraExposureInfoState.value = cameraExposureInfo
+    }
+
     private fun emitPhotoSaveErrorMessage(message: String) {
         if (message.isNotBlank()) {
             mutablePhotoSaveErrorMessages.tryEmit(message)
@@ -79,6 +86,10 @@ internal fun CameraController.updateImageCapture(imageCapture: IosImageCapture?)
 
 internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
     (this as? IosCameraController)?.updateRawCaptureSupported(isSupported)
+}
+
+internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
+    (this as? IosCameraController)?.updateCameraExposureInfo(cameraExposureInfo)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

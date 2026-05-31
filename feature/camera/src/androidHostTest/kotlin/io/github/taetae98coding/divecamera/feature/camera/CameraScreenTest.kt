@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -307,6 +308,128 @@ class CameraScreenTest {
         composeRule
             .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureInfoOverlay() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        aperture = 1.8F,
+                        shutterSpeedNanoseconds = 10_000_000L,
+                        exposureCompensationEv = 0.333,
+                        focalLengthMillimeters = 4.2F,
+                        focalLengthIn35mmFilmMillimeters = 24,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG)
+            .assertTextEquals("400")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG)
+            .assertTextEquals("F1.8")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG)
+            .assertTextEquals("1/100s")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG)
+            .assertTextEquals("+0.3")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
+            .assertTextEquals("24mm")
+    }
+
+    @Test
+    fun cameraScreenUpdatesExposureInfoOverlayWhenControllerExposureInfoChanges() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo.Unknown,
+        )
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule.runOnIdle {
+            cameraController.updateCameraExposureInfo(
+                CameraExposureInfo(
+                    iso = 800,
+                    aperture = 2.2F,
+                    shutterSpeedNanoseconds = 20_000_000L,
+                    exposureCompensationEv = -0.667,
+                    focalLengthIn35mmFilmMillimeters = 13,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG)
+            .assertTextEquals("800")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG)
+            .assertTextEquals("F2.2")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG)
+            .assertTextEquals("1/50s")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG)
+            .assertTextEquals("-0.7")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
+            .assertTextEquals("13mm")
+    }
+
+    @Test
+    fun cameraScreenDisplaysPhysicalFocalLengthWhenEquivalentFocalLengthIsUnknown() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        focalLengthMillimeters = 4.2F,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
+            .assertTextEquals("4.2mm")
+    }
+
+    @Test
+    fun cameraScreenDisplaysUnknownExposureInfoAsPlaceholder() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo.Unknown,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG)
+            .assertTextEquals(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT)
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG)
+            .assertTextEquals(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT)
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG)
+            .assertTextEquals(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT)
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG)
+            .assertTextEquals(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT)
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
+            .assertTextEquals(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT)
     }
 
     @Test
@@ -609,6 +732,19 @@ class CameraScreenTest {
             .assertCountEquals(0)
     }
 
+    @Test
+    fun cameraScreenRemovesExposureInfoOverlayAfterIdleTimeout() {
+        composeRule.setContent {
+            CameraScreen(cameraResourceIdleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS)
+        }
+
+        waitUntilCameraOffTextExists()
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_OVERLAY_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
     private fun setFixedSizeCameraScreen() {
         composeRule.setContent {
             CameraScreen(
@@ -679,13 +815,17 @@ class CameraScreenTest {
 private class FakeCameraController(
     rawCaptureSupportState: RawCaptureSupportState = RawCaptureSupportState.Checking,
     captureReadinessState: CaptureReadinessState = CaptureReadinessState.Ready,
+    cameraExposureInfo: CameraExposureInfo = CameraExposureInfo.Unknown,
 ) : CameraController {
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val mutableCameraExposureInfoState = MutableStateFlow(cameraExposureInfo)
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         MutableStateFlow(rawCaptureSupportState)
     override val captureReadinessState: StateFlow<CaptureReadinessState> =
         MutableStateFlow(captureReadinessState)
+    override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
+        mutableCameraExposureInfoState
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages
 
@@ -701,5 +841,9 @@ private class FakeCameraController(
 
     fun emitPhotoSaveErrorMessage(message: String) {
         mutablePhotoSaveErrorMessages.tryEmit(message)
+    }
+
+    fun updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
+        mutableCameraExposureInfoState.value = cameraExposureInfo
     }
 }

@@ -22,6 +22,35 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidCameraControllerExposureInfoIsUnknownBeforeCameraInfoIsConnected() {
+        val controller = AndroidCameraController()
+
+        assertEquals(
+            CameraExposureInfo.Unknown,
+            controller.cameraExposureInfoState.value,
+        )
+    }
+
+    @Test
+    fun androidCameraControllerUpdatesExposureInfo() {
+        val controller = AndroidCameraController()
+        val cameraExposureInfo = CameraExposureInfo(
+            iso = 400,
+            aperture = 1.8F,
+            shutterSpeedNanoseconds = 10_000_000L,
+            exposureCompensationEv = 0.3,
+            focalLengthMillimeters = 4.2F,
+        )
+
+        controller.updateCameraExposureInfo(cameraExposureInfo)
+
+        assertEquals(
+            cameraExposureInfo,
+            controller.cameraExposureInfoState.value,
+        )
+    }
+
+    @Test
     fun androidCameraControllerIsReadyWhenImageCaptureIsConnected() {
         val controller = AndroidCameraController()
         controller.updateImageCapture(FakeAndroidPhotoCapture(captureMode = CameraCaptureMode.Jpg))

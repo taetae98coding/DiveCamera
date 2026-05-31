@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 internal interface CameraController {
     val rawCaptureSupportState: StateFlow<RawCaptureSupportState>
     val captureReadinessState: StateFlow<CaptureReadinessState>
+    val cameraExposureInfoState: StateFlow<CameraExposureInfo>
     val photoSaveErrorMessages: SharedFlow<String>
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)

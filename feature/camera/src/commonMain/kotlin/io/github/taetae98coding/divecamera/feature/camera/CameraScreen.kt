@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -55,6 +56,7 @@ internal fun CameraScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val rawCaptureSupportState by cameraController.rawCaptureSupportState.collectAsState()
     val captureReadinessState by cameraController.captureReadinessState.collectAsState()
+    val cameraExposureInfo by cameraController.cameraExposureInfoState.collectAsState()
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -102,6 +104,18 @@ internal fun CameraScreen(
                     cameraController = cameraController,
                     captureMode = captureMode,
                     modifier = Modifier.fillMaxSize(),
+                )
+
+                CameraExposureInfoOverlay(
+                    cameraExposureInfo = cameraExposureInfo,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(
+                            start = 16.dp,
+                            top = 16.dp,
+                            end = 16.dp,
+                        ),
                 )
 
                 CaptureModeSwitchButton(
