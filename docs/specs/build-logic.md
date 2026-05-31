@@ -4,7 +4,6 @@
 
 - Gradle 공통 설정은 중앙화된 빌드 로직으로 제공한다.
 - 루트 빌드는 중앙화된 빌드 로직을 포함한다.
-- 빌드 로직은 Kotlin binary Gradle plugin으로 제공한다.
 - convention plugin id는 `divecamera.*` 네임스페이스를 사용한다.
 - 각 애플리케이션/라이브러리 모듈은 필요한 convention plugin을 명시적으로 적용한다.
 - `allprojects`와 `subprojects`를 사용해 애플리케이션/라이브러리 모듈의 플랫폼, 의존성, 컴파일 설정을 전역 주입하지 않는다.
@@ -75,9 +74,3 @@
 - Android host test에서 Compose UI 테스트 API를 사용할 수 있게 한다.
 - Android host test에서 Robolectric을 사용할 수 있게 한다.
 - Android host test 실행 시 Compose 테스트 manifest를 사용할 수 있게 한다.
-
-## 참고
-
-- Gradle convention plugin은 included build의 binary Gradle plugin으로 제공한다.
-- Android-KMP 라이브러리 모듈은 `com.android.kotlin.multiplatform.library`를 사용한다.
-- Android Gradle Plugin 확장은 공개 DSL과 공개 API를 사용한다.
