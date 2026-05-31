@@ -4,6 +4,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ internal const val CAMERA_SCREEN_TEST_TAG = "camera-screen"
 internal const val CAMERA_OFF_TEST_TAG = "camera-off"
 private const val CAMERA_OFF_TEXT = "Camera Off"
 private const val CAMERA_RESOURCE_IDLE_TIMEOUT_MILLIS = 30_000L
+private val CAPTURE_MODE_SWITCH_BUTTON_CENTER_OFFSET = 92.dp
 
 @Composable
 internal fun CameraScreen(
@@ -45,6 +47,7 @@ internal fun CameraScreen(
     val coroutineScope = rememberCoroutineScope()
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
+    var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -84,14 +87,28 @@ internal fun CameraScreen(
             if (isCameraPreviewActive) {
                 CameraViewFinder(
                     cameraController = cameraController,
+                    captureMode = captureMode,
                     modifier = Modifier.fillMaxSize(),
+                )
+
+                CaptureModeSwitchButton(
+                    captureMode = captureMode,
+                    onClick = {
+                        currentRegisterInput()
+                        captureMode = captureMode.next()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .offset(x = -CAPTURE_MODE_SWITCH_BUTTON_CENTER_OFFSET)
+                        .padding(bottom = 44.dp),
                 )
 
                 CaptureButton(
                     onClick = {
                         currentRegisterInput()
                         coroutineScope.launch {
-                            cameraController.capturePhoto()
+                            cameraController.capturePhoto(captureMode)
                         }
                     },
                     modifier = Modifier

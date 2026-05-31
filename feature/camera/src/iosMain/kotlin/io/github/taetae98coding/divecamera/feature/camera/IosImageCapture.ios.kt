@@ -15,6 +15,7 @@ import platform.AVFoundation.AVCapturePhotoQualityPrioritizationQuality
 import platform.AVFoundation.AVCapturePhotoSettings
 import platform.AVFoundation.AVCaptureResolvedPhotoSettings
 import platform.AVFoundation.AVCaptureSession
+import platform.AVFoundation.AVFileTypeDNG
 import platform.AVFoundation.AVVideoCodecKey
 import platform.AVFoundation.AVVideoCodecTypeHEVC
 import platform.AVFoundation.CMVideoDimensionsValue
@@ -31,6 +32,7 @@ import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSError
+import platform.Foundation.NSNumber
 import platform.Foundation.NSValue
 import platform.Photos.PHAssetCreationRequest
 import platform.Photos.PHAssetResourceTypePhoto
@@ -63,9 +65,9 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
         }
     }
 
-    suspend fun capturePhoto() {
+    suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         suspendCancellableCoroutine { continuation ->
-            val isCaptureRequested = requestCapturePhoto {
+            val isCaptureRequested = requestCapturePhoto(captureMode) {
                 if (continuation.isActive) {
                     continuation.resume(Unit)
                 }
@@ -77,7 +79,10 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
         }
     }
 
-    private fun requestCapturePhoto(onComplete: () -> Unit): Boolean {
+    private fun requestCapturePhoto(
+        captureMode: CameraCaptureMode,
+        onComplete: () -> Unit,
+    ): Boolean {
         if (!isConfigured) {
             return false
         }
@@ -86,6 +91,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             locationProvider.startUpdating()
             val location = locationProvider.currentLocation()
             val settings = photoOutput.createPhotoSettings(
+                captureMode = captureMode,
                 cameraMetadata = cameraMetadata,
                 location = location,
             )
@@ -191,10 +197,19 @@ private data class IosCameraMetadata(
 }
 
 private fun AVCapturePhotoOutput.createPhotoSettings(
+    captureMode: CameraCaptureMode,
     cameraMetadata: IosCameraMetadata,
     location: CLLocation?,
 ): AVCapturePhotoSettings {
-    val settings = if (AVVideoCodecTypeHEVC in availablePhotoCodecTypes) {
+    val rawPhotoPixelFormatType = rawPhotoPixelFormatType(captureMode)
+    val settings = if (rawPhotoPixelFormatType != null) {
+        AVCapturePhotoSettings.photoSettingsWithRawPixelFormatType(
+            rawPixelFormatType = rawPhotoPixelFormatType,
+            rawFileType = AVFileTypeDNG,
+            processedFormat = null,
+            processedFileType = null,
+        )
+    } else if (AVVideoCodecTypeHEVC in availablePhotoCodecTypes) {
         AVCapturePhotoSettings.photoSettingsWithFormat(
             mapOf(AVVideoCodecKey to AVVideoCodecTypeHEVC),
         )
@@ -202,18 +217,35 @@ private fun AVCapturePhotoOutput.createPhotoSettings(
         AVCapturePhotoSettings.photoSettings()
     }
 
-    settings.photoQualityPrioritization = AVCapturePhotoQualityPrioritizationQuality
+    if (rawPhotoPixelFormatType == null) {
+        settings.photoQualityPrioritization = AVCapturePhotoQualityPrioritizationQuality
+    }
     settings.maxPhotoDimensions = maxPhotoDimensions
-    if (depthDataDeliverySupported) {
+    if (rawPhotoPixelFormatType == null && depthDataDeliverySupported) {
         settings.depthDataDeliveryEnabled = true
         settings.embedsDepthDataInPhoto = true
     }
-    if (cameraCalibrationDataDeliverySupported) {
+    if (rawPhotoPixelFormatType == null && cameraCalibrationDataDeliverySupported) {
         settings.cameraCalibrationDataDeliveryEnabled = true
     }
     settings.metadata = cameraMetadata.photoSettingsMetadata(location)
 
     return settings
+}
+
+private fun AVCapturePhotoOutput.rawPhotoPixelFormatType(captureMode: CameraCaptureMode): UInt? {
+    if (captureMode != CameraCaptureMode.Raw) {
+        return null
+    }
+    if (AVFileTypeDNG !in availableRawPhotoFileTypes) {
+        return null
+    }
+
+    return when (val value = supportedRawPhotoPixelFormatTypesForFileType(AVFileTypeDNG).firstOrNull()) {
+        is NSNumber -> value.unsignedIntValue
+        is UInt -> value
+        else -> null
+    }
 }
 
 private class IosPhotoLocationProvider :

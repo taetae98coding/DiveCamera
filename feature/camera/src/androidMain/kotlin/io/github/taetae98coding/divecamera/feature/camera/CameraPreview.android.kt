@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 internal actual fun CameraPreview(
     cameraController: CameraController,
+    captureMode: CameraCaptureMode,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -28,11 +29,13 @@ internal actual fun CameraPreview(
         context,
         lifecycleOwner,
         targetRotation,
+        captureMode,
     ) {
         cameraController.createCameraSession(
             context = context,
             lifecycleOwner = lifecycleOwner,
             targetRotation = targetRotation,
+            captureMode = captureMode,
         )
     }
 

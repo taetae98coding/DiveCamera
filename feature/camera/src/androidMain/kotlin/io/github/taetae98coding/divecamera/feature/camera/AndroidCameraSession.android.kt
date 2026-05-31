@@ -13,11 +13,13 @@ internal fun CameraController.createCameraSession(
     context: Context,
     lifecycleOwner: LifecycleOwner,
     targetRotation: Int,
+    captureMode: CameraCaptureMode,
 ): AndroidCameraSession = AndroidCameraSession(
     cameraController = this,
     context = context,
     lifecycleOwner = lifecycleOwner,
     targetRotation = targetRotation,
+    captureMode = captureMode,
 )
 
 internal class AndroidCameraSession(
@@ -25,6 +27,7 @@ internal class AndroidCameraSession(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val targetRotation: Int,
+    private val captureMode: CameraCaptureMode,
 ) {
     val surfaceRequest: SurfaceRequest?
         get() = cameraPreview.surfaceRequest
@@ -54,7 +57,7 @@ internal class AndroidCameraSession(
             val nextImageCapture = AndroidImageCapture(
                 context = context,
                 targetRotation = targetRotation,
-                outputFormat = camera.cameraInfo.preferredImageOutputFormat(),
+                outputFormat = camera.cameraInfo.preferredImageOutputFormat(captureMode),
                 cameraExifMetadata = AndroidCameraExifMetadata.from(camera.cameraInfo),
             )
 
@@ -88,9 +91,13 @@ internal class AndroidCameraSession(
     }
 }
 
-private fun androidx.camera.core.CameraInfo.preferredImageOutputFormat(): Int {
+private fun androidx.camera.core.CameraInfo.preferredImageOutputFormat(captureMode: CameraCaptureMode): Int {
     val supportedFormats = ImageCapture.getImageCaptureCapabilities(this)
         .supportedOutputFormats
+
+    if (captureMode == CameraCaptureMode.Raw && ImageCapture.OUTPUT_FORMAT_RAW in supportedFormats) {
+        return ImageCapture.OUTPUT_FORMAT_RAW
+    }
 
     return if (ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR in supportedFormats) {
         ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR

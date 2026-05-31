@@ -6,5 +6,6 @@ import androidx.compose.ui.Modifier
 @Composable
 internal expect fun CameraPreview(
     cameraController: CameraController,
+    captureMode: CameraCaptureMode,
     modifier: Modifier = Modifier,
 )

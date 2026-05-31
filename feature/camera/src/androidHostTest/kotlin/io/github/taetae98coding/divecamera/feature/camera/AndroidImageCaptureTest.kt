@@ -66,6 +66,18 @@ class AndroidImageCaptureTest {
     }
 
     @Test
+    fun androidImageCaptureUsesRawOutputFormatWhenRequested() {
+        val imageCapture = createAndroidImageCapture(
+            outputFormat = ImageCapture.OUTPUT_FORMAT_RAW,
+        )
+
+        assertEquals(
+            ImageCapture.OUTPUT_FORMAT_RAW,
+            imageCapture.useCase.outputFormat,
+        )
+    }
+
+    @Test
     fun androidCameraExifMetadataIncludesFieldOfViewInAppMetadata() {
         val metadata = createAndroidCameraExifMetadata()
 

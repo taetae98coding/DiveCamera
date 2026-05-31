@@ -11,10 +11,10 @@ internal actual fun rememberCameraController(): CameraController = remember {
 private class IosCameraController : CameraController {
     private var imageCapture: IosImageCapture? = null
 
-    override suspend fun capturePhoto() {
+    override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         val currentImageCapture = imageCapture
             ?: return
-        currentImageCapture.capturePhoto()
+        currentImageCapture.capturePhoto(captureMode)
     }
 
     fun updateImageCapture(imageCapture: IosImageCapture?) {

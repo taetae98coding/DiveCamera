@@ -11,7 +11,7 @@ internal actual fun rememberCameraController(): CameraController = remember {
 private class AndroidCameraController : CameraController {
     private var imageCapture: AndroidImageCapture? = null
 
-    override suspend fun capturePhoto() {
+    override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         val currentImageCapture = imageCapture
             ?: return
         currentImageCapture.capturePhoto()

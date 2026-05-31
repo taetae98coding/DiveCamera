@@ -26,6 +26,7 @@ internal class AndroidImageCapture(
     private val cameraExifMetadata: AndroidCameraExifMetadata = AndroidCameraExifMetadata.Empty,
 ) {
     private val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
+    private val photoFileFormat = AndroidPhotoFileFormat.fromOutputFormat(outputFormat)
     private val locationProvider = AndroidPhotoLocationProvider(context).apply {
         start()
     }
@@ -42,7 +43,12 @@ internal class AndroidImageCapture(
     suspend fun capturePhoto() {
         try {
             val location = locationProvider.currentLocation()
-            val outputFileResults = useCase.takePicture(context.createImageOutputOptions(location))
+            val outputFileResults = useCase.takePicture(
+                context.createImageOutputOptions(
+                    location = location,
+                    photoFileFormat = photoFileFormat,
+                ),
+            )
             outputFileResults.savedUri?.let { uri ->
                 cameraExifMetadata.writeTo(
                     context = context,
@@ -65,11 +71,14 @@ internal class AndroidImageCapture(
     }
 }
 
-private fun Context.createImageOutputOptions(location: Location?): ImageCapture.OutputFileOptions {
-    val displayName = "${PHOTO_FILE_NAME_FORMAT.format(Date())}.jpg"
+private fun Context.createImageOutputOptions(
+    location: Location?,
+    photoFileFormat: AndroidPhotoFileFormat,
+): ImageCapture.OutputFileOptions {
+    val displayName = "${PHOTO_FILE_NAME_FORMAT.format(Date())}.${photoFileFormat.extension}"
     val contentValues = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-        put(MediaStore.MediaColumns.MIME_TYPE, PHOTO_MIME_TYPE)
+        put(MediaStore.MediaColumns.MIME_TYPE, photoFileFormat.mimeType)
         put(MediaStore.Images.Media.RELATIVE_PATH, PHOTO_RELATIVE_PATH)
     }
 
@@ -87,6 +96,28 @@ private fun Context.createImageOutputOptions(location: Location?): ImageCapture.
     }
 
     return builder.build()
+}
+
+private enum class AndroidPhotoFileFormat(
+    val extension: String,
+    val mimeType: String,
+) {
+    Jpeg(
+        extension = "jpg",
+        mimeType = "image/jpeg",
+    ),
+    Dng(
+        extension = "dng",
+        mimeType = "image/x-adobe-dng",
+    ),
+    ;
+
+    companion object {
+        fun fromOutputFormat(outputFormat: Int): AndroidPhotoFileFormat = when (outputFormat) {
+            ImageCapture.OUTPUT_FORMAT_RAW -> Dng
+            else -> Jpeg
+        }
+    }
 }
 
 private class AndroidPhotoLocationProvider(private val context: Context) {
@@ -160,7 +191,6 @@ private const val MAX_EXIF_LONGITUDE = 180.0
 private const val LOCATION_UPDATE_MIN_TIME_MILLIS = 5_000L
 private const val LOCATION_UPDATE_MIN_DISTANCE_METERS = 0F
 
-private const val PHOTO_MIME_TYPE = "image/jpeg"
 private const val PHOTO_RELATIVE_PATH = "Pictures/DiveCamera"
 private const val MAX_JPEG_QUALITY = 100
 private val MAXIMUM_PHOTO_RESOLUTION_SELECTOR = ResolutionSelector.Builder()

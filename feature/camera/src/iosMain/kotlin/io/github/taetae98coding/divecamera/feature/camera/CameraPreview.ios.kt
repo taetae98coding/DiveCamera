@@ -9,6 +9,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 @Composable
 internal actual fun CameraPreview(
     cameraController: CameraController,
+    captureMode: CameraCaptureMode,
     modifier: Modifier,
 ) {
     val cameraSession = remember(cameraController) {

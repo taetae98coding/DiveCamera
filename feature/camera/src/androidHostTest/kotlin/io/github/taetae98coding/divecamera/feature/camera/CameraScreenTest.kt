@@ -14,6 +14,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
@@ -200,6 +201,9 @@ class CameraScreenTest {
             .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
             .assertIsDisplayed()
         composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
             .onAllNodesWithTag(CAMERA_OFF_TEST_TAG)
             .assertCountEquals(0)
     }
@@ -229,6 +233,70 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysCaptureModeSwitchButton() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysCaptureModeSwitchButtonAtLeftOfCaptureButton() {
+        setFixedSizeCameraScreen()
+        val captureButtonBounds = captureButtonBounds()
+        val modeSwitchButtonBounds = captureModeSwitchButtonBounds()
+
+        assertTrue(modeSwitchButtonBounds.right <= captureButtonBounds.left)
+    }
+
+    @Test
+    fun cameraScreenDisplaysJpgCaptureModeByDefault() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.Jpg.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenChangesCaptureModeToRawWhenModeSwitchButtonClicked() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.Raw.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenChangesCaptureModeBackToJpgWhenModeSwitchButtonClickedTwice() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.Jpg.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun cameraScreenCallsCameraControllerCapturePhotoWhenCaptureButtonClicked() {
         val cameraController = FakeCameraController()
 
@@ -244,7 +312,44 @@ class CameraScreenTest {
 
         composeRule.runOnIdle {
             assertEquals(1, cameraController.photoCaptureCount)
+            assertEquals(CameraCaptureMode.Jpg, cameraController.lastCaptureMode)
         }
+    }
+
+    @Test
+    fun cameraScreenCallsCameraControllerCapturePhotoWithRawMode() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.photoCaptureCount)
+            assertEquals(CameraCaptureMode.Raw, cameraController.lastCaptureMode)
+        }
+    }
+
+    @Test
+    fun cameraScreenRemovesCaptureModeSwitchButtonAfterIdleTimeout() {
+        composeRule.setContent {
+            CameraScreen(cameraResourceIdleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS)
+        }
+
+        waitUntilCameraOffTextExists()
+
+        composeRule
+            .onAllNodesWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
     }
 
     private fun setFixedSizeCameraScreen() {
@@ -272,6 +377,10 @@ class CameraScreenTest {
 
     private fun captureButtonBounds(): DpRect = composeRule
         .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+        .getUnclippedBoundsInRoot()
+
+    private fun captureModeSwitchButtonBounds(): DpRect = composeRule
+        .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
         .getUnclippedBoundsInRoot()
 
     private fun DpRect.centerX(): Dp = left + (right - left) / 2
@@ -304,8 +413,11 @@ class CameraScreenTest {
 private class FakeCameraController : CameraController {
     var photoCaptureCount = 0
         private set
+    var lastCaptureMode: CameraCaptureMode? = null
+        private set
 
-    override suspend fun capturePhoto() {
+    override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
+        lastCaptureMode = captureMode
     }
 }
