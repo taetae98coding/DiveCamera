@@ -3,6 +3,7 @@
 ## ViewFinder
 
 - ViewFinder는 플랫폼 카메라 미리보기 API가 제공하는 프레임을 표시한다.
+- Android 카메라 세션 bind 중 발생한 non-cancellation 예외는 현재 Snackbar로 전달하지 않고 카메라 준비 상태를 `Busy`에 머무르게 한다.
 
 ## 촬영 정보 수집 방식
 
@@ -43,6 +44,10 @@
 
 ## 캡처 모드 구현 배경
 
+- 공통 UI의 `RAW+JPG` 모드 라벨은 원형 버튼 안에서 잘리거나 압축되지 않도록 `RAW`와 `JPG`를 줄바꿈한 문자열로 표시한다.
+- 공통 캡처 모드 모델은 현재 사진 캡처 모드만 포함한다.
+- `VIDEO` 캡처 모드는 이후 비디오 캡처가 추가될 때 같은 전환 순서에 붙일 확장 지점으로 스펙에 유지한다.
+
 ### Android JPG
 
 - Android `JPG` 모드는 CameraX `ImageCapture`의 최대 화질 캡처 모드로 저장한다.
@@ -66,6 +71,8 @@
 - Android `RAW+JPG` 모드는 CameraX가 접근할 수 있는 RAW+JPEG 출력 후보 중 가장 높은 해상도를 우선하여 저장한다.
 - Android `RAW+JPG` 모드는 CameraX RAW+JPEG 출력이 Ultra HDR JPEG를 제공한다고 보장하지 않는다.
 - Android `RAW+JPG` 모드는 기기가 CameraX RAW+JPEG 출력을 지원하지 않으면 Android `JPG` 모드 정책에 따라 Ultra HDR JPEG 또는 표준 JPEG로 저장한다.
+- Android RAW 지원 상태는 CameraX가 `OUTPUT_FORMAT_RAW` 또는 `OUTPUT_FORMAT_RAW_JPEG` 중 하나라도 제공하면 지원으로 표시한다.
+- Android `RAW+JPG` 모드에서 `OUTPUT_FORMAT_RAW`만 제공되고 `OUTPUT_FORMAT_RAW_JPEG`가 제공되지 않으면 RAW 미지원 주의 아이콘 없이 Android `JPG` 모드 정책으로 fallback될 수 있다.
 
 ### iOS JPG
 
@@ -92,6 +99,9 @@
 - iOS `RAW+JPG` 모드는 기기가 AVFoundation DNG RAW 사진 출력을 지원하지 않으면 iOS `JPG` 모드 정책에 따라 HEVC/HEIF 또는 JPEG 처리 사진으로 저장한다.
 - iOS `RAW+JPG` 모드는 `AVCapturePhotoSettings.photoQualityPrioritization`을 설정하지 않는다.
 - iOS `RAW+JPG` 모드는 깊이 데이터와 카메라 보정 데이터 포함을 보장하지 않는다.
+- iOS `RAW+JPG` 모드는 `AVCapturePhotoSettings.photoSettingsWithRawPixelFormatType`의 processed format으로 처리 사진을 함께 요청한다.
+- iOS Photos 등록은 `fileDataRepresentation()`이 전달되는 각 결과마다 `PHAssetCreationRequest`를 생성한다.
+- iOS `RAW+JPG` 결과가 Photos에서 하나의 페어 asset으로 묶여 보이는지는 Photos 프레임워크와 시스템 갤러리 정책을 따른다.
 
 ## 메타데이터 구현 배경
 
