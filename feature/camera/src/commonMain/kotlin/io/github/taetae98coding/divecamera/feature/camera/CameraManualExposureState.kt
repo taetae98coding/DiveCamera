@@ -62,30 +62,36 @@ internal data class CameraManualExposureState(
 }
 
 internal val CAMERA_MANUAL_EXPOSURE_ISO_OPTIONS = listOf(
-    50,
     100,
+    125,
+    160,
     200,
+    250,
+    320,
     400,
+    500,
+    640,
     800,
+    1000,
+    1250,
     1600,
+    2000,
+    2500,
     3200,
+    4000,
 )
 
 internal val CAMERA_MANUAL_EXPOSURE_SHUTTER_SPEED_OPTIONS = listOf(
-    125_000L,
-    250_000L,
-    500_000L,
-    1_000_000L,
-    2_000_000L,
     4_000_000L,
+    5_000_000L,
+    6_250_000L,
     8_000_000L,
+    10_000_000L,
+    12_500_000L,
     16_666_667L,
+    20_000_000L,
+    25_000_000L,
     33_333_333L,
-    66_666_667L,
-    125_000_000L,
-    250_000_000L,
-    500_000_000L,
-    1_000_000_000L,
 )
 
 private const val CAMERA_MANUAL_EXPOSURE_DEFAULT_ISO = 100

@@ -111,6 +111,10 @@
 11. `CameraExposureCompensationState`에서 선택 EV값은 `-2..+2` 범위를 벗어나지 않는다.
 12. `CameraManualExposureState`에 확인할 수 없는 ISO와 셔터 스피드를 전달하면 ISO 감도는 기본값으로 선택된다.
 13. `CameraManualExposureState`에 확인할 수 없는 ISO와 셔터 스피드를 전달하면 셔터 스피드는 기본값으로 선택된다.
-14. `CameraManualExposureState`에서 ISO 감도 증감을 호출하면 선택 ISO 감도는 정해진 단계로 변경된다.
-15. `CameraManualExposureState`에서 셔터 스피드 증감을 호출하면 선택 셔터 스피드는 정해진 단계로 변경된다.
-16. `CameraManualExposureState`에서 선택 ISO 감도와 셔터 스피드는 앱 노출 설정 범위를 벗어나지 않는다.
+14. `CameraManualExposureState`의 ISO 감도 선택 단계는 `100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000`이다.
+15. `CameraManualExposureState`에서 ISO 감도 증가를 호출하면 선택 ISO 감도는 다음 단계로 변경된다.
+16. `CameraManualExposureState`에서 ISO 감도 감소를 호출하면 선택 ISO 감도는 이전 단계로 변경된다.
+17. `CameraManualExposureState`의 셔터 스피드 선택 단계는 `1/250s, 1/200s, 1/160s, 1/125s, 1/100s, 1/80s, 1/60s, 1/50s, 1/40s, 1/30s`이다.
+18. `CameraManualExposureState`에서 셔터 스피드 증가를 호출하면 선택 셔터 스피드는 다음 단계로 변경된다.
+19. `CameraManualExposureState`에서 셔터 스피드 감소를 호출하면 선택 셔터 스피드는 이전 단계로 변경된다.
+20. `CameraManualExposureState`에서 선택 ISO 감도와 셔터 스피드는 앱 노출 설정 범위를 벗어나지 않는다.

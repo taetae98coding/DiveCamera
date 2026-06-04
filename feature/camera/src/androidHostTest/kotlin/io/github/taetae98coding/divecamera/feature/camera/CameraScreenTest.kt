@@ -838,10 +838,10 @@ class CameraScreenTest {
 
         composeRule
             .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_ISO_SELECTED_VALUE_TEST_TAG)
-            .assertTextEquals("800")
+            .assertTextEquals("500")
         composeRule
             .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_SHUTTER_SPEED_SELECTED_VALUE_TEST_TAG)
-            .assertTextEquals("1/30s")
+            .assertTextEquals("1/50s")
     }
 
     @Test
