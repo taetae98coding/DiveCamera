@@ -5,15 +5,20 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.util.Log
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExposureState
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.lifecycle.LifecycleOwner
+import java.util.concurrent.Executor
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 internal fun CameraController.createCameraSession(
     context: Context,
@@ -44,30 +49,35 @@ internal class AndroidCameraSession(
     private val cameraPreview = AndroidCameraPreview(
         targetRotation = targetRotation,
         onCaptureResult = { captureResultMetadata ->
+            val captureResultCameraExposureInfo = captureResultMetadata
+                .toCameraExposureInfo(
+                    focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
+                        focalLength = captureResultMetadata.focalLength,
+                        physicalCameraId = captureResultMetadata.activePhysicalCameraId,
+                    ),
+                )
+            latestCaptureResultCameraExposureInfo = captureResultCameraExposureInfo
             cameraController.updateCameraExposureInfo(
-                captureResultMetadata
-                    .toCameraExposureInfo(
-                        focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
-                            focalLength = captureResultMetadata.focalLength,
-                            physicalCameraId = captureResultMetadata.activePhysicalCameraId,
-                        ),
-                    )
-                    .withFallback(cameraExposureInfoFallback),
+                captureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
             )
         },
     )
     private var cameraExifMetadata = AndroidCameraExifMetadata.Empty
     private var cameraExposureInfoFallback = CameraExposureInfo.Unknown
+    private var latestCaptureResultCameraExposureInfo = CameraExposureInfo.Unknown
     private var imageCapture: AndroidImageCapture? = null
     private var cameraProvider: ProcessCameraProvider? = null
+    private var isReleased = false
 
     suspend fun bind() {
         try {
+            isReleased = false
             Log.d(
                 CAMERA_SESSION_LOG_TAG,
                 "bind start captureMode=$captureMode targetRotation=$targetRotation",
             )
             cameraController.updateImageCapture(null)
+            cameraController.updateExposureCompensationControl(null)
             cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
             val cameraLensCandidates = context.cameraLensCandidates(provider)
@@ -113,7 +123,7 @@ internal class AndroidCameraSession(
                 isFrontFacingCamera = camera.cameraInfo.isFrontFacing(),
             )
 
-            provider.bindToLifecycle(
+            val boundCamera = provider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
                 cameraPreview.useCase,
@@ -124,6 +134,9 @@ internal class AndroidCameraSession(
             cameraController.updateRawCaptureSupported(isRawCaptureSupported)
             cameraController.updateCameraLenses(
                 availableLenses = cameraLensCandidates.map(AndroidCameraLensCandidate::cameraLens),
+            )
+            cameraController.updateExposureCompensationControl(
+                boundCamera.toAndroidExposureCompensationControl(::updateExposureCompensationEv),
             )
             cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
             cameraController.updateImageCapture(nextImageCapture)
@@ -146,7 +159,9 @@ internal class AndroidCameraSession(
     }
 
     fun release() {
+        isReleased = true
         cameraController.updateImageCapture(null)
+        cameraController.updateExposureCompensationControl(null)
         cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
         imageCapture?.let { currentImageCapture ->
             currentImageCapture.release()
@@ -156,8 +171,98 @@ internal class AndroidCameraSession(
         cameraProvider = null
         cameraExifMetadata = AndroidCameraExifMetadata.Empty
         cameraExposureInfoFallback = CameraExposureInfo.Unknown
+        latestCaptureResultCameraExposureInfo = CameraExposureInfo.Unknown
         cameraPreview.release()
     }
+
+    private fun updateExposureCompensationEv(exposureCompensationEv: Double) {
+        if (isReleased) {
+            return
+        }
+
+        cameraExposureInfoFallback = cameraExposureInfoFallback.copy(
+            exposureCompensationEv = exposureCompensationEv,
+        )
+        cameraController.updateCameraExposureInfo(
+            latestCaptureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
+        )
+    }
+}
+
+private fun Camera.toAndroidExposureCompensationControl(onExposureCompensationChanged: (Double) -> Unit): AndroidExposureCompensationControl? {
+    val exposureState = cameraInfo.exposureState
+    if (!exposureState.isExposureCompensationSupported) {
+        return null
+    }
+
+    return CameraXExposureCompensationControl(
+        cameraControl = cameraControl,
+        exposureState = exposureState,
+        onExposureCompensationChanged = onExposureCompensationChanged,
+    )
+}
+
+private class CameraXExposureCompensationControl(
+    private val cameraControl: CameraControl,
+    private val exposureState: ExposureState,
+    private val onExposureCompensationChanged: (Double) -> Unit,
+) : AndroidExposureCompensationControl {
+    override fun setExposureCompensationEv(ev: Double) {
+        val exposureCompensationStep = exposureState.exposureCompensationStep.toDouble()
+        val index = androidExposureCompensationIndex(
+            exposureCompensationEv = ev,
+            exposureCompensationStep = exposureCompensationStep,
+            minIndex = exposureState.exposureCompensationRange.lower,
+            maxIndex = exposureState.exposureCompensationRange.upper,
+        ) ?: return
+
+        val future = cameraControl.setExposureCompensationIndex(index)
+        future.addListener(
+            {
+                val appliedIndex = runCatching { future.get() }.getOrNull()
+                    ?: return@addListener
+                val appliedEv = androidExposureCompensationEv(
+                    exposureCompensationIndex = appliedIndex,
+                    exposureCompensationStep = exposureCompensationStep,
+                ) ?: return@addListener
+                onExposureCompensationChanged(appliedEv)
+            },
+            DIRECT_EXECUTOR,
+        )
+    }
+}
+
+internal fun androidExposureCompensationIndex(
+    exposureCompensationEv: Double,
+    exposureCompensationStep: Double,
+    minIndex: Int,
+    maxIndex: Int,
+): Int? {
+    if (minIndex > maxIndex || exposureCompensationStep <= 0.0 || !exposureCompensationStep.isFinite()) {
+        return null
+    }
+
+    return (exposureCompensationEv.coerceInCameraExposureCompensationRange() / exposureCompensationStep)
+        .roundToInt()
+        .coerceIn(
+            minimumValue = minIndex,
+            maximumValue = maxIndex,
+        )
+}
+
+internal fun androidExposureCompensationEv(
+    exposureCompensationIndex: Int,
+    exposureCompensationStep: Double,
+): Double? {
+    if (exposureCompensationStep <= 0.0 || !exposureCompensationStep.isFinite()) {
+        return null
+    }
+
+    return exposureCompensationIndex * exposureCompensationStep
+}
+
+private val DIRECT_EXECUTOR = Executor { command ->
+    command.run()
 }
 
 private fun Collection<Int>.supportsRawCapture(): Boolean {

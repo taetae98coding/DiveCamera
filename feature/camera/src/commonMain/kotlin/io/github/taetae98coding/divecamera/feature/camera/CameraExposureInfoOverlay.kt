@@ -34,6 +34,7 @@ internal const val CAMERA_EXPOSURE_INFO_OVERLAY_TEST_TAG = "camera-exposure-info
 internal const val CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG = "camera-exposure-info-iso-value"
 internal const val CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG = "camera-exposure-info-aperture-value"
 internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG = "camera-exposure-info-shutter-speed-value"
+internal const val CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG = "camera-exposure-info-ev-button"
 internal const val CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG = "camera-exposure-info-ev-value"
 internal const val CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG = "camera-exposure-info-lens-button"
 internal const val CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG = "camera-exposure-info-lens-value"
@@ -48,6 +49,7 @@ private const val LENS_LABEL = "LENS"
 @Composable
 internal fun CameraExposureInfoOverlay(
     cameraExposureInfo: CameraExposureInfo,
+    onExposureCompensationClick: () -> Unit,
     onLensClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -102,6 +104,8 @@ internal fun CameraExposureInfoOverlay(
                 CameraExposureInfoItem(
                     label = EV_LABEL,
                     value = cameraExposureInfo.exposureCompensationText(),
+                    onItemClick = onExposureCompensationClick,
+                    containerTestTag = CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),
                 )
@@ -209,13 +213,8 @@ private fun CameraExposureInfo.shutterSpeedText(): String {
 private fun CameraExposureInfo.exposureCompensationText(): String {
     val value = exposureCompensationEv
         ?: return UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
-    val prefix = if (value > 0.0) {
-        "+"
-    } else {
-        ""
-    }
 
-    return prefix + value.formatSingleDecimal(trimTrailingZero = false)
+    return value.toCameraExposureCompensationText()
 }
 
 private fun CameraExposureInfo.focalLengthText(): String {

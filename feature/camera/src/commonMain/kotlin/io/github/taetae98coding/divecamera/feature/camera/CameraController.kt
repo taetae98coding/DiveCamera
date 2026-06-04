@@ -13,6 +13,8 @@ internal interface CameraController {
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)
 
+    fun setExposureCompensationEv(ev: Double)
+
     fun changeCameraLens()
 }
 

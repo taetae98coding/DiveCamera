@@ -52,6 +52,7 @@ internal fun CameraScreen(
     val coroutineScope = rememberCoroutineScope()
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
+    var isExposureCompensationPanelVisible by remember { mutableStateOf(false) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
     val snackbarHostState = remember { SnackbarHostState() }
     val rawCaptureSupportState by cameraController.rawCaptureSupportState.collectAsState()
@@ -110,6 +111,10 @@ internal fun CameraScreen(
 
                 CameraExposureInfoOverlay(
                     cameraExposureInfo = cameraExposureInfo,
+                    onExposureCompensationClick = {
+                        currentRegisterInput()
+                        isExposureCompensationPanelVisible = !isExposureCompensationPanelVisible
+                    },
                     onLensClick = {
                         currentRegisterInput()
                         cameraController.changeCameraLens()
@@ -152,6 +157,19 @@ internal fun CameraScreen(
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         .padding(bottom = 32.dp),
+                )
+
+                CameraExposureCompensationPanelOverlay(
+                    isVisible = isExposureCompensationPanelVisible,
+                    exposureCompensationEv = cameraExposureInfo.exposureCompensationEv,
+                    onDismissRequest = {
+                        currentRegisterInput()
+                        isExposureCompensationPanelVisible = false
+                    },
+                    onExposureCompensationChange = { ev ->
+                        currentRegisterInput()
+                        cameraController.setExposureCompensationEv(ev)
+                    },
                 )
             } else {
                 Text(

@@ -22,6 +22,7 @@ private class IosCameraController : CameraController {
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private val cameraSessionOwner = CameraSessionOwner()
     private var imageCapture: IosImageCapture? = null
+    private var exposureCompensationControl: IosExposureCompensationControl? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         mutableRawCaptureSupportState.asStateFlow()
@@ -60,6 +61,10 @@ private class IosCameraController : CameraController {
         }
     }
 
+    override fun setExposureCompensationEv(ev: Double) {
+        exposureCompensationControl?.setExposureCompensationEv(ev)
+    }
+
     override fun changeCameraLens() {
         mutableCameraLensState.value = mutableCameraLensState.value.changeLens()
     }
@@ -67,6 +72,7 @@ private class IosCameraController : CameraController {
     fun registerCameraSession(): Long {
         val cameraSessionId = cameraSessionOwner.registerSession()
         imageCapture = null
+        exposureCompensationControl = null
         mutableCaptureReadinessState.value = CaptureReadinessState.Busy
         return cameraSessionId
     }
@@ -108,11 +114,26 @@ private class IosCameraController : CameraController {
         )
     }
 
+    fun updateExposureCompensationControl(
+        exposureCompensationControl: IosExposureCompensationControl?,
+        cameraSessionId: Long,
+    ) {
+        if (!cameraSessionOwner.isCurrentSession(cameraSessionId)) {
+            return
+        }
+
+        this.exposureCompensationControl = exposureCompensationControl
+    }
+
     private fun emitPhotoSaveErrorMessage(message: String) {
         if (message.isNotBlank()) {
             mutablePhotoSaveErrorMessages.tryEmit(message)
         }
     }
+}
+
+internal interface IosExposureCompensationControl {
+    fun setExposureCompensationEv(ev: Double)
 }
 
 internal fun CameraController.registerCameraSession(): Long {
@@ -145,6 +166,16 @@ internal fun CameraController.updateCameraExposureInfo(
 
 internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
     (this as? IosCameraController)?.updateCameraLenses(availableLenses)
+}
+
+internal fun CameraController.updateExposureCompensationControl(
+    exposureCompensationControl: IosExposureCompensationControl?,
+    cameraSessionId: Long,
+) {
+    (this as? IosCameraController)?.updateExposureCompensationControl(
+        exposureCompensationControl = exposureCompensationControl,
+        cameraSessionId = cameraSessionId,
+    )
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

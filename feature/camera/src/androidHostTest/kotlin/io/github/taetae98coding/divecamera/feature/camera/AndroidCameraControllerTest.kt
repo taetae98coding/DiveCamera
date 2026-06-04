@@ -151,6 +151,57 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidExposureCompensationIndexUsesNearestCameraStep() {
+        assertEquals(
+            1,
+            androidExposureCompensationIndex(
+                exposureCompensationEv = 2.0 / 3.0,
+                exposureCompensationStep = 0.5,
+                minIndex = -4,
+                maxIndex = 4,
+            ),
+        )
+    }
+
+    @Test
+    fun androidExposureCompensationIndexClampsToAppExposureCompensationRange() {
+        assertEquals(
+            6,
+            androidExposureCompensationIndex(
+                exposureCompensationEv = 3.0,
+                exposureCompensationStep = 1.0 / 3.0,
+                minIndex = -12,
+                maxIndex = 12,
+            ),
+        )
+    }
+
+    @Test
+    fun androidExposureCompensationIndexClampsToCameraExposureCompensationRange() {
+        assertEquals(
+            3,
+            androidExposureCompensationIndex(
+                exposureCompensationEv = 2.0,
+                exposureCompensationStep = 1.0 / 3.0,
+                minIndex = -3,
+                maxIndex = 3,
+            ),
+        )
+    }
+
+    @Test
+    fun androidExposureCompensationEvMultipliesAppliedIndexByCameraStep() {
+        assertEquals(
+            1.0,
+            androidExposureCompensationEv(
+                exposureCompensationIndex = 3,
+                exposureCompensationStep = 1.0 / 3.0,
+            ) ?: 0.0,
+            EXPOSURE_COMPENSATION_TOLERANCE,
+        )
+    }
+
+    @Test
     fun androidCameraLensSelectorDoesNotRequireLensFacing() {
         val selector = CameraLens(cameraId = "0").toCameraSelector()
 
@@ -179,6 +230,10 @@ class AndroidCameraControllerTest {
                 ),
             ),
         )
+    }
+
+    private companion object {
+        private const val EXPOSURE_COMPENSATION_TOLERANCE = 0.0001
     }
 }
 

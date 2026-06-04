@@ -3,6 +3,7 @@ kotlin = "2.3.21"
 kotlinxCoroutines = "1.11.0"
 jetbrainsCompose = "1.11.0"
 jetbrainsComposeMaterial3 = "1.11.0-alpha07"
+jetbrainsComposeMaterialIconsExtended = "1.7.3"
 jetbrainsNavigation3 = "1.1.1"
 agp = "9.1.1"
 androidxActivityCompose = "1.13.0"
@@ -16,6 +17,7 @@ spotless = "8.5.1"
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 jetbrains-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "jetbrainsComposeMaterial3" }
+jetbrains-compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "jetbrainsComposeMaterialIconsExtended" }
 jetbrains-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "jetbrainsCompose" }
 jetbrains-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "jetbrainsCompose" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrainsNavigation3" }

@@ -21,6 +21,7 @@ internal class AndroidCameraController : CameraController {
     private val mutableCameraLensState = MutableStateFlow(CameraLensState())
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: AndroidPhotoCapture? = null
+    private var exposureCompensationControl: AndroidExposureCompensationControl? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         mutableRawCaptureSupportState.asStateFlow()
@@ -56,6 +57,10 @@ internal class AndroidCameraController : CameraController {
         }
     }
 
+    override fun setExposureCompensationEv(ev: Double) {
+        exposureCompensationControl?.setExposureCompensationEv(ev)
+    }
+
     override fun changeCameraLens() {
         mutableCameraLensState.value = mutableCameraLensState.value.changeLens()
     }
@@ -83,6 +88,10 @@ internal class AndroidCameraController : CameraController {
         )
     }
 
+    fun updateExposureCompensationControl(exposureCompensationControl: AndroidExposureCompensationControl?) {
+        this.exposureCompensationControl = exposureCompensationControl
+    }
+
     private fun emitPhotoSaveErrorMessage(message: String) {
         if (message.isNotBlank()) {
             mutablePhotoSaveErrorMessages.tryEmit(message)
@@ -94,6 +103,10 @@ internal interface AndroidPhotoCapture {
     val captureMode: CameraCaptureMode
 
     suspend fun capturePhoto(onError: (String) -> Unit)
+}
+
+internal interface AndroidExposureCompensationControl {
+    fun setExposureCompensationEv(ev: Double)
 }
 
 internal fun CameraController.updateImageCapture(imageCapture: AndroidPhotoCapture?) {
@@ -110,6 +123,10 @@ internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: Camer
 
 internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
     (this as? AndroidCameraController)?.updateCameraLenses(availableLenses)
+}
+
+internal fun CameraController.updateExposureCompensationControl(exposureCompensationControl: AndroidExposureCompensationControl?) {
+    (this as? AndroidCameraController)?.updateExposureCompensationControl(exposureCompensationControl)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

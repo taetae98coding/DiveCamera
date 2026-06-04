@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -450,6 +451,171 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysExposureCompensationInfoAsClickableButton() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureCompensationPanelWhenEvButtonClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_PANEL_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDismissesExposureCompensationPanelWhenOutsideClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_DISMISS_LAYER_TEST_TAG)
+            .performTouchInput {
+                click(Offset(8F, 8F))
+            }
+        composeRule.waitForIdle()
+
+        composeRule
+            .onAllNodesWithTag(EXPOSURE_COMPENSATION_PANEL_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun exposureCompensationPanelDisplaysSlider() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_SLIDER_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureCompensationPanelIncreasesSelectedEvByCanonStep() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_INCREASE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("+0.3")
+    }
+
+    @Test
+    fun exposureCompensationPanelDecreasesSelectedEvByCanonStep() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_DECREASE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("-0.3")
+    }
+
+    @Test
+    fun exposureCompensationPanelAppliesSelectedEvImmediately() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                exposureCompensationEv = 0.0,
+            ),
+        )
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(EXPOSURE_COMPENSATION_INCREASE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.setExposureCompensationEvCount)
+            assertEquals(
+                1.0 / 3.0,
+                cameraController.lastExposureCompensationEv ?: 0.0,
+                EXPOSURE_COMPENSATION_TOLERANCE,
+            )
+        }
+    }
+
+    @Test
     fun cameraScreenDisplaysUnknownExposureInfoAsPlaceholder() {
         composeRule.setContent {
             CameraScreen(
@@ -853,6 +1019,7 @@ class CameraScreenTest {
         private const val IDLE_TEST_TIMEOUT_MILLIS = 1L
         private const val LONG_IDLE_TEST_TIMEOUT_MILLIS = 10_000L
         private const val WAIT_UNTIL_TIMEOUT_MILLIS = 5_000L
+        private const val EXPOSURE_COMPENSATION_TOLERANCE = 0.0001
     }
 }
 
@@ -881,10 +1048,19 @@ private class FakeCameraController(
         private set
     var changeCameraLensCount = 0
         private set
+    var setExposureCompensationEvCount = 0
+        private set
+    var lastExposureCompensationEv: Double? = null
+        private set
 
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
         lastCaptureMode = captureMode
+    }
+
+    override fun setExposureCompensationEv(ev: Double) {
+        setExposureCompensationEvCount += 1
+        lastExposureCompensationEv = ev
     }
 
     override fun changeCameraLens() {

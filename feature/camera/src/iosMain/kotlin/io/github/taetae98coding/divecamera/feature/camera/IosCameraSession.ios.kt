@@ -22,6 +22,9 @@ import platform.AVFoundation.authorizationStatusForMediaType
 import platform.AVFoundation.exposureDuration
 import platform.AVFoundation.exposureTargetBias
 import platform.AVFoundation.lensAperture
+import platform.AVFoundation.maxExposureTargetBias
+import platform.AVFoundation.minExposureTargetBias
+import platform.AVFoundation.setExposureTargetBias
 import platform.AVFoundation.videoZoomFactor
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.UIKit.UIView
@@ -99,6 +102,10 @@ internal class IosCameraSession(
             imageCapture = null,
             cameraSessionId = cameraSessionId,
         )
+        cameraController.updateExposureCompensationControl(
+            exposureCompensationControl = null,
+            cameraSessionId = cameraSessionId,
+        )
         cameraController.updateCameraExposureInfo(
             cameraExposureInfo = CameraExposureInfo.Unknown,
             cameraSessionId = cameraSessionId,
@@ -127,6 +134,17 @@ internal class IosCameraSession(
             cameraDevice = device
             imageCapture.configure(session, device)
             cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
+            cameraController.updateExposureCompensationControl(
+                exposureCompensationControl = IosCameraDeviceExposureCompensationControl(
+                    device = device,
+                    dispatchOnSessionQueue = { block ->
+                        dispatch_async(sessionQueue) {
+                            block()
+                        }
+                    },
+                ),
+                cameraSessionId = cameraSessionId,
+            )
             cameraController.updateCameraLenses(
                 availableLenses = cameraLensCandidates.map(IosCameraLensCandidate::cameraLens),
             )
@@ -237,6 +255,49 @@ private fun supportedCameraLensCandidates(): List<IosCameraLensCandidate> {
                 device = device,
             )
         }
+}
+
+private class IosCameraDeviceExposureCompensationControl(
+    private val device: AVCaptureDevice,
+    private val dispatchOnSessionQueue: (() -> Unit) -> Unit,
+) : IosExposureCompensationControl {
+    override fun setExposureCompensationEv(ev: Double) {
+        dispatchOnSessionQueue {
+            device.setExposureCompensationEv(ev)
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDevice.setExposureCompensationEv(ev: Double) {
+    val minEv = minExposureTargetBias().toDouble()
+    val maxEv = maxExposureTargetBias().toDouble()
+    if (!minEv.isFinite() || !maxEv.isFinite() || minEv > maxEv) {
+        return
+    }
+
+    val clampedEv = ev
+        .coerceInCameraExposureCompensationRange()
+        .coerceIn(
+            minimumValue = minEv,
+            maximumValue = maxEv,
+        )
+        .toFloat()
+    val isLocked = runCatching {
+        lockForConfiguration(null)
+    }.getOrDefault(false)
+    if (!isLocked) {
+        return
+    }
+
+    try {
+        setExposureTargetBias(
+            bias = clampedEv,
+            completionHandler = null,
+        )
+    } finally {
+        unlockForConfiguration()
+    }
 }
 
 private fun AVCaptureDevice.toCameraLens(): CameraLens = CameraLens(cameraId = uniqueID)
