@@ -107,57 +107,19 @@ class AndroidImageCaptureTest {
     }
 
     @Test
-    fun androidRawOutputUsesInMemoryRawLocationWriteWhenLocationIsAvailable() {
-        val location = Location(GPS_PROVIDER).apply {
-            latitude = GPS_LATITUDE
-            longitude = GPS_LONGITUDE
-        }
-
+    fun androidRawOutputUsesInMemoryRawWrite() {
         assertTrue(
-            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
-                location = location,
-                isFrontFacingCamera = false,
-            ),
+            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(),
         )
         assertTrue(
-            ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawWrite(
-                location = location,
-                isFrontFacingCamera = false,
-            ),
-        )
-        assertFalse(
-            ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawWrite(
-                location = location,
-                isFrontFacingCamera = false,
-            ),
-        )
-        assertFalse(
-            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
-                location = null,
-                isFrontFacingCamera = false,
-            ),
+            ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawWrite(),
         )
     }
 
     @Test
-    fun androidFrontRawOutputUsesInMemoryRawWriteWithoutLocation() {
-        assertTrue(
-            ImageCapture.OUTPUT_FORMAT_RAW.requiresInMemoryRawWrite(
-                location = null,
-                isFrontFacingCamera = true,
-            ),
-        )
-        assertTrue(
-            ImageCapture.OUTPUT_FORMAT_RAW_JPEG.requiresInMemoryRawWrite(
-                location = null,
-                isFrontFacingCamera = true,
-            ),
-        )
+    fun androidNonRawOutputDoesNotUseInMemoryRawWrite() {
         assertFalse(
-            ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawWrite(
-                location = null,
-                isFrontFacingCamera = true,
-            ),
+            ImageCapture.OUTPUT_FORMAT_JPEG.requiresInMemoryRawWrite(),
         )
     }
 

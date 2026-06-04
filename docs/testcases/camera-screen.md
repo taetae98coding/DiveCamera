@@ -62,7 +62,7 @@
 58. Robolectric `androidHostTest`에서 Android 캡처 결과 메타데이터에 활성 physical 카메라 ID가 있으면 촬영 정보 상태의 35mm 환산 초점거리는 활성 physical 카메라 기준 값이다.
 59. Robolectric `androidHostTest`에서 fake `CameraController`의 촬영 정보 상태가 변경되면 촬영 정보 오버레이는 변경된 최신 촬영 정보를 표시한다.
 60. Robolectric `androidHostTest`에서 Android DNG 사진 파일 포맷은 EXIF 메타데이터 후처리 쓰기 저장 대상으로 분류되지 않는다.
-61. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 위치를 확인할 수 있으면 인메모리 RAW 저장 대상으로 분류된다.
+61. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이면 위치 확인 여부와 관계없이 인메모리 RAW 저장 대상으로 분류된다.
 62. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `LENS` 표시 영역은 클릭 가능한 버튼이다.
 63. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `LENS` 표시 영역을 클릭하면 `CameraController.changeCameraLens()`가 호출된다.
 64. Robolectric `androidHostTest`에서 Android 렌즈 선택자는 lens facing을 요구하지 않는다.
@@ -71,7 +71,7 @@
 67. Robolectric `androidHostTest`에서 Android 전면 카메라 저장 메타데이터는 horizontal reverse를 사용한다.
 68. Robolectric `androidHostTest`에서 Android 후면 카메라 저장 메타데이터는 horizontal reverse를 사용하지 않는다.
 69. Robolectric `androidHostTest`에서 Android 전면 카메라 JPEG 보정은 horizontal reverse를 픽셀에 반영하고 EXIF orientation을 normal로 정리한다.
-70. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 전면 카메라이면 위치가 없어도 인메모리 RAW 저장 대상으로 분류된다.
+70. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG가 아닌 출력 포맷은 인메모리 RAW 저장 대상으로 분류되지 않는다.
 71. Robolectric `androidHostTest`에서 Android 전면 카메라 DNG orientation은 rotation에 horizontal reverse를 함께 반영한다.
 72. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `EV` 표시 영역은 클릭 가능한 버튼이다.
 73. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `EV` 표시 영역을 클릭하면 노출 설정 Dialog가 표시된다.

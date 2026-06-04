@@ -80,12 +80,7 @@ internal class AndroidImageCapture(
                 IMAGE_CAPTURE_LOG_TAG,
                 "capturePhoto start mode=$captureMode outputFormat=${outputFormat.toImageCaptureOutputFormatName()} hasLocation=${location != null}",
             )
-            if (
-                outputFormat.requiresInMemoryRawWrite(
-                    location = location,
-                    isFrontFacingCamera = isFrontFacingCamera,
-                )
-            ) {
+            if (outputFormat.requiresInMemoryRawWrite()) {
                 captureInMemoryRawPhoto(
                     location = location,
                     onError = onError,
@@ -319,12 +314,8 @@ private fun ImageCapture.OutputFileResults.toAndroidSavedPhotoResult(photoFileFo
 
 private fun Throwable.platformErrorMessage(): String = message ?: toString()
 
-internal fun Int.requiresInMemoryRawWrite(
-    location: Location?,
-    isFrontFacingCamera: Boolean,
-): Boolean {
-    return (location != null || isFrontFacingCamera) &&
-        (this == ImageCapture.OUTPUT_FORMAT_RAW || this == ImageCapture.OUTPUT_FORMAT_RAW_JPEG)
+internal fun Int.requiresInMemoryRawWrite(): Boolean {
+    return this == ImageCapture.OUTPUT_FORMAT_RAW || this == ImageCapture.OUTPUT_FORMAT_RAW_JPEG
 }
 
 private fun Int.inMemoryImageCount(): Int = if (this == ImageCapture.OUTPUT_FORMAT_RAW_JPEG) {
@@ -668,11 +659,11 @@ private fun Context.saveDngImageToMediaStore(
     isFrontFacingCamera: Boolean,
 ): Uri {
     val characteristics = cameraCharacteristics
-        ?: throw IOException("CameraCharacteristics is unavailable for DNG GPS metadata.")
+        ?: throw IOException("CameraCharacteristics is unavailable for DNG metadata.")
     val result = captureResult
-        ?: throw IOException("CaptureResult is unavailable for DNG GPS metadata.")
+        ?: throw IOException("CaptureResult is unavailable for DNG metadata.")
     val image = imageProxy.image
-        ?: throw IOException("RAW image is unavailable for DNG GPS metadata.")
+        ?: throw IOException("RAW image is unavailable for DNG metadata.")
 
     val uri = insertImageUri(
         photoFileFormat = AndroidPhotoFileFormat.Dng,
