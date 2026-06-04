@@ -23,6 +23,7 @@ private class IosCameraController : CameraController {
     private val cameraSessionOwner = CameraSessionOwner()
     private var imageCapture: IosImageCapture? = null
     private var exposureControl: IosExposureControl? = null
+    private var exposureMode = CameraExposureMode.Auto
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         mutableRawCaptureSupportState.asStateFlow()
@@ -50,6 +51,7 @@ private class IosCameraController : CameraController {
         try {
             isCaptureRequested = currentImageCapture.capturePhoto(
                 captureMode = captureMode,
+                exposureMode = exposureMode,
                 onError = ::emitPhotoSaveErrorMessage,
             )
         } catch (throwable: Throwable) {
@@ -62,6 +64,7 @@ private class IosCameraController : CameraController {
     }
 
     override fun setAutoExposure(exposureCompensationEv: Double) {
+        exposureMode = CameraExposureMode.Auto
         exposureControl?.setAutoExposure(exposureCompensationEv)
     }
 
@@ -69,6 +72,7 @@ private class IosCameraController : CameraController {
         iso: Int,
         shutterSpeedNanoseconds: Long,
     ) {
+        exposureMode = CameraExposureMode.Manual
         exposureControl?.setManualExposure(
             iso = iso,
             shutterSpeedNanoseconds = shutterSpeedNanoseconds,

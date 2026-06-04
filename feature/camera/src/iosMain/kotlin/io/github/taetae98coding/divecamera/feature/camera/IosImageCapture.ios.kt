@@ -12,6 +12,7 @@ import platform.AVFoundation.AVCaptureDevicePositionFront
 import platform.AVFoundation.AVCapturePhoto
 import platform.AVFoundation.AVCapturePhotoCaptureDelegateProtocol
 import platform.AVFoundation.AVCapturePhotoOutput
+import platform.AVFoundation.AVCapturePhotoQualityPrioritizationBalanced
 import platform.AVFoundation.AVCapturePhotoQualityPrioritizationQuality
 import platform.AVFoundation.AVCapturePhotoSettings
 import platform.AVFoundation.AVCaptureResolvedPhotoSettings
@@ -78,11 +79,13 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
 
     suspend fun capturePhoto(
         captureMode: CameraCaptureMode,
+        exposureMode: CameraExposureMode,
         onError: (String) -> Unit,
     ): Boolean {
         return suspendCancellableCoroutine { continuation ->
             val isCaptureRequested = requestCapturePhoto(
                 captureMode = captureMode,
+                exposureMode = exposureMode,
                 onError = onError,
             ) {
                 if (continuation.isActive) {
@@ -98,6 +101,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
 
     private fun requestCapturePhoto(
         captureMode: CameraCaptureMode,
+        exposureMode: CameraExposureMode,
         onError: (String) -> Unit,
         onComplete: () -> Unit,
     ): Boolean {
@@ -110,6 +114,7 @@ internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) 
             val location = locationProvider.currentLocation()
             val settings = photoOutput.createPhotoSettings(
                 captureMode = captureMode,
+                exposureMode = exposureMode,
                 cameraMetadata = cameraMetadata,
                 location = location,
             )
@@ -230,6 +235,7 @@ private data class IosCameraMetadata(
 
 private fun AVCapturePhotoOutput.createPhotoSettings(
     captureMode: CameraCaptureMode,
+    exposureMode: CameraExposureMode,
     cameraMetadata: IosCameraMetadata,
     location: CLLocation?,
 ): AVCapturePhotoSettings {
@@ -250,7 +256,9 @@ private fun AVCapturePhotoOutput.createPhotoSettings(
     }
 
     if (rawPhotoPixelFormatType == null) {
-        settings.photoQualityPrioritization = AVCapturePhotoQualityPrioritizationQuality
+        settings.photoQualityPrioritization = exposureMode
+            .photoQualityPrioritization()
+            .toIosPhotoQualityPrioritization()
     }
     settings.maxPhotoDimensions = maxPhotoDimensions
     if (rawPhotoPixelFormatType == null && depthDataDeliverySupported) {
@@ -263,6 +271,13 @@ private fun AVCapturePhotoOutput.createPhotoSettings(
     settings.metadata = cameraMetadata.photoSettingsMetadata(location)
 
     return settings
+}
+
+private fun CameraPhotoQualityPrioritization.toIosPhotoQualityPrioritization(): Long {
+    return when (this) {
+        CameraPhotoQualityPrioritization.Balanced -> AVCapturePhotoQualityPrioritizationBalanced
+        CameraPhotoQualityPrioritization.Quality -> AVCapturePhotoQualityPrioritizationQuality
+    }
 }
 
 private fun AVCapturePhotoOutput.processedPhotoFormat(captureMode: CameraCaptureMode): Map<Any?, *>? {

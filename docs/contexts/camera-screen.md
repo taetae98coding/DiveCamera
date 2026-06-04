@@ -102,7 +102,8 @@
 ### iOS JPG
 
 - iOS `JPG` 모드는 AVFoundation의 처리 사진 출력으로 저장한다.
-- iOS `JPG` 모드는 AVFoundation의 최고 화질 우선순위를 요청한다.
+- iOS `JPG` 모드는 `Auto Mode`에서 `AVCapturePhotoSettings.photoQualityPrioritization`을 `AVCapturePhotoQualityPrioritizationQuality`로 설정한다.
+- iOS `JPG` 모드는 `Manual Mode`에서 `AVCapturePhotoSettings.photoQualityPrioritization`을 `AVCapturePhotoQualityPrioritizationBalanced`로 설정한다.
 - iOS `JPG` 모드는 기기가 지원하는 최대 사진 해상도를 요청한다.
 - iOS `JPG` 모드는 기기가 지원하면 HEVC/HEIF 처리 사진으로 저장한다.
 - iOS `JPG` 모드는 HEVC/HEIF를 지원하지 않으면 JPEG 처리 사진으로 저장한다.
