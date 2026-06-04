@@ -52,7 +52,8 @@ internal fun CameraScreen(
     val coroutineScope = rememberCoroutineScope()
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
-    var isExposureCompensationPanelVisible by remember { mutableStateOf(false) }
+    var isExposureDialogVisible by remember { mutableStateOf(false) }
+    var exposureMode by remember { mutableStateOf(CameraExposureMode.Auto) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
     val snackbarHostState = remember { SnackbarHostState() }
     val rawCaptureSupportState by cameraController.rawCaptureSupportState.collectAsState()
@@ -111,9 +112,10 @@ internal fun CameraScreen(
 
                 CameraExposureInfoOverlay(
                     cameraExposureInfo = cameraExposureInfo,
-                    onExposureCompensationClick = {
+                    exposureMode = exposureMode,
+                    onExposureSettingsClick = {
                         currentRegisterInput()
-                        isExposureCompensationPanelVisible = !isExposureCompensationPanelVisible
+                        isExposureDialogVisible = true
                     },
                     onLensClick = {
                         currentRegisterInput()
@@ -159,18 +161,29 @@ internal fun CameraScreen(
                         .padding(bottom = 32.dp),
                 )
 
-                CameraExposureCompensationPanelOverlay(
-                    isVisible = isExposureCompensationPanelVisible,
-                    exposureCompensationEv = cameraExposureInfo.exposureCompensationEv,
-                    onDismissRequest = {
-                        currentRegisterInput()
-                        isExposureCompensationPanelVisible = false
-                    },
-                    onExposureCompensationChange = { ev ->
-                        currentRegisterInput()
-                        cameraController.setExposureCompensationEv(ev)
-                    },
-                )
+                if (isExposureDialogVisible) {
+                    CameraExposureDialog(
+                        cameraExposureInfo = cameraExposureInfo,
+                        initialExposureMode = exposureMode,
+                        onDismissRequest = {
+                            currentRegisterInput()
+                            isExposureDialogVisible = false
+                        },
+                        onAutoExposureApply = { ev ->
+                            currentRegisterInput()
+                            exposureMode = CameraExposureMode.Auto
+                            cameraController.setAutoExposure(ev)
+                        },
+                        onManualExposureApply = { iso, shutterSpeedNanoseconds ->
+                            currentRegisterInput()
+                            exposureMode = CameraExposureMode.Manual
+                            cameraController.setManualExposure(
+                                iso = iso,
+                                shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+                            )
+                        },
+                    )
+                }
             } else {
                 Text(
                     text = CAMERA_OFF_TEXT,

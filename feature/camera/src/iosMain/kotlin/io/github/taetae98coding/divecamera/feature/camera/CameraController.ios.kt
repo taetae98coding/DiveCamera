@@ -22,7 +22,7 @@ private class IosCameraController : CameraController {
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private val cameraSessionOwner = CameraSessionOwner()
     private var imageCapture: IosImageCapture? = null
-    private var exposureCompensationControl: IosExposureCompensationControl? = null
+    private var exposureControl: IosExposureControl? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         mutableRawCaptureSupportState.asStateFlow()
@@ -61,8 +61,18 @@ private class IosCameraController : CameraController {
         }
     }
 
-    override fun setExposureCompensationEv(ev: Double) {
-        exposureCompensationControl?.setExposureCompensationEv(ev)
+    override fun setAutoExposure(exposureCompensationEv: Double) {
+        exposureControl?.setAutoExposure(exposureCompensationEv)
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        exposureControl?.setManualExposure(
+            iso = iso,
+            shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+        )
     }
 
     override fun changeCameraLens() {
@@ -72,7 +82,7 @@ private class IosCameraController : CameraController {
     fun registerCameraSession(): Long {
         val cameraSessionId = cameraSessionOwner.registerSession()
         imageCapture = null
-        exposureCompensationControl = null
+        exposureControl = null
         mutableCaptureReadinessState.value = CaptureReadinessState.Busy
         return cameraSessionId
     }
@@ -114,15 +124,15 @@ private class IosCameraController : CameraController {
         )
     }
 
-    fun updateExposureCompensationControl(
-        exposureCompensationControl: IosExposureCompensationControl?,
+    fun updateExposureControl(
+        exposureControl: IosExposureControl?,
         cameraSessionId: Long,
     ) {
         if (!cameraSessionOwner.isCurrentSession(cameraSessionId)) {
             return
         }
 
-        this.exposureCompensationControl = exposureCompensationControl
+        this.exposureControl = exposureControl
     }
 
     private fun emitPhotoSaveErrorMessage(message: String) {
@@ -132,8 +142,13 @@ private class IosCameraController : CameraController {
     }
 }
 
-internal interface IosExposureCompensationControl {
-    fun setExposureCompensationEv(ev: Double)
+internal interface IosExposureControl {
+    fun setAutoExposure(exposureCompensationEv: Double)
+
+    fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    )
 }
 
 internal fun CameraController.registerCameraSession(): Long {
@@ -168,12 +183,12 @@ internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLen
     (this as? IosCameraController)?.updateCameraLenses(availableLenses)
 }
 
-internal fun CameraController.updateExposureCompensationControl(
-    exposureCompensationControl: IosExposureCompensationControl?,
+internal fun CameraController.updateExposureControl(
+    exposureControl: IosExposureControl?,
     cameraSessionId: Long,
 ) {
-    (this as? IosCameraController)?.updateExposureCompensationControl(
-        exposureCompensationControl = exposureCompensationControl,
+    (this as? IosCameraController)?.updateExposureControl(
+        exposureControl = exposureControl,
         cameraSessionId = cameraSessionId,
     )
 }

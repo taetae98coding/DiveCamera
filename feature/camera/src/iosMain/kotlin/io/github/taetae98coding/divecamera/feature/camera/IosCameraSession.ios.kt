@@ -13,6 +13,7 @@ import platform.AVFoundation.AVCaptureDevicePositionUnspecified
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInTelephotoCamera
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInUltraWideCamera
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInWideAngleCamera
+import platform.AVFoundation.AVCaptureExposureModeContinuousAutoExposure
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
@@ -24,9 +25,12 @@ import platform.AVFoundation.exposureTargetBias
 import platform.AVFoundation.lensAperture
 import platform.AVFoundation.maxExposureTargetBias
 import platform.AVFoundation.minExposureTargetBias
+import platform.AVFoundation.setExposureMode
+import platform.AVFoundation.setExposureModeCustomWithDuration
 import platform.AVFoundation.setExposureTargetBias
 import platform.AVFoundation.videoZoomFactor
 import platform.CoreMedia.CMTimeGetSeconds
+import platform.CoreMedia.CMTimeMakeWithSeconds
 import platform.UIKit.UIView
 import platform.darwin.DISPATCH_SOURCE_TYPE_TIMER
 import platform.darwin.DISPATCH_TIME_NOW
@@ -102,8 +106,8 @@ internal class IosCameraSession(
             imageCapture = null,
             cameraSessionId = cameraSessionId,
         )
-        cameraController.updateExposureCompensationControl(
-            exposureCompensationControl = null,
+        cameraController.updateExposureControl(
+            exposureControl = null,
             cameraSessionId = cameraSessionId,
         )
         cameraController.updateCameraExposureInfo(
@@ -134,8 +138,8 @@ internal class IosCameraSession(
             cameraDevice = device
             imageCapture.configure(session, device)
             cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
-            cameraController.updateExposureCompensationControl(
-                exposureCompensationControl = IosCameraDeviceExposureCompensationControl(
+            cameraController.updateExposureControl(
+                exposureControl = IosCameraDeviceExposureControl(
                     device = device,
                     dispatchOnSessionQueue = { block ->
                         dispatch_async(sessionQueue) {
@@ -257,26 +261,38 @@ private fun supportedCameraLensCandidates(): List<IosCameraLensCandidate> {
         }
 }
 
-private class IosCameraDeviceExposureCompensationControl(
+private class IosCameraDeviceExposureControl(
     private val device: AVCaptureDevice,
     private val dispatchOnSessionQueue: (() -> Unit) -> Unit,
-) : IosExposureCompensationControl {
-    override fun setExposureCompensationEv(ev: Double) {
+) : IosExposureControl {
+    override fun setAutoExposure(exposureCompensationEv: Double) {
         dispatchOnSessionQueue {
-            device.setExposureCompensationEv(ev)
+            device.setAutoExposure(exposureCompensationEv)
+        }
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        dispatchOnSessionQueue {
+            device.setManualExposure(
+                iso = iso,
+                shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+            )
         }
     }
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun AVCaptureDevice.setExposureCompensationEv(ev: Double) {
+private fun AVCaptureDevice.setAutoExposure(exposureCompensationEv: Double) {
     val minEv = minExposureTargetBias().toDouble()
     val maxEv = maxExposureTargetBias().toDouble()
     if (!minEv.isFinite() || !maxEv.isFinite() || minEv > maxEv) {
         return
     }
 
-    val clampedEv = ev
+    val clampedEv = exposureCompensationEv
         .coerceInCameraExposureCompensationRange()
         .coerceIn(
             minimumValue = minEv,
@@ -291,8 +307,72 @@ private fun AVCaptureDevice.setExposureCompensationEv(ev: Double) {
     }
 
     try {
+        setExposureMode(AVCaptureExposureModeContinuousAutoExposure)
         setExposureTargetBias(
             bias = clampedEv,
+            completionHandler = null,
+        )
+    } finally {
+        unlockForConfiguration()
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDevice.setManualExposure(
+    iso: Int,
+    shutterSpeedNanoseconds: Long,
+) {
+    val format = activeFormat
+    val minIso = format.minISO.toDouble()
+    val maxIso = format.maxISO.toDouble()
+    if (!minIso.isFinite() || !maxIso.isFinite() || minIso > maxIso) {
+        return
+    }
+
+    val exposureDurationSeconds = shutterSpeedNanoseconds
+        .takeIf { it > 0L }
+        ?.toDouble()
+        ?.div(NANOS_PER_SECOND)
+        ?: return
+    if (!exposureDurationSeconds.isFinite() || exposureDurationSeconds <= 0.0) {
+        return
+    }
+    val minExposureDurationSeconds = CMTimeGetSeconds(format.minExposureDuration)
+    val maxExposureDurationSeconds = CMTimeGetSeconds(format.maxExposureDuration)
+    if (
+        !minExposureDurationSeconds.isFinite() ||
+        !maxExposureDurationSeconds.isFinite() ||
+        minExposureDurationSeconds <= 0.0 ||
+        minExposureDurationSeconds > maxExposureDurationSeconds
+    ) {
+        return
+    }
+
+    val clampedIso = iso
+        .coerceIn(
+            minimumValue = minIso.roundToInt(),
+            maximumValue = maxIso.roundToInt(),
+        )
+        .toFloat()
+    val clampedExposureDurationSeconds = exposureDurationSeconds.coerceIn(
+        minimumValue = minExposureDurationSeconds,
+        maximumValue = maxExposureDurationSeconds,
+    )
+    val duration = CMTimeMakeWithSeconds(
+        seconds = clampedExposureDurationSeconds,
+        preferredTimescale = NANOS_PER_SECOND.toInt(),
+    )
+    val isLocked = runCatching {
+        lockForConfiguration(null)
+    }.getOrDefault(false)
+    if (!isLocked) {
+        return
+    }
+
+    try {
+        setExposureModeCustomWithDuration(
+            duration = duration,
+            ISO = clampedIso,
             completionHandler = null,
         )
     } finally {

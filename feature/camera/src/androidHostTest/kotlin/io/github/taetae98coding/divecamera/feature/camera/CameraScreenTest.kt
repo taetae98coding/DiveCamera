@@ -19,6 +19,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -468,7 +469,32 @@ class CameraScreenTest {
     }
 
     @Test
-    fun cameraScreenDisplaysExposureCompensationPanelWhenEvButtonClicked() {
+    fun cameraScreenDisplaysExposureSettingsInfoAsClickableButtons() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        aperture = 1.8F,
+                        shutterSpeedNanoseconds = 16_666_667L,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .assertHasClickAction()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG)
+            .assertHasClickAction()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG)
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureDialogWhenEvButtonClicked() {
         composeRule.setContent {
             CameraScreen(
                 cameraController = FakeCameraController(
@@ -484,12 +510,75 @@ class CameraScreenTest {
             .performClick()
 
         composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_PANEL_TEST_TAG)
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
             .assertIsDisplayed()
     }
 
     @Test
-    fun cameraScreenDismissesExposureCompensationPanelWhenOutsideClicked() {
+    fun cameraScreenDisplaysExposureDialogWhenIsoButtonClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureDialogWhenApertureButtonClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        aperture = 1.8F,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureDialogWhenShutterSpeedButtonClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        shutterSpeedNanoseconds = 16_666_667L,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureDialogDisplaysAutoAndManualModeButtons() {
         composeRule.setContent {
             CameraScreen(
                 cameraController = FakeCameraController(
@@ -501,118 +590,285 @@ class CameraScreenTest {
         }
 
         composeRule
-            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_AUTO_MODE_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureDialogDisplaysAutoExposureControlsInAutoMode() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_AUTO_EV_SLIDER_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_AUTO_EV_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("0.0")
+    }
+
+    @Test
+    fun exposureDialogDisplaysManualExposureControlsInManualMode() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        shutterSpeedNanoseconds = 16_666_667L,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
             .performClick()
         composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_DISMISS_LAYER_TEST_TAG)
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_ISO_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("400")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_SHUTTER_SPEED_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("1/60s")
+    }
+
+    @Test
+    fun exposureDialogAppliesAutoExposure() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                exposureCompensationEv = 1.0 / 3.0,
+            ),
+        )
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.setAutoExposureCount)
+            assertEquals(
+                1.0 / 3.0,
+                cameraController.lastAutoExposureEv ?: 0.0,
+                EXPOSURE_COMPENSATION_TOLERANCE,
+            )
+        }
+    }
+
+    @Test
+    fun exposureDialogAppliesManualExposure() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                iso = 400,
+                shutterSpeedNanoseconds = 16_666_667L,
+            ),
+        )
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.setManualExposureCount)
+            assertEquals(400, cameraController.lastManualExposureIso)
+            assertEquals(16_666_667L, cameraController.lastManualExposureShutterSpeedNanoseconds)
+        }
+    }
+
+    @Test
+    fun exposureInfoOverlayHidesEvButtonWhenManualExposureIsApplied() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun exposureInfoOverlayKeepsLensButtonDisplayedWhenManualExposureIsApplied() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        focalLengthIn35mmFilmMillimeters = 24,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureInfoOverlayDisplaysEvButtonAgainWhenAutoExposureIsApplied() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_AUTO_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureDialogKeepsManualSelectionWhenExposureInfoUpdates() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                iso = 400,
+                shutterSpeedNanoseconds = 16_666_667L,
+            ),
+        )
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription("ISO increase")
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription("S increase")
+            .performClick()
+        composeRule.runOnIdle {
+            cameraController.updateCameraExposureInfo(
+                CameraExposureInfo(
+                    iso = 100,
+                    shutterSpeedNanoseconds = 125_000_000L,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_ISO_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("800")
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_SHUTTER_SPEED_SELECTED_VALUE_TEST_TAG)
+            .assertTextEquals("1/30s")
+    }
+
+    @Test
+    fun exposureDialogDismissesWhenOutsideClicked() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_DISMISS_LAYER_TEST_TAG)
             .performTouchInput {
                 click(Offset(8F, 8F))
             }
         composeRule.waitForIdle()
 
         composeRule
-            .onAllNodesWithTag(EXPOSURE_COMPENSATION_PANEL_TEST_TAG)
+            .onAllNodesWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
             .assertCountEquals(0)
-    }
-
-    @Test
-    fun exposureCompensationPanelDisplaysSlider() {
-        composeRule.setContent {
-            CameraScreen(
-                cameraController = FakeCameraController(
-                    cameraExposureInfo = CameraExposureInfo(
-                        exposureCompensationEv = 0.0,
-                    ),
-                ),
-            )
-        }
-
-        composeRule
-            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
-            .performClick()
-
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_SLIDER_TEST_TAG)
-            .assertIsDisplayed()
-    }
-
-    @Test
-    fun exposureCompensationPanelIncreasesSelectedEvByCanonStep() {
-        composeRule.setContent {
-            CameraScreen(
-                cameraController = FakeCameraController(
-                    cameraExposureInfo = CameraExposureInfo(
-                        exposureCompensationEv = 0.0,
-                    ),
-                ),
-            )
-        }
-
-        composeRule
-            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
-            .performClick()
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_INCREASE_BUTTON_TEST_TAG)
-            .performClick()
-
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_SELECTED_VALUE_TEST_TAG)
-            .assertTextEquals("+0.3")
-    }
-
-    @Test
-    fun exposureCompensationPanelDecreasesSelectedEvByCanonStep() {
-        composeRule.setContent {
-            CameraScreen(
-                cameraController = FakeCameraController(
-                    cameraExposureInfo = CameraExposureInfo(
-                        exposureCompensationEv = 0.0,
-                    ),
-                ),
-            )
-        }
-
-        composeRule
-            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
-            .performClick()
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_DECREASE_BUTTON_TEST_TAG)
-            .performClick()
-
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_SELECTED_VALUE_TEST_TAG)
-            .assertTextEquals("-0.3")
-    }
-
-    @Test
-    fun exposureCompensationPanelAppliesSelectedEvImmediately() {
-        val cameraController = FakeCameraController(
-            cameraExposureInfo = CameraExposureInfo(
-                exposureCompensationEv = 0.0,
-            ),
-        )
-
-        composeRule.setContent {
-            CameraScreen(
-                cameraController = cameraController,
-            )
-        }
-
-        composeRule
-            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
-            .performClick()
-        composeRule
-            .onNodeWithTag(EXPOSURE_COMPENSATION_INCREASE_BUTTON_TEST_TAG)
-            .performClick()
-
-        composeRule.runOnIdle {
-            assertEquals(1, cameraController.setExposureCompensationEvCount)
-            assertEquals(
-                1.0 / 3.0,
-                cameraController.lastExposureCompensationEv ?: 0.0,
-                EXPOSURE_COMPENSATION_TOLERANCE,
-            )
-        }
     }
 
     @Test
@@ -1048,19 +1304,33 @@ private class FakeCameraController(
         private set
     var changeCameraLensCount = 0
         private set
-    var setExposureCompensationEvCount = 0
+    var setAutoExposureCount = 0
         private set
-    var lastExposureCompensationEv: Double? = null
+    var lastAutoExposureEv: Double? = null
         private set
-
+    var setManualExposureCount = 0
+        private set
+    var lastManualExposureIso: Int? = null
+        private set
+    var lastManualExposureShutterSpeedNanoseconds: Long? = null
+        private set
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
         lastCaptureMode = captureMode
     }
 
-    override fun setExposureCompensationEv(ev: Double) {
-        setExposureCompensationEvCount += 1
-        lastExposureCompensationEv = ev
+    override fun setAutoExposure(exposureCompensationEv: Double) {
+        setAutoExposureCount += 1
+        lastAutoExposureEv = exposureCompensationEv
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        setManualExposureCount += 1
+        lastManualExposureIso = iso
+        lastManualExposureShutterSpeedNanoseconds = shutterSpeedNanoseconds
     }
 
     override fun changeCameraLens() {

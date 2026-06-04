@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import android.hardware.camera2.CameraCharacteristics
+import android.util.Range
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -151,6 +152,38 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidCameraControllerDelegatesAutoExposureToExposureControl() {
+        val controller = AndroidCameraController()
+        val exposureControl = FakeAndroidExposureControl()
+        controller.updateExposureControl(exposureControl)
+
+        controller.setAutoExposure(1.0 / 3.0)
+
+        assertEquals(1, exposureControl.setAutoExposureCount)
+        assertEquals(
+            1.0 / 3.0,
+            exposureControl.lastAutoExposureEv ?: 0.0,
+            EXPOSURE_COMPENSATION_TOLERANCE,
+        )
+    }
+
+    @Test
+    fun androidCameraControllerDelegatesManualExposureToExposureControl() {
+        val controller = AndroidCameraController()
+        val exposureControl = FakeAndroidExposureControl()
+        controller.updateExposureControl(exposureControl)
+
+        controller.setManualExposure(
+            iso = 400,
+            shutterSpeedNanoseconds = 16_666_667L,
+        )
+
+        assertEquals(1, exposureControl.setManualExposureCount)
+        assertEquals(400, exposureControl.lastManualExposureIso)
+        assertEquals(16_666_667L, exposureControl.lastManualExposureShutterSpeedNanoseconds)
+    }
+
+    @Test
     fun androidExposureCompensationIndexUsesNearestCameraStep() {
         assertEquals(
             1,
@@ -202,6 +235,28 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidManualExposureIsoClampsToCameraRange() {
+        assertEquals(
+            800,
+            androidManualExposureIso(
+                iso = 1600,
+                isoRange = Range(100, 800),
+            ),
+        )
+    }
+
+    @Test
+    fun androidManualExposureShutterSpeedClampsToCameraRange() {
+        assertEquals(
+            33_333_333L,
+            androidManualExposureShutterSpeedNanoseconds(
+                shutterSpeedNanoseconds = 16_666_667L,
+                shutterSpeedRange = Range(33_333_333L, 1_000_000_000L),
+            ),
+        )
+    }
+
+    @Test
     fun androidCameraLensSelectorDoesNotRequireLensFacing() {
         val selector = CameraLens(cameraId = "0").toCameraSelector()
 
@@ -247,5 +302,32 @@ private class FakeAndroidPhotoCapture(
     override suspend fun capturePhoto(onError: (String) -> Unit) {
         capturePhotoCount += 1
         onCapturePhoto(onError)
+    }
+}
+
+private class FakeAndroidExposureControl : AndroidExposureControl {
+    var setAutoExposureCount = 0
+        private set
+    var lastAutoExposureEv: Double? = null
+        private set
+    var setManualExposureCount = 0
+        private set
+    var lastManualExposureIso: Int? = null
+        private set
+    var lastManualExposureShutterSpeedNanoseconds: Long? = null
+        private set
+
+    override fun setAutoExposure(exposureCompensationEv: Double) {
+        setAutoExposureCount += 1
+        lastAutoExposureEv = exposureCompensationEv
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        setManualExposureCount += 1
+        lastManualExposureIso = iso
+        lastManualExposureShutterSpeedNanoseconds = shutterSpeedNanoseconds
     }
 }

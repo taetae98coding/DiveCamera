@@ -3,8 +3,12 @@ package io.github.taetae98coding.divecamera.feature.camera
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
 import android.util.Log
+import android.util.Range
+import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
@@ -77,7 +81,7 @@ internal class AndroidCameraSession(
                 "bind start captureMode=$captureMode targetRotation=$targetRotation",
             )
             cameraController.updateImageCapture(null)
-            cameraController.updateExposureCompensationControl(null)
+            cameraController.updateExposureControl(null)
             cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
             val cameraLensCandidates = context.cameraLensCandidates(provider)
@@ -135,8 +139,11 @@ internal class AndroidCameraSession(
             cameraController.updateCameraLenses(
                 availableLenses = cameraLensCandidates.map(AndroidCameraLensCandidate::cameraLens),
             )
-            cameraController.updateExposureCompensationControl(
-                boundCamera.toAndroidExposureCompensationControl(::updateExposureCompensationEv),
+            cameraController.updateExposureControl(
+                boundCamera.toAndroidExposureControl(
+                    cameraCharacteristics = cameraCharacteristics,
+                    onExposureInfoChanged = ::updateExposureInfoFallback,
+                ),
             )
             cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
             cameraController.updateImageCapture(nextImageCapture)
@@ -161,7 +168,7 @@ internal class AndroidCameraSession(
     fun release() {
         isReleased = true
         cameraController.updateImageCapture(null)
-        cameraController.updateExposureCompensationControl(null)
+        cameraController.updateExposureControl(null)
         cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
         imageCapture?.let { currentImageCapture ->
             currentImageCapture.release()
@@ -175,13 +182,22 @@ internal class AndroidCameraSession(
         cameraPreview.release()
     }
 
-    private fun updateExposureCompensationEv(exposureCompensationEv: Double) {
+    private fun updateExposureInfoFallback(cameraExposureInfo: CameraExposureInfo) {
         if (isReleased) {
             return
         }
 
         cameraExposureInfoFallback = cameraExposureInfoFallback.copy(
-            exposureCompensationEv = exposureCompensationEv,
+            iso = cameraExposureInfo.iso ?: cameraExposureInfoFallback.iso,
+            aperture = cameraExposureInfo.aperture ?: cameraExposureInfoFallback.aperture,
+            shutterSpeedNanoseconds = cameraExposureInfo.shutterSpeedNanoseconds
+                ?: cameraExposureInfoFallback.shutterSpeedNanoseconds,
+            exposureCompensationEv = cameraExposureInfo.exposureCompensationEv
+                ?: cameraExposureInfoFallback.exposureCompensationEv,
+            focalLengthMillimeters = cameraExposureInfo.focalLengthMillimeters
+                ?: cameraExposureInfoFallback.focalLengthMillimeters,
+            focalLengthIn35mmFilmMillimeters = cameraExposureInfo.focalLengthIn35mmFilmMillimeters
+                ?: cameraExposureInfoFallback.focalLengthIn35mmFilmMillimeters,
         )
         cameraController.updateCameraExposureInfo(
             latestCaptureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
@@ -189,25 +205,103 @@ internal class AndroidCameraSession(
     }
 }
 
-private fun Camera.toAndroidExposureCompensationControl(onExposureCompensationChanged: (Double) -> Unit): AndroidExposureCompensationControl? {
-    val exposureState = cameraInfo.exposureState
-    if (!exposureState.isExposureCompensationSupported) {
-        return null
-    }
+private fun Camera.toAndroidExposureControl(
+    cameraCharacteristics: CameraCharacteristics?,
+    onExposureInfoChanged: (CameraExposureInfo) -> Unit,
+): AndroidExposureControl? {
+    val camera2CameraControl = runCatching {
+        Camera2CameraControl.from(cameraControl)
+    }.getOrNull()
+        ?: return null
 
-    return CameraXExposureCompensationControl(
+    return CameraXExposureControl(
         cameraControl = cameraControl,
-        exposureState = exposureState,
-        onExposureCompensationChanged = onExposureCompensationChanged,
+        camera2CameraControl = camera2CameraControl,
+        exposureState = cameraInfo.exposureState,
+        cameraCharacteristics = cameraCharacteristics,
+        onExposureInfoChanged = onExposureInfoChanged,
     )
 }
 
-private class CameraXExposureCompensationControl(
+private class CameraXExposureControl(
     private val cameraControl: CameraControl,
+    private val camera2CameraControl: Camera2CameraControl,
     private val exposureState: ExposureState,
-    private val onExposureCompensationChanged: (Double) -> Unit,
-) : AndroidExposureCompensationControl {
-    override fun setExposureCompensationEv(ev: Double) {
+    private val cameraCharacteristics: CameraCharacteristics?,
+    private val onExposureInfoChanged: (CameraExposureInfo) -> Unit,
+) : AndroidExposureControl {
+    override fun setAutoExposure(exposureCompensationEv: Double) {
+        val options = CaptureRequestOptions.Builder()
+            .setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_MODE,
+                CaptureRequest.CONTROL_AE_MODE_ON,
+            )
+            .build()
+        val requestFuture = camera2CameraControl.setCaptureRequestOptions(options)
+        requestFuture.addListener(
+            {
+                if (runCatching { requestFuture.get() }.isFailure) {
+                    return@addListener
+                }
+                applyExposureCompensationEv(exposureCompensationEv)
+            },
+            DIRECT_EXECUTOR,
+        )
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        val appliedIso = androidManualExposureIso(
+            iso = iso,
+            isoRange = cameraCharacteristics?.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE),
+        )
+        val appliedShutterSpeedNanoseconds = androidManualExposureShutterSpeedNanoseconds(
+            shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+            shutterSpeedRange = cameraCharacteristics?.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE),
+        )
+        val options = CaptureRequestOptions.Builder()
+            .setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_MODE,
+                CaptureRequest.CONTROL_AE_MODE_OFF,
+            )
+            .setCaptureRequestOption(
+                CaptureRequest.SENSOR_SENSITIVITY,
+                appliedIso,
+            )
+            .setCaptureRequestOption(
+                CaptureRequest.SENSOR_EXPOSURE_TIME,
+                appliedShutterSpeedNanoseconds,
+            )
+            .build()
+        val requestFuture = camera2CameraControl.setCaptureRequestOptions(options)
+        requestFuture.addListener(
+            {
+                if (runCatching { requestFuture.get() }.isFailure) {
+                    return@addListener
+                }
+                onExposureInfoChanged(
+                    CameraExposureInfo(
+                        iso = appliedIso,
+                        shutterSpeedNanoseconds = appliedShutterSpeedNanoseconds,
+                    ),
+                )
+            },
+            DIRECT_EXECUTOR,
+        )
+    }
+
+    private fun applyExposureCompensationEv(ev: Double) {
+        if (!exposureState.isExposureCompensationSupported) {
+            onExposureInfoChanged(
+                CameraExposureInfo(
+                    exposureCompensationEv = ev.coerceInCameraExposureCompensationRange(),
+                ),
+            )
+            return
+        }
+
         val exposureCompensationStep = exposureState.exposureCompensationStep.toDouble()
         val index = androidExposureCompensationIndex(
             exposureCompensationEv = ev,
@@ -225,7 +319,11 @@ private class CameraXExposureCompensationControl(
                     exposureCompensationIndex = appliedIndex,
                     exposureCompensationStep = exposureCompensationStep,
                 ) ?: return@addListener
-                onExposureCompensationChanged(appliedEv)
+                onExposureInfoChanged(
+                    CameraExposureInfo(
+                        exposureCompensationEv = appliedEv,
+                    ),
+                )
             },
             DIRECT_EXECUTOR,
         )
@@ -259,6 +357,35 @@ internal fun androidExposureCompensationEv(
     }
 
     return exposureCompensationIndex * exposureCompensationStep
+}
+
+internal fun androidManualExposureIso(
+    iso: Int,
+    isoRange: Range<Int>?,
+): Int {
+    val requestedIso = iso.takeIf { it > 0 } ?: CAMERA_MANUAL_EXPOSURE_ISO_OPTIONS.first()
+    return isoRange
+        ?.takeIf { it.lower <= it.upper }
+        ?.let { requestedIso.coerceIn(it.lower, it.upper) }
+        ?: requestedIso
+}
+
+internal fun androidManualExposureShutterSpeedNanoseconds(
+    shutterSpeedNanoseconds: Long,
+    shutterSpeedRange: Range<Long>?,
+): Long {
+    val requestedShutterSpeedNanoseconds = shutterSpeedNanoseconds
+        .takeIf { it > 0L }
+        ?: CAMERA_MANUAL_EXPOSURE_SHUTTER_SPEED_OPTIONS.first()
+    return shutterSpeedRange
+        ?.takeIf { it.lower <= it.upper }
+        ?.let {
+            requestedShutterSpeedNanoseconds.coerceIn(
+                minimumValue = it.lower,
+                maximumValue = it.upper,
+            )
+        }
+        ?: requestedShutterSpeedNanoseconds
 }
 
 private val DIRECT_EXECUTOR = Executor { command ->

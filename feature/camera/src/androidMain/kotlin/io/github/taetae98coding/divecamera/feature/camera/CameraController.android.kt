@@ -21,7 +21,7 @@ internal class AndroidCameraController : CameraController {
     private val mutableCameraLensState = MutableStateFlow(CameraLensState())
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: AndroidPhotoCapture? = null
-    private var exposureCompensationControl: AndroidExposureCompensationControl? = null
+    private var exposureControl: AndroidExposureControl? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         mutableRawCaptureSupportState.asStateFlow()
@@ -57,8 +57,18 @@ internal class AndroidCameraController : CameraController {
         }
     }
 
-    override fun setExposureCompensationEv(ev: Double) {
-        exposureCompensationControl?.setExposureCompensationEv(ev)
+    override fun setAutoExposure(exposureCompensationEv: Double) {
+        exposureControl?.setAutoExposure(exposureCompensationEv)
+    }
+
+    override fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    ) {
+        exposureControl?.setManualExposure(
+            iso = iso,
+            shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+        )
     }
 
     override fun changeCameraLens() {
@@ -88,8 +98,8 @@ internal class AndroidCameraController : CameraController {
         )
     }
 
-    fun updateExposureCompensationControl(exposureCompensationControl: AndroidExposureCompensationControl?) {
-        this.exposureCompensationControl = exposureCompensationControl
+    fun updateExposureControl(exposureControl: AndroidExposureControl?) {
+        this.exposureControl = exposureControl
     }
 
     private fun emitPhotoSaveErrorMessage(message: String) {
@@ -105,8 +115,13 @@ internal interface AndroidPhotoCapture {
     suspend fun capturePhoto(onError: (String) -> Unit)
 }
 
-internal interface AndroidExposureCompensationControl {
-    fun setExposureCompensationEv(ev: Double)
+internal interface AndroidExposureControl {
+    fun setAutoExposure(exposureCompensationEv: Double)
+
+    fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    )
 }
 
 internal fun CameraController.updateImageCapture(imageCapture: AndroidPhotoCapture?) {
@@ -125,8 +140,8 @@ internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLen
     (this as? AndroidCameraController)?.updateCameraLenses(availableLenses)
 }
 
-internal fun CameraController.updateExposureCompensationControl(exposureCompensationControl: AndroidExposureCompensationControl?) {
-    (this as? AndroidCameraController)?.updateExposureCompensationControl(exposureCompensationControl)
+internal fun CameraController.updateExposureControl(exposureControl: AndroidExposureControl?) {
+    (this as? AndroidCameraController)?.updateExposureControl(exposureControl)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

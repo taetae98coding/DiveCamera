@@ -27,12 +27,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.abs
-import kotlin.math.round
 
 internal const val CAMERA_EXPOSURE_INFO_OVERLAY_TEST_TAG = "camera-exposure-info-overlay"
+internal const val CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG = "camera-exposure-info-iso-button"
 internal const val CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG = "camera-exposure-info-iso-value"
+internal const val CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG = "camera-exposure-info-aperture-button"
 internal const val CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG = "camera-exposure-info-aperture-value"
+internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG = "camera-exposure-info-shutter-speed-button"
 internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG = "camera-exposure-info-shutter-speed-value"
 internal const val CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG = "camera-exposure-info-ev-button"
 internal const val CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG = "camera-exposure-info-ev-value"
@@ -49,7 +50,8 @@ private const val LENS_LABEL = "LENS"
 @Composable
 internal fun CameraExposureInfoOverlay(
     cameraExposureInfo: CameraExposureInfo,
-    onExposureCompensationClick: () -> Unit,
+    exposureMode: CameraExposureMode,
+    onExposureSettingsClick: () -> Unit,
     onLensClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -80,18 +82,24 @@ internal fun CameraExposureInfoOverlay(
                 CameraExposureInfoItem(
                     label = ISO_LABEL,
                     value = cameraExposureInfo.isoText(),
+                    onItemClick = onExposureSettingsClick,
+                    containerTestTag = CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),
                 )
                 CameraExposureInfoItem(
                     label = APERTURE_LABEL,
                     value = cameraExposureInfo.apertureText(),
+                    onItemClick = onExposureSettingsClick,
+                    containerTestTag = CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),
                 )
                 CameraExposureInfoItem(
                     label = SHUTTER_SPEED_LABEL,
                     value = cameraExposureInfo.shutterSpeedText(),
+                    onItemClick = onExposureSettingsClick,
+                    containerTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),
                 )
@@ -101,14 +109,16 @@ internal fun CameraExposureInfoOverlay(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                CameraExposureInfoItem(
-                    label = EV_LABEL,
-                    value = cameraExposureInfo.exposureCompensationText(),
-                    onItemClick = onExposureCompensationClick,
-                    containerTestTag = CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG,
-                    valueTestTag = CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG,
-                    modifier = Modifier.weight(1F),
-                )
+                if (exposureMode == CameraExposureMode.Auto) {
+                    CameraExposureInfoItem(
+                        label = EV_LABEL,
+                        value = cameraExposureInfo.exposureCompensationText(),
+                        onItemClick = onExposureSettingsClick,
+                        containerTestTag = CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG,
+                        valueTestTag = CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG,
+                        modifier = Modifier.weight(1F),
+                    )
+                }
                 CameraExposureInfoItem(
                     label = LENS_LABEL,
                     value = cameraExposureInfo.focalLengthText(),
@@ -182,32 +192,15 @@ private fun CameraExposureInfoItem(
 }
 
 private fun CameraExposureInfo.isoText(): String {
-    return iso
-        ?.takeIf { it > 0 }
-        ?.toString()
-        ?: UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
+    return iso.toCameraIsoText()
 }
 
 private fun CameraExposureInfo.apertureText(): String {
-    return aperture
-        ?.takeIf { it > 0F }
-        ?.toDouble()
-        ?.formatSingleDecimal(trimTrailingZero = true)
-        ?.let { "F$it" }
-        ?: UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
+    return aperture.toCameraApertureText()
 }
 
 private fun CameraExposureInfo.shutterSpeedText(): String {
-    val nanoseconds = shutterSpeedNanoseconds
-        ?.takeIf { it > 0L }
-        ?: return UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
-    val seconds = nanoseconds.toDouble() / NANOS_PER_SECOND
-    if (seconds >= 1.0) {
-        return "${seconds.formatSingleDecimal(trimTrailingZero = true)}s"
-    }
-
-    val denominator = round(1.0 / seconds).toInt().coerceAtLeast(1)
-    return "1/${denominator}s"
+    return shutterSpeedNanoseconds.toCameraShutterSpeedText()
 }
 
 private fun CameraExposureInfo.exposureCompensationText(): String {
@@ -224,7 +217,7 @@ private fun CameraExposureInfo.focalLengthText(): String {
         ?: focalLengthMillimeters
             ?.takeIf { it > 0F }
             ?.toDouble()
-            ?.formatSingleDecimal(trimTrailingZero = true)
+            ?.formatCameraSingleDecimal(trimTrailingZero = true)
         ?: UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
 
     return if (millimeters == UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT) {
@@ -232,19 +225,6 @@ private fun CameraExposureInfo.focalLengthText(): String {
     } else {
         "${millimeters}mm"
     }
-}
-
-private fun Double.formatSingleDecimal(trimTrailingZero: Boolean): String {
-    val scaled = round(this * DECIMAL_SCALE).toInt()
-    val sign = if (scaled < 0) "-" else ""
-    val whole = abs(scaled / DECIMAL_SCALE)
-    val fraction = abs(scaled % DECIMAL_SCALE)
-
-    if (trimTrailingZero && fraction == 0) {
-        return "$sign$whole"
-    }
-
-    return "$sign$whole.$fraction"
 }
 
 private val CAMERA_EXPOSURE_INFO_LABEL_TEXT_STYLE = TextStyle(
@@ -259,6 +239,3 @@ private val CAMERA_EXPOSURE_INFO_VALUE_TEXT_STYLE = TextStyle(
     letterSpacing = 0.sp,
     fontWeight = FontWeight.SemiBold,
 )
-
-private const val NANOS_PER_SECOND = 1_000_000_000.0
-private const val DECIMAL_SCALE = 10

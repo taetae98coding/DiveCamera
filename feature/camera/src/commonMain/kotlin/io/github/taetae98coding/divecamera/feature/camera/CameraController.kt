@@ -13,7 +13,12 @@ internal interface CameraController {
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)
 
-    fun setExposureCompensationEv(ev: Double)
+    fun setAutoExposure(exposureCompensationEv: Double)
+
+    fun setManualExposure(
+        iso: Int,
+        shutterSpeedNanoseconds: Long,
+    )
 
     fun changeCameraLens()
 }
