@@ -74,16 +74,27 @@
 70. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 전면 카메라이면 위치가 없어도 인메모리 RAW 저장 대상으로 분류된다.
 71. Robolectric `androidHostTest`에서 Android 전면 카메라 DNG orientation은 rotation에 horizontal reverse를 함께 반영한다.
 72. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `EV` 표시 영역은 클릭 가능한 버튼이다.
-73. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `EV` 표시 영역을 클릭하면 노출 보정 EV값 설정 패널이 표시된다.
-74. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널 외부 영역을 클릭하면 노출 보정 EV값 설정 패널이 닫힌다.
-75. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널은 Slider를 표시한다.
-76. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 증가 버튼을 클릭하면 패널의 선택 EV값은 1/3 EV 증가한다.
-77. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 감소 버튼을 클릭하면 패널의 선택 EV값은 1/3 EV 감소한다.
-78. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 증가 버튼을 클릭하면 `CameraController.setExposureCompensationEv()`가 선택한 EV값으로 호출된다.
-79. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 step에 맞는 가장 가까운 index로 변환한다.
-80. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 앱 노출 보정 범위로 제한한다.
-81. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 노출 보정 index 범위로 제한한다.
-82. Robolectric `androidHostTest`에서 Android 노출 보정 EV 계산은 적용된 index와 기기 step을 곱한다.
+73. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `EV` 표시 영역을 클릭하면 노출 설정 Dialog가 표시된다.
+74. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 step에 맞는 가장 가까운 index로 변환한다.
+75. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 앱 노출 보정 범위로 제한한다.
+76. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 노출 보정 index 범위로 제한한다.
+77. Robolectric `androidHostTest`에서 Android 노출 보정 EV 계산은 적용된 index와 기기 step을 곱한다.
+78. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `ISO` 표시 영역은 클릭 가능한 버튼이다.
+79. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `F` 표시 영역은 클릭 가능한 버튼이다.
+80. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `S` 표시 영역은 클릭 가능한 버튼이다.
+81. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `ISO` 표시 영역을 클릭하면 노출 설정 Dialog가 표시된다.
+82. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `F` 표시 영역을 클릭하면 노출 설정 Dialog가 표시된다.
+83. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `S` 표시 영역을 클릭하면 노출 설정 Dialog가 표시된다.
+84. Robolectric `androidHostTest`에서 노출 설정 Dialog는 `Auto Mode`와 `Manual Mode` 선택 버튼을 표시한다.
+85. Robolectric `androidHostTest`에서 노출 설정 Dialog에서 `Auto Mode`를 선택하면 EV값 조절 UI가 표시된다.
+86. Robolectric `androidHostTest`에서 노출 설정 Dialog에서 `Manual Mode`를 선택하면 ISO 감도와 셔터 스피드 조절 UI가 표시된다.
+87. Robolectric `androidHostTest`에서 노출 설정 Dialog의 `Auto Mode`에서 적용 버튼을 클릭하면 `CameraController.setAutoExposure()`가 선택한 EV값으로 호출된다.
+88. Robolectric `androidHostTest`에서 노출 설정 Dialog의 `Manual Mode`에서 적용 버튼을 클릭하면 `CameraController.setManualExposure()`가 선택한 ISO 감도와 셔터 스피드로 호출된다.
+89. Robolectric `androidHostTest`에서 노출 설정 Dialog 바깥 영역을 클릭하면 노출 설정 Dialog가 닫힌다.
+90. Robolectric `androidHostTest`에서 노출 설정 Dialog의 `Manual Mode`를 적용하면 촬영 정보 오버레이의 `EV` 표시 영역은 제거된다.
+91. Robolectric `androidHostTest`에서 노출 설정 Dialog의 `Manual Mode`를 적용하면 촬영 정보 오버레이의 `LENS` 표시 영역은 표시된다.
+92. Robolectric `androidHostTest`에서 `Manual Mode` 상태에서 노출 설정 Dialog의 `Auto Mode`를 적용하면 촬영 정보 오버레이의 `EV` 표시 영역은 다시 표시된다.
+93. Robolectric `androidHostTest`에서 노출 설정 Dialog의 `Manual Mode`에서 값을 선택 중일 때 촬영 정보 상태가 갱신되어도 선택 중인 ISO 감도와 셔터 스피드는 유지된다.
 
 ## unitTest
 
@@ -98,3 +109,8 @@
 9. `CameraExposureCompensationState`에서 증가를 호출하면 선택 EV값은 1/3 EV 증가한다.
 10. `CameraExposureCompensationState`에서 감소를 호출하면 선택 EV값은 1/3 EV 감소한다.
 11. `CameraExposureCompensationState`에서 선택 EV값은 `-2..+2` 범위를 벗어나지 않는다.
+12. `CameraManualExposureState`에 확인할 수 없는 ISO와 셔터 스피드를 전달하면 ISO 감도는 기본값으로 선택된다.
+13. `CameraManualExposureState`에 확인할 수 없는 ISO와 셔터 스피드를 전달하면 셔터 스피드는 기본값으로 선택된다.
+14. `CameraManualExposureState`에서 ISO 감도 증감을 호출하면 선택 ISO 감도는 정해진 단계로 변경된다.
+15. `CameraManualExposureState`에서 셔터 스피드 증감을 호출하면 선택 셔터 스피드는 정해진 단계로 변경된다.
+16. `CameraManualExposureState`에서 선택 ISO 감도와 셔터 스피드는 앱 노출 설정 범위를 벗어나지 않는다.
