@@ -73,6 +73,17 @@
 69. Robolectric `androidHostTest`에서 Android 전면 카메라 JPEG 보정은 horizontal reverse를 픽셀에 반영하고 EXIF orientation을 normal로 정리한다.
 70. Robolectric `androidHostTest`에서 Android RAW 또는 RAW+JPG 출력 포맷이고 전면 카메라이면 위치가 없어도 인메모리 RAW 저장 대상으로 분류된다.
 71. Robolectric `androidHostTest`에서 Android 전면 카메라 DNG orientation은 rotation에 horizontal reverse를 함께 반영한다.
+72. Robolectric `androidHostTest`에서 촬영 정보가 있는 fake `CameraController`로 `CameraScreen`을 렌더링하면 촬영 정보 오버레이의 `EV` 표시 영역은 클릭 가능한 버튼이다.
+73. Robolectric `androidHostTest`에서 촬영 정보 오버레이의 `EV` 표시 영역을 클릭하면 노출 보정 EV값 설정 패널이 표시된다.
+74. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널 외부 영역을 클릭하면 노출 보정 EV값 설정 패널이 닫힌다.
+75. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널은 Slider를 표시한다.
+76. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 증가 버튼을 클릭하면 패널의 선택 EV값은 1/3 EV 증가한다.
+77. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 감소 버튼을 클릭하면 패널의 선택 EV값은 1/3 EV 감소한다.
+78. Robolectric `androidHostTest`에서 노출 보정 EV값 설정 패널의 증가 버튼을 클릭하면 `CameraController.setExposureCompensationEv()`가 선택한 EV값으로 호출된다.
+79. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 step에 맞는 가장 가까운 index로 변환한다.
+80. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 앱 노출 보정 범위로 제한한다.
+81. Robolectric `androidHostTest`에서 Android 노출 보정 index 변환은 선택 EV값을 기기 노출 보정 index 범위로 제한한다.
+82. Robolectric `androidHostTest`에서 Android 노출 보정 EV 계산은 적용된 index와 기기 step을 곱한다.
 
 ## unitTest
 
@@ -83,3 +94,7 @@
 5. `CameraLensState`에서 지원 렌즈가 하나뿐이면 렌즈 변경 후에도 선택 index는 0이다.
 6. `CameraLensState`에 지원 렌즈 목록이 이미 있으면 지원 렌즈 목록을 다시 갱신해도 선택 index를 유지한다.
 7. 새 카메라 세션이 등록되면 이전 카메라 세션 식별자는 현재 세션으로 분류되지 않는다.
+8. `CameraExposureCompensationState`에 확인할 수 없는 EV값을 전달하면 선택 EV값은 0이다.
+9. `CameraExposureCompensationState`에서 증가를 호출하면 선택 EV값은 1/3 EV 증가한다.
+10. `CameraExposureCompensationState`에서 감소를 호출하면 선택 EV값은 1/3 EV 감소한다.
+11. `CameraExposureCompensationState`에서 선택 EV값은 `-2..+2` 범위를 벗어나지 않는다.

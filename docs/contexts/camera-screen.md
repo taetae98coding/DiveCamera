@@ -27,6 +27,10 @@
 - Android 35mm 환산 초점거리 계산 시 활성 physical 카메라 ID와 해당 physical 카메라의 `CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE`를 확인할 수 있으면 그 센서 크기를 우선 사용한다.
 - Android 활성 physical 카메라 센서 크기를 확인할 수 없으면 logical 카메라의 `CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE`를 사용한다.
 - Android 노출 보정 EV값은 현재 캡처 결과에서 직접 읽지 않고 CameraX `CameraInfo.exposureState`의 `exposureCompensationIndex`와 `exposureCompensationStep`을 곱한 값을 사용한다.
+- Android 노출 보정 EV 설정은 CameraX `CameraControl.setExposureCompensationIndex()`를 사용한다.
+- Android 노출 보정 EV 설정은 사용자가 선택한 1/3 EV 단위 값을 기기가 제공하는 `exposureCompensationStep`에 맞는 가장 가까운 exposure compensation index로 변환한다.
+- Android 노출 보정 EV 설정은 앱 정책 범위 `-2..+2`와 기기가 제공하는 `exposureCompensationRange`를 함께 적용한다.
+- Android 노출 보정 EV 설정 완료 후 화면 표시용 노출 보정 EV fallback은 적용된 exposure compensation index와 `exposureCompensationStep`을 곱한 값으로 갱신한다.
 - Android 미리보기 캡처 결과가 일부 값을 제공하지 않으면 `CameraCharacteristics`와 `CameraInfo.exposureState`에서 만든 fallback 촬영 정보를 사용한다.
 - Android fallback 촬영 정보의 조리개와 물리 초점거리는 지원 값이 하나로 확정될 때만 사용한다.
 - Android 사진 저장 후처리는 CameraX `ImageCapture` UseCase에도 Camera2Interop 캡처 콜백을 연결해 최신 캡처 결과 메타데이터를 보관하고, 저장 완료 후 EXIF 표준 태그가 비어 있을 때 ISO, 조리개 F값, 셔터 스피드, 물리 초점거리, 35mm 환산 초점거리를 추가 기록한다.
@@ -48,6 +52,8 @@
 - iOS 미리보기 기준 조리개 F값은 `AVCaptureDevice.lensAperture` 값을 사용한다.
 - iOS 미리보기 기준 셔터 스피드는 `AVCaptureDevice.exposureDuration` 값을 `CMTimeGetSeconds`로 초 단위로 변환한 뒤 나노초로 환산해 사용한다.
 - iOS 미리보기 기준 노출 보정 EV값은 `AVCaptureDevice.exposureTargetBias` 값을 사용한다.
+- iOS 노출 보정 EV 설정은 `AVCaptureDevice.setExposureTargetBias(_:completionHandler:)`를 사용한다.
+- iOS 노출 보정 EV 설정은 앱 정책 범위 `-2..+2`와 기기가 제공하는 `minExposureTargetBias..maxExposureTargetBias`를 함께 적용한다.
 - iOS 미리보기 기준 렌즈 mm 표시는 `AVCaptureDevice.activeFormat.videoFieldOfView`의 수평 화각과 `AVCaptureDevice.videoZoomFactor`를 사용해 35mm 환산 초점거리로 계산한다.
 - iOS 35mm 환산 초점거리는 full-frame 가로 폭 36mm 기준으로 `36 / (2 * tan(horizontalFieldOfView / 2)) * videoZoomFactor`를 계산한 뒤 정수 mm로 반올림한다.
 - iOS 미리보기 기준 렌즈 mm 값은 AVFoundation이 현재 구현에서 직접 제공하는 저장 사진의 갤러리 표시 초점거리 값이 아니라, 현재 수평 화각과 줌 배율 기반 추정값이다.
@@ -150,6 +156,7 @@
 - [AndroidX ImageCapture.OutputFileResults](https://developer.android.com/reference/androidx/camera/core/ImageCapture.OutputFileResults)
 - [AndroidX ResolutionSelector](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)
 - [AndroidX ImageCapture.Metadata](https://developer.android.com/reference/androidx/camera/core/ImageCapture.Metadata)
+- [AndroidX CameraControl](https://developer.android.com/reference/androidx/camera/core/CameraControl)
 - [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
 - [AndroidX Camera2Interop](https://developer.android.com/reference/androidx/camera/camera2/interop/Camera2Interop)
 - [Android CaptureResult](https://developer.android.com/reference/android/hardware/camera2/CaptureResult)
