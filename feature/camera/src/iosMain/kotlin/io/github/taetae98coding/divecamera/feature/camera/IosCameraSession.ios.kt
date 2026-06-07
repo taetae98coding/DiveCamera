@@ -7,6 +7,7 @@ import kotlin.math.tan
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
+import platform.AVFoundation.AVCaptureColorSpace_HLG_BT2020
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceDiscoverySession
 import platform.AVFoundation.AVCaptureDeviceFormat
@@ -24,7 +25,9 @@ import platform.AVFoundation.AVFrameRateRange
 import platform.AVFoundation.AVMediaTypeAudio
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.ISO
+import platform.AVFoundation.activeColorSpace
 import platform.AVFoundation.authorizationStatusForMediaType
+import platform.AVFoundation.automaticallyAdjustsVideoHDREnabled
 import platform.AVFoundation.exposureDuration
 import platform.AVFoundation.exposureTargetBias
 import platform.AVFoundation.lensAperture
@@ -33,10 +36,12 @@ import platform.AVFoundation.minExposureTargetBias
 import platform.AVFoundation.setExposureMode
 import platform.AVFoundation.setExposureModeCustomWithDuration
 import platform.AVFoundation.setExposureTargetBias
+import platform.AVFoundation.videoHDREnabled
 import platform.AVFoundation.videoZoomFactor
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMakeWithSeconds
 import platform.CoreMedia.CMVideoFormatDescriptionGetDimensions
+import platform.Foundation.NSNumber
 import platform.UIKit.UIView
 import platform.darwin.DISPATCH_SOURCE_TYPE_TIMER
 import platform.darwin.DISPATCH_TIME_NOW
@@ -164,9 +169,16 @@ internal class IosCameraSession(
         if (device != null) {
             cameraDevice = device
             if (captureMode == CameraCaptureMode.Video) {
-                device.prefer4k60VideoFormat()
+                session.automaticallyConfiguresCaptureDeviceForWideColor = false
                 configureAudioInput()
                 videoCapture.configure(session, device)
+                val isHighQualityFormatConfigured = device.preferHighQualityVideoFormat(
+                    isVideoOutputSupported = videoCapture::isProcessedVideoCodecAvailable,
+                )
+                if (!isHighQualityFormatConfigured) {
+                    session.preferVideoSessionPreset(videoCapture::isProcessedVideoCodecAvailable)
+                }
+                videoCapture.configureVideoSettings(device)
                 cameraManager.updateVideoCapture(
                     videoCapture = videoCapture.takeIf(IosVideoCapture::isCaptureConfigured),
                     cameraSessionId = cameraSessionId,
@@ -289,11 +301,7 @@ internal class IosCameraSession(
 
     private fun AVCaptureSession.preferSessionPreset(captureMode: CameraCaptureMode) {
         val presets = if (captureMode == CameraCaptureMode.Video) {
-            listOf(
-                AVCaptureSessionPreset3840x2160,
-                AVCaptureSessionPresetHigh,
-                AVCaptureSessionPresetPhoto,
-            )
+            IOS_VIDEO_SESSION_PRESETS
         } else {
             listOf(AVCaptureSessionPresetPhoto, AVCaptureSessionPresetHigh)
         }
@@ -306,33 +314,67 @@ internal class IosCameraSession(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun AVCaptureDevice.prefer4k60VideoFormat() {
-    val videoFormat = formats
+private fun AVCaptureSession.preferVideoSessionPreset(isVideoOutputSupported: () -> Boolean): Boolean {
+    return IOS_VIDEO_SESSION_PRESETS.any { preset ->
+        canSetSessionPreset(preset) &&
+            run {
+                sessionPreset = preset
+                isVideoOutputSupported()
+            }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDevice.preferHighQualityVideoFormat(isVideoOutputSupported: () -> Boolean): Boolean {
+    val videoFormats = formats
         .filterIsInstance<AVCaptureDeviceFormat>()
         .filter(AVCaptureDeviceFormat::supports4k60Video)
-        .maxWithOrNull(
+        .sortedWith(
             compareBy<AVCaptureDeviceFormat> { format ->
+                format.supportsHlgBt2020ColorSpace()
+            }.thenBy { format ->
+                format.videoHDRSupported
+            }.thenBy { format ->
                 format.maxSupportedFrameRate()
             }.thenBy { format ->
                 format.videoPixelCount()
             },
         )
-        ?: return
+        .asReversed()
+    if (videoFormats.isEmpty()) {
+        return false
+    }
+
     val isLocked = runCatching {
         lockForConfiguration(null)
     }.getOrDefault(false)
     if (!isLocked) {
-        return
+        return false
     }
 
     try {
-        activeFormat = videoFormat
-        val frameDuration = CMTimeMakeWithSeconds(
-            seconds = 1.0 / IOS_VIDEO_TARGET_FRAME_RATE,
-            preferredTimescale = IOS_VIDEO_TARGET_FRAME_RATE.toInt(),
-        )
-        activeVideoMinFrameDuration = frameDuration
-        activeVideoMaxFrameDuration = frameDuration
+        val initialFormat = activeFormat
+        val initialMinFrameDuration = activeVideoMinFrameDuration
+        val initialMaxFrameDuration = activeVideoMaxFrameDuration
+        videoFormats.forEach { videoFormat ->
+            activeFormat = videoFormat
+            val frameDuration = CMTimeMakeWithSeconds(
+                seconds = 1.0 / IOS_VIDEO_TARGET_FRAME_RATE,
+                preferredTimescale = IOS_VIDEO_TARGET_FRAME_RATE.toInt(),
+            )
+            activeVideoMinFrameDuration = frameDuration
+            activeVideoMaxFrameDuration = frameDuration
+            configureHdrVideo()
+            if (isVideoOutputSupported()) {
+                return true
+            }
+        }
+
+        activeFormat = initialFormat
+        activeVideoMinFrameDuration = initialMinFrameDuration
+        activeVideoMaxFrameDuration = initialMaxFrameDuration
+        configureHdrVideo()
+        return false
     } finally {
         unlockForConfiguration()
     }
@@ -344,6 +386,34 @@ private fun AVCaptureDeviceFormat.supports4k60Video(): Boolean {
         videoSupportedFrameRateRanges
             .filterIsInstance<AVFrameRateRange>()
             .any(AVFrameRateRange::contains60Fps)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDeviceFormat.supportsHlgBt2020ColorSpace(): Boolean {
+    return supportedColorSpaces.any { value ->
+        when (value) {
+            is NSNumber -> value.longValue == AVCaptureColorSpace_HLG_BT2020
+            is Long -> value == AVCaptureColorSpace_HLG_BT2020
+            is Int -> value.toLong() == AVCaptureColorSpace_HLG_BT2020
+            else -> false
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDevice.configureHdrVideo() {
+    if (activeFormat.supportsHlgBt2020ColorSpace()) {
+        activeColorSpace = AVCaptureColorSpace_HLG_BT2020
+        automaticallyAdjustsVideoHDREnabled = true
+        return
+    }
+
+    if (activeFormat.videoHDRSupported) {
+        automaticallyAdjustsVideoHDREnabled = false
+        videoHDREnabled = true
+    } else {
+        automaticallyAdjustsVideoHDREnabled = true
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -557,6 +627,11 @@ private const val FULL_FRAME_WIDTH_MM = 36.0
 private const val DEGREES_PER_HALF_CIRCLE = 180.0
 private const val EXPOSURE_INFO_UPDATE_INTERVAL_NANOS = 250_000_000UL
 private const val EXPOSURE_INFO_UPDATE_LEEWAY_NANOS = 50_000_000UL
+private val IOS_VIDEO_SESSION_PRESETS = listOf(
+    AVCaptureSessionPreset3840x2160,
+    AVCaptureSessionPresetHigh,
+    AVCaptureSessionPresetPhoto,
+)
 private val IOS_CAMERA_LENS_DEVICE_TYPES = listOf(
     AVCaptureDeviceTypeBuiltInUltraWideCamera,
     AVCaptureDeviceTypeBuiltInWideAngleCamera,

@@ -3,15 +3,26 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import kotlin.math.roundToLong
+import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDevice
+import platform.AVFoundation.AVCaptureDeviceFormat
 import platform.AVFoundation.AVCaptureDevicePositionFront
 import platform.AVFoundation.AVCaptureFileOutput
 import platform.AVFoundation.AVCaptureFileOutputRecordingDelegateProtocol
 import platform.AVFoundation.AVCaptureMovieFileOutput
 import platform.AVFoundation.AVCaptureSession
+import platform.AVFoundation.AVCaptureVideoStabilizationModeAuto
+import platform.AVFoundation.AVCaptureVideoStabilizationModeCinematic
+import platform.AVFoundation.AVCaptureVideoStabilizationModeCinematicExtended
+import platform.AVFoundation.AVCaptureVideoStabilizationModeCinematicExtendedEnhanced
+import platform.AVFoundation.AVCaptureVideoStabilizationModeStandard
 import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.AVVideoCodecKey
+import platform.AVFoundation.AVVideoCodecTypeH264
+import platform.AVFoundation.AVVideoCodecTypeHEVC
 import platform.AVFoundation.position
 import platform.CoreFoundation.CFAbsoluteTimeGetCurrent
+import platform.CoreLocation.CLLocation
 import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
@@ -34,10 +45,12 @@ import platform.darwin.dispatch_time
 
 internal class IosVideoCapture(private val dispatchOnSessionQueue: (() -> Unit) -> Unit) {
     private val movieOutput = AVCaptureMovieFileOutput()
+    private val locationProvider = IosLocationMetadataProvider()
     private var recordingDelegate: VideoRecordingDelegate? = null
     private var recordingTimer: NSObject? = null
     private var recordingStartedAtMillis: Long = 0L
     private var onVideoRecordingStateChange: ((VideoRecordingState) -> Unit)? = null
+    private var device: AVCaptureDevice? = null
     private var isConfigured = false
 
     val isCaptureConfigured: Boolean
@@ -49,10 +62,16 @@ internal class IosVideoCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     ) {
         if (session.canAddOutput(movieOutput)) {
             session.addOutput(movieOutput)
-            movieOutput.configureVideoMirroring(device)
+            this.device = device
+            movieOutput.configureVideoSettings(device)
+            locationProvider.startUpdating()
             isConfigured = true
         }
     }
+
+    fun configureVideoSettings(device: AVCaptureDevice): Boolean = movieOutput.configureVideoSettings(device)
+
+    fun isProcessedVideoCodecAvailable(): Boolean = movieOutput.preferredProcessedVideoCodecType() != null
 
     fun startRecording(
         onError: (String) -> Unit,
@@ -64,9 +83,20 @@ internal class IosVideoCapture(private val dispatchOnSessionQueue: (() -> Unit) 
 
         this.onVideoRecordingStateChange = onVideoRecordingStateChange
         dispatchOnSessionQueue {
+            val device = device
+            if (device == null || !movieOutput.configureVideoSettings(device)) {
+                onError("Video recording is unavailable with the current video codec configuration.")
+                onVideoRecordingStateChange(VideoRecordingState.Idle)
+                return@dispatchOnSessionQueue
+            }
+
+            locationProvider.startUpdating()
+            val recordingLocation = locationProvider.currentLocation()
             val outputUrl = temporaryMovieFileUrl()
             val delegate = VideoRecordingDelegate(
                 outputUrl = outputUrl,
+                recordingLocation = recordingLocation,
+                locationProvider = locationProvider,
                 onError = onError,
                 onComplete = {
                     stopRecordingTimer()
@@ -101,8 +131,10 @@ internal class IosVideoCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     fun release() {
         stopRecording()
         stopRecordingTimer()
+        locationProvider.stopUpdating()
         recordingDelegate = null
         onVideoRecordingStateChange = null
+        device = null
     }
 
     private fun startRecordingTimer() {
@@ -148,16 +180,62 @@ internal class IosVideoCapture(private val dispatchOnSessionQueue: (() -> Unit) 
     }
 }
 
-private fun AVCaptureMovieFileOutput.configureVideoMirroring(device: AVCaptureDevice) {
+private fun AVCaptureMovieFileOutput.configureVideoSettings(device: AVCaptureDevice): Boolean {
     val connection = connectionWithMediaType(AVMediaTypeVideo)
-        ?: return
-    if (!connection.supportsVideoMirroring) {
+        ?: return false
+    connection.configureVideoMirroring(device)
+    connection.configureVideoStabilization(device)
+    return configureVideoCodec(connection)
+}
+
+private fun AVCaptureConnection.configureVideoMirroring(device: AVCaptureDevice) {
+    if (!supportsVideoMirroring) {
         return
     }
 
-    connection.automaticallyAdjustsVideoMirroring = false
-    connection.videoMirrored = device.position == AVCaptureDevicePositionFront
+    automaticallyAdjustsVideoMirroring = false
+    videoMirrored = device.position == AVCaptureDevicePositionFront
 }
+
+private fun AVCaptureConnection.configureVideoStabilization(device: AVCaptureDevice) {
+    if (!supportsVideoStabilization) {
+        return
+    }
+
+    preferredVideoStabilizationMode = device.activeFormat.preferredMaximumVideoStabilizationMode()
+}
+
+private fun AVCaptureDeviceFormat.preferredMaximumVideoStabilizationMode() = MAXIMUM_VIDEO_STABILIZATION_MODES
+    .firstOrNull(::isVideoStabilizationModeSupported)
+    ?: AVCaptureVideoStabilizationModeAuto
+
+private val MAXIMUM_VIDEO_STABILIZATION_MODES = listOf(
+    AVCaptureVideoStabilizationModeCinematicExtendedEnhanced,
+    AVCaptureVideoStabilizationModeCinematicExtended,
+    AVCaptureVideoStabilizationModeCinematic,
+    AVCaptureVideoStabilizationModeStandard,
+)
+
+private fun AVCaptureMovieFileOutput.configureVideoCodec(connection: AVCaptureConnection): Boolean {
+    val videoCodecType = preferredProcessedVideoCodecType()
+        ?: return false
+
+    setOutputSettings(
+        outputSettings = mapOf(AVVideoCodecKey to videoCodecType),
+        forConnection = connection,
+    )
+    return true
+}
+
+private fun AVCaptureMovieFileOutput.preferredProcessedVideoCodecType(): String? = preferredVideoCodecType(
+    availableVideoCodecTypes = availableVideoCodecTypes.filterIsInstance<String>(),
+    preferredVideoCodecTypes = IOS_PROCESSED_VIDEO_CODEC_TYPES,
+)
+
+private val IOS_PROCESSED_VIDEO_CODEC_TYPES = listOfNotNull(
+    AVVideoCodecTypeHEVC,
+    AVVideoCodecTypeH264,
+)
 
 private fun temporaryMovieFileUrl(): NSURL {
     val fileName = "DiveCamera_${NSUUID.UUID().UUIDString}.mov"
@@ -168,6 +246,8 @@ private fun currentTimeMillis(): Long = (CFAbsoluteTimeGetCurrent() * MILLIS_PER
 
 private class VideoRecordingDelegate(
     private val outputUrl: NSURL,
+    private val recordingLocation: CLLocation?,
+    private val locationProvider: IosLocationMetadataProvider,
     private val onError: (String) -> Unit,
     private val onComplete: () -> Unit,
 ) : NSObject(),
@@ -187,7 +267,9 @@ private class VideoRecordingDelegate(
 
         PHPhotoLibrary.sharedPhotoLibrary().performChanges(
             changeBlock = {
-                PHAssetCreationRequest.creationRequestForAsset().addResourceWithType(
+                val request = PHAssetCreationRequest.creationRequestForAsset()
+                request.location = recordingLocation ?: locationProvider.currentLocation()
+                request.addResourceWithType(
                     type = PHAssetResourceTypeVideo,
                     fileURL = didFinishRecordingToOutputFileAtURL,
                     options = null,

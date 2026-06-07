@@ -27,10 +27,6 @@ import platform.AVFoundation.depthDataDeliverySupported
 import platform.AVFoundation.fileDataRepresentation
 import platform.AVFoundation.position
 import platform.CoreLocation.CLLocation
-import platform.CoreLocation.CLLocationManager
-import platform.CoreLocation.CLLocationManagerDelegateProtocol
-import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
-import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSError
 import platform.Foundation.NSNumber
@@ -43,7 +39,7 @@ import platform.darwin.NSObject
 internal class IosImageCapture(private val dispatchOnSessionQueue: (() -> Unit) -> Unit) {
     private val photoOutput = AVCapturePhotoOutput()
     private val photoCaptureDelegates = mutableSetOf<PhotoCaptureDelegate>()
-    private val locationProvider = IosPhotoLocationProvider()
+    private val locationProvider = IosLocationMetadataProvider()
     private var photoSettingsMetadata: (CLLocation?) -> Map<Any?, *> = { emptyMap<Any?, Any?>() }
     private var isConfigured = false
 
@@ -251,69 +247,6 @@ private fun AVCapturePhotoOutput.supportsRawDngPhotoCapture(): Boolean {
         supportedRawPhotoPixelFormatTypesForFileType(AVFileTypeDNG).isNotEmpty()
 }
 
-private class IosPhotoLocationProvider :
-    NSObject(),
-    CLLocationManagerDelegateProtocol {
-    private val locationManager = CLLocationManager()
-    private var latestLocation: CLLocation? = null
-
-    init {
-        locationManager.delegate = this
-    }
-
-    fun startUpdating() {
-        if (locationManager.hasLocationAuthorization()) {
-            latestLocation = locationManager.location ?: latestLocation
-            locationManager.startUpdatingLocation()
-        }
-    }
-
-    fun currentLocation(): CLLocation? = (latestLocation ?: locationManager.location)
-        ?.takeIf(CLLocation::hasValidCoordinate)
-
-    fun stopUpdating() {
-        locationManager.stopUpdatingLocation()
-    }
-
-    override fun locationManager(
-        manager: CLLocationManager,
-        didUpdateLocations: List<*>,
-    ) {
-        latestLocation = didUpdateLocations.lastOrNull() as? CLLocation
-    }
-
-    override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
-        if (manager.hasLocationAuthorization()) {
-            startUpdating()
-        } else {
-            latestLocation = null
-            manager.stopUpdatingLocation()
-        }
-    }
-}
-
-private fun CLLocationManager.hasLocationAuthorization(): Boolean {
-    return authorizationStatus == kCLAuthorizationStatusAuthorizedAlways ||
-        authorizationStatus == kCLAuthorizationStatusAuthorizedWhenInUse
-}
-
-private fun CLLocation.hasValidCoordinate(): Boolean {
-    val coordinate = coordinate.useContents {
-        IosLocationCoordinate(
-            latitude = latitude,
-            longitude = longitude,
-        )
-    }
-
-    return coordinate.latitude in MIN_GPS_LATITUDE..MAX_GPS_LATITUDE &&
-        coordinate.longitude in MIN_GPS_LONGITUDE..MAX_GPS_LONGITUDE
-}
-
-private data class IosLocationCoordinate(
-    val latitude: Double,
-    val longitude: Double,
-)
-
 private fun AVCaptureDevice.bestPhotoDimensions(): CValue<CMVideoDimensions>? {
     val supportedDimensions = activeFormat.supportedMaxPhotoDimensions
         .mapNotNull { it as? NSValue }
@@ -326,10 +259,6 @@ private fun CValue<CMVideoDimensions>.pixelCount(): Long = useContents {
     width.toLong() * height.toLong()
 }
 
-private const val MIN_GPS_LATITUDE = -90.0
-private const val MAX_GPS_LATITUDE = 90.0
-private const val MIN_GPS_LONGITUDE = -180.0
-private const val MAX_GPS_LONGITUDE = 180.0
 private const val SINGLE_PHOTO_RESULT_COUNT = 1
 private const val RAW_JPG_PHOTO_RESULT_COUNT = 2
 
