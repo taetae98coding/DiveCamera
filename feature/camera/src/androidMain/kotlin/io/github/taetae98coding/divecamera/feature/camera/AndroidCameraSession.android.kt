@@ -51,23 +51,7 @@ internal class AndroidCameraSession(
     val surfaceRequest: SurfaceRequest?
         get() = cameraPreview.surfaceRequest
 
-    private val cameraPreview = AndroidCameraPreview(
-        targetRotation = targetRotation,
-        onCaptureResult = { captureResult ->
-            val captureResultMetadata = AndroidCaptureResultMetadata.from(captureResult)
-            val captureResultCameraExposureInfo = captureResultMetadata
-                .toCameraExposureInfo(
-                    focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
-                        focalLength = captureResultMetadata.focalLength,
-                        physicalCameraId = captureResultMetadata.activePhysicalCameraId,
-                    ),
-                )
-            latestCaptureResultCameraExposureInfo = captureResultCameraExposureInfo
-            cameraManager.updateCameraExposureInfo(
-                captureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
-            )
-        },
-    )
+    private val cameraPreview = createCameraPreview()
     private var cameraExifMetadata = AndroidCameraExifMetadata.Empty
     private var cameraExposureInfoFallback = CameraExposureInfo.Unknown
     private var latestCaptureResultCameraExposureInfo = CameraExposureInfo.Unknown
@@ -118,9 +102,12 @@ internal class AndroidCameraSession(
             )
             cameraExposureInfoFallback = cameraExifMetadata.toCameraExposureInfo()
             val boundCamera = if (captureMode == CameraCaptureMode.Video) {
+                val videoQualitySettings = androidVideoQualitySettings(camera.cameraInfo)
                 val nextVideoCapture = AndroidCameraVideoCapture(
                     context = context,
                     targetRotation = targetRotation,
+                    dynamicRange = videoQualitySettings.dynamicRange,
+                    isVideoStabilizationEnabled = videoQualitySettings.isVideoStabilizationEnabled,
                 )
                 val boundCamera = provider.bindToLifecycle(
                     lifecycleOwner,
@@ -231,6 +218,24 @@ internal class AndroidCameraSession(
         imageCapture = null
         videoCapture = null
     }
+
+    private fun createCameraPreview(): AndroidCameraPreview = AndroidCameraPreview(
+        targetRotation = targetRotation,
+        onCaptureResult = { captureResult ->
+            val captureResultMetadata = AndroidCaptureResultMetadata.from(captureResult)
+            val captureResultCameraExposureInfo = captureResultMetadata
+                .toCameraExposureInfo(
+                    focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
+                        focalLength = captureResultMetadata.focalLength,
+                        physicalCameraId = captureResultMetadata.activePhysicalCameraId,
+                    ),
+                )
+            latestCaptureResultCameraExposureInfo = captureResultCameraExposureInfo
+            cameraManager.updateCameraExposureInfo(
+                captureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
+            )
+        },
+    )
 
     private fun updateExposureInfoFallback(cameraExposureInfo: CameraExposureInfo) {
         if (isReleased) {

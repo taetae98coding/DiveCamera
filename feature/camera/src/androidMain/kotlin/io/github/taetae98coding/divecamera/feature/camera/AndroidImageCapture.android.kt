@@ -1,10 +1,8 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
-import android.Manifest
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -15,12 +13,9 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.DngCreator
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.media.ExifInterface as PlatformExifInterface
 import android.net.Uri
 import android.os.Build
-import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import androidx.camera.core.ExperimentalGetImage
@@ -41,7 +36,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -61,7 +55,7 @@ internal class AndroidImageCapture(
     private val captureResultProvider: (timestampNanoseconds: Long) -> CaptureResult? = { null },
     private val onPhotoSaved: (AndroidSavedPhotoResult, Location?, (String) -> Unit) -> Unit = { _, _, _ -> },
 ) : AndroidPhotoCapture {
-    private val locationProvider = AndroidPhotoLocationProvider(context).apply {
+    private val locationProvider = AndroidLocationMetadataProvider(context).apply {
         start()
     }
 
@@ -766,76 +760,6 @@ private fun AndroidPhotoFileFormat.contentValues(
     }
 }
 
-private class AndroidPhotoLocationProvider(private val context: Context) {
-    private val locationManager = context.getSystemService(LocationManager::class.java)
-    private val latestLocation = AtomicReference<Location?>()
-    private val locationListener = LocationListener { location ->
-        if (location.hasExifCoordinate()) {
-            latestLocation.set(location)
-        }
-    }
-
-    fun start() {
-        if (!context.hasLocationPermission()) {
-            return
-        }
-        val manager = locationManager
-            ?: return
-
-        latestLocation.set(manager.lastKnownMetadataLocation())
-        manager.getProviders(true).forEach { provider ->
-            runCatching {
-                manager.requestLocationUpdates(
-                    provider,
-                    LOCATION_UPDATE_MIN_TIME_MILLIS,
-                    LOCATION_UPDATE_MIN_DISTANCE_METERS,
-                    locationListener,
-                    Looper.getMainLooper(),
-                )
-            }
-        }
-    }
-
-    fun currentLocation(): Location? {
-        if (!context.hasLocationPermission()) {
-            return null
-        }
-
-        return latestLocation.get()
-            ?: locationManager?.lastKnownMetadataLocation()?.also(latestLocation::set)
-    }
-
-    fun stop() {
-        locationManager?.removeUpdates(locationListener)
-    }
-}
-
-private fun LocationManager.lastKnownMetadataLocation(): Location? = getProviders(true)
-    .asSequence()
-    .mapNotNull { provider ->
-        runCatching {
-            getLastKnownLocation(provider)
-        }.getOrNull()
-    }
-    .filter(Location::hasExifCoordinate)
-    .maxByOrNull(Location::getTime)
-
-private fun Context.hasLocationPermission(): Boolean {
-    return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-}
-
-private fun Location.hasExifCoordinate(): Boolean {
-    return latitude in MIN_EXIF_LATITUDE..MAX_EXIF_LATITUDE &&
-        longitude in MIN_EXIF_LONGITUDE..MAX_EXIF_LONGITUDE
-}
-
-private const val MIN_EXIF_LATITUDE = -90.0
-private const val MAX_EXIF_LATITUDE = 90.0
-private const val MIN_EXIF_LONGITUDE = -180.0
-private const val MAX_EXIF_LONGITUDE = 180.0
-private const val LOCATION_UPDATE_MIN_TIME_MILLIS = 5_000L
-private const val LOCATION_UPDATE_MIN_DISTANCE_METERS = 0F
 private const val PENDING = 1
 private const val NOT_PENDING = 0
 private const val READ_WRITE_MODE = "rw"

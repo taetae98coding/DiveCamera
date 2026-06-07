@@ -3,11 +3,14 @@ package io.github.taetae98coding.divecamera.feature.camera
 import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
+import android.location.Location
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Range
 import android.view.Surface
+import androidx.camera.core.CameraInfo
+import androidx.camera.core.DynamicRange
 import androidx.camera.core.MirrorMode
 import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.MediaStoreOutputOptions
@@ -25,7 +28,12 @@ import java.util.concurrent.Executor
 internal class AndroidCameraVideoCapture(
     private val context: Context,
     targetRotation: Int = Surface.ROTATION_0,
+    dynamicRange: DynamicRange = DynamicRange.SDR,
+    isVideoStabilizationEnabled: Boolean = false,
 ) : AndroidVideoCapture {
+    private val locationProvider = AndroidLocationMetadataProvider(context).apply {
+        start()
+    }
     private val recorder = Recorder.Builder()
         .setQualitySelector(VIDEO_QUALITY_SELECTOR)
         .build()
@@ -33,6 +41,8 @@ internal class AndroidCameraVideoCapture(
     val useCase: VideoCapture<Recorder> = VideoCapture.Builder(recorder)
         .setTargetRotation(targetRotation)
         .setTargetFrameRate(VIDEO_TARGET_FRAME_RATE_RANGE)
+        .setDynamicRange(dynamicRange)
+        .setVideoStabilizationEnabled(isVideoStabilizationEnabled)
         .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
         .build()
 
@@ -48,10 +58,14 @@ internal class AndroidCameraVideoCapture(
         }
 
         Log.d(VIDEO_CAPTURE_LOG_TAG, "startRecording request")
+        val location = locationProvider.currentLocation()?.let(::Location)
         val pendingRecording = useCase.output
             .prepareRecording(
                 context,
-                context.createVideoOutputOptions(),
+                androidVideoOutputOptions(
+                    context = context,
+                    location = location,
+                ),
             )
             .withAudioEnabled()
 
@@ -98,24 +112,54 @@ internal class AndroidCameraVideoCapture(
     override fun release() {
         recording?.close()
         recording = null
+        locationProvider.stop()
     }
 }
 
-private fun Context.createVideoOutputOptions(): MediaStoreOutputOptions {
+internal data class AndroidVideoQualitySettings(
+    val dynamicRange: DynamicRange = DynamicRange.SDR,
+    val isVideoStabilizationEnabled: Boolean = false,
+)
+
+internal fun androidVideoQualitySettings(cameraInfo: CameraInfo): AndroidVideoQualitySettings {
+    val videoCapabilities = Recorder.getVideoCapabilities(cameraInfo)
+    val dynamicRange = if (videoCapabilities
+            .getSupportedQualities(DynamicRange.HDR_UNSPECIFIED_10_BIT)
+            .isNotEmpty()
+    ) {
+        DynamicRange.HDR_UNSPECIFIED_10_BIT
+    } else {
+        DynamicRange.SDR
+    }
+    val isVideoStabilizationEnabled = videoCapabilities.isStabilizationSupported
+
+    return AndroidVideoQualitySettings(
+        dynamicRange = dynamicRange,
+        isVideoStabilizationEnabled = isVideoStabilizationEnabled,
+    )
+}
+
+internal fun androidVideoOutputOptions(
+    context: Context,
+    location: Location?,
+    date: Date = Date(),
+): MediaStoreOutputOptions {
     val contentValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.DISPLAY_NAME, VIDEO_FILE_NAME_FORMAT.format(Date()))
+        put(MediaStore.MediaColumns.DISPLAY_NAME, VIDEO_FILE_NAME_FORMAT.format(date))
         put(MediaStore.MediaColumns.MIME_TYPE, VIDEO_MIME_TYPE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             put(MediaStore.Video.Media.RELATIVE_PATH, VIDEO_RELATIVE_PATH)
         }
     }
 
-    return MediaStoreOutputOptions.Builder(
-        contentResolver,
+    val builder = MediaStoreOutputOptions.Builder(
+        context.contentResolver,
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
     )
         .setContentValues(contentValues)
-        .build()
+    location?.let(builder::setLocation)
+
+    return builder.build()
 }
 
 private val DIRECT_EXECUTOR = Executor { command ->
