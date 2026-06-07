@@ -16,7 +16,8 @@ internal const val VIEW_FINDER_TEST_TAG = "camera-view-finder"
 internal const val CAMERA_PREVIEW_TEST_TAG = "camera-preview"
 
 private const val VIEW_FINDER_CONTENT_DESCRIPTION = "ViewFinder"
-private const val VIEW_FINDER_ASPECT_RATIO = 3F / 4F
+private const val PHOTO_VIEW_FINDER_ASPECT_RATIO = 3F / 4F
+private const val VIDEO_VIEW_FINDER_ASPECT_RATIO = 9F / 16F
 
 @Composable
 internal fun CameraViewFinder(
@@ -32,7 +33,7 @@ internal fun CameraViewFinder(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(VIEW_FINDER_ASPECT_RATIO)
+                .aspectRatio(captureMode.viewFinderAspectRatio())
                 .clipToBounds()
                 .testTag(VIEW_FINDER_TEST_TAG)
                 .semantics {
@@ -49,4 +50,13 @@ internal fun CameraViewFinder(
             )
         }
     }
+}
+
+private fun CameraCaptureMode.viewFinderAspectRatio(): Float = when (this) {
+    CameraCaptureMode.Jpg,
+    CameraCaptureMode.Raw,
+    CameraCaptureMode.RawJpg,
+    -> PHOTO_VIEW_FINDER_ASPECT_RATIO
+
+    CameraCaptureMode.Video -> VIDEO_VIEW_FINDER_ASPECT_RATIO
 }

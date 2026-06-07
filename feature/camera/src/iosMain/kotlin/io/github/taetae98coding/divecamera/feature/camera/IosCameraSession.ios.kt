@@ -5,9 +5,11 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.math.tan
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceDiscoverySession
+import platform.AVFoundation.AVCaptureDeviceFormat
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureDevicePositionUnspecified
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInTelephotoCamera
@@ -15,8 +17,11 @@ import platform.AVFoundation.AVCaptureDeviceTypeBuiltInUltraWideCamera
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInWideAngleCamera
 import platform.AVFoundation.AVCaptureExposureModeContinuousAutoExposure
 import platform.AVFoundation.AVCaptureSession
+import platform.AVFoundation.AVCaptureSessionPreset3840x2160
 import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
+import platform.AVFoundation.AVFrameRateRange
+import platform.AVFoundation.AVMediaTypeAudio
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.ISO
 import platform.AVFoundation.authorizationStatusForMediaType
@@ -31,6 +36,7 @@ import platform.AVFoundation.setExposureTargetBias
 import platform.AVFoundation.videoZoomFactor
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMakeWithSeconds
+import platform.CoreMedia.CMVideoFormatDescriptionGetDimensions
 import platform.UIKit.UIView
 import platform.darwin.DISPATCH_SOURCE_TYPE_TIMER
 import platform.darwin.DISPATCH_TIME_NOW
@@ -45,14 +51,19 @@ import platform.darwin.dispatch_source_set_timer
 import platform.darwin.dispatch_time
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun CameraController.createCameraSession(selectedCameraLens: CameraLens?): IosCameraSession = IosCameraSession(
+internal fun CameraController.createCameraSession(
+    captureMode: CameraCaptureMode,
+    selectedCameraLens: CameraLens?,
+): IosCameraSession = IosCameraSession(
     cameraController = this,
+    captureMode = captureMode,
     selectedCameraLens = selectedCameraLens,
 )
 
 @OptIn(ExperimentalForeignApi::class)
 internal class IosCameraSession(
     private val cameraController: CameraController,
+    private val captureMode: CameraCaptureMode,
     private val selectedCameraLens: CameraLens?,
 ) {
     private val cameraSessionId = cameraController.registerCameraSession()
@@ -63,6 +74,13 @@ internal class IosCameraSession(
     )
     private val cameraPreview = IosCameraPreview(session = session)
     private val imageCapture = IosImageCapture(
+        dispatchOnSessionQueue = { block ->
+            dispatch_async(sessionQueue) {
+                block()
+            }
+        },
+    )
+    private val videoCapture = IosVideoCapture(
         dispatchOnSessionQueue = { block ->
             dispatch_async(sessionQueue) {
                 block()
@@ -81,6 +99,10 @@ internal class IosCameraSession(
     fun start() {
         cameraController.updateImageCapture(
             imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
+            cameraSessionId = cameraSessionId,
+        )
+        cameraController.updateVideoCapture(
+            videoCapture = videoCapture.takeIf(IosVideoCapture::isCaptureConfigured),
             cameraSessionId = cameraSessionId,
         )
         cameraDevice?.let { device ->
@@ -106,6 +128,10 @@ internal class IosCameraSession(
             imageCapture = null,
             cameraSessionId = cameraSessionId,
         )
+        cameraController.updateVideoCapture(
+            videoCapture = null,
+            cameraSessionId = cameraSessionId,
+        )
         cameraController.updateExposureControl(
             exposureControl = null,
             cameraSessionId = cameraSessionId,
@@ -117,6 +143,7 @@ internal class IosCameraSession(
         stopExposureInfoUpdates()
         cameraDevice = null
         imageCapture.release()
+        videoCapture.release()
         dispatch_async(sessionQueue) {
             stopExposureInfoUpdates()
             if (session.running) {
@@ -131,13 +158,27 @@ internal class IosCameraSession(
         }
 
         session.beginConfiguration()
-        session.preferPhotoSessionPreset()
+        session.preferSessionPreset(captureMode)
         val cameraLensCandidates = supportedCameraLensCandidates()
         val device = configureInput(cameraLensCandidates)
         if (device != null) {
             cameraDevice = device
-            imageCapture.configure(session, device)
-            cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
+            if (captureMode == CameraCaptureMode.Video) {
+                device.prefer4k60VideoFormat()
+                configureAudioInput()
+                videoCapture.configure(session, device)
+                cameraController.updateVideoCapture(
+                    videoCapture = videoCapture.takeIf(IosVideoCapture::isCaptureConfigured),
+                    cameraSessionId = cameraSessionId,
+                )
+            } else {
+                imageCapture.configure(session, device)
+                cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
+                cameraController.updateImageCapture(
+                    imageCapture = imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
+                    cameraSessionId = cameraSessionId,
+                )
+            }
             cameraController.updateExposureControl(
                 exposureControl = IosCameraDeviceExposureControl(
                     device = device,
@@ -183,6 +224,22 @@ internal class IosCameraSession(
         return null
     }
 
+    private fun configureAudioInput() {
+        if (AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeAudio) != AVAuthorizationStatusAuthorized) {
+            return
+        }
+
+        val audioDevice = AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeAudio)
+            ?: return
+        val audioInput = AVCaptureDeviceInput.deviceInputWithDevice(
+            device = audioDevice,
+            error = null,
+        )
+        if (audioInput != null && session.canAddInput(audioInput)) {
+            session.addInput(audioInput)
+        }
+    }
+
     private fun startExposureInfoUpdates() {
         if (exposureInfoUpdateTimer != null) {
             updateExposureInfo()
@@ -225,16 +282,84 @@ internal class IosCameraSession(
         }
     }
 
-    private fun AVCaptureSession.preferPhotoSessionPreset() {
-        val preset = listOf(
-            AVCaptureSessionPresetPhoto,
-            AVCaptureSessionPresetHigh,
-        ).firstOrNull(::canSetSessionPreset)
+    private fun AVCaptureSession.preferSessionPreset(captureMode: CameraCaptureMode) {
+        val presets = if (captureMode == CameraCaptureMode.Video) {
+            listOf(
+                AVCaptureSessionPreset3840x2160,
+                AVCaptureSessionPresetHigh,
+                AVCaptureSessionPresetPhoto,
+            )
+        } else {
+            listOf(AVCaptureSessionPresetPhoto, AVCaptureSessionPresetHigh)
+        }
+        val preset = presets.firstOrNull(::canSetSessionPreset)
 
         if (preset != null) {
             sessionPreset = preset
         }
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDevice.prefer4k60VideoFormat() {
+    val videoFormat = formats
+        .filterIsInstance<AVCaptureDeviceFormat>()
+        .filter(AVCaptureDeviceFormat::supports4k60Video)
+        .maxWithOrNull(
+            compareBy<AVCaptureDeviceFormat> { format ->
+                format.maxSupportedFrameRate()
+            }.thenBy { format ->
+                format.videoPixelCount()
+            },
+        )
+        ?: return
+    val isLocked = runCatching {
+        lockForConfiguration(null)
+    }.getOrDefault(false)
+    if (!isLocked) {
+        return
+    }
+
+    try {
+        activeFormat = videoFormat
+        val frameDuration = CMTimeMakeWithSeconds(
+            seconds = 1.0 / IOS_VIDEO_TARGET_FRAME_RATE,
+            preferredTimescale = IOS_VIDEO_TARGET_FRAME_RATE.toInt(),
+        )
+        activeVideoMinFrameDuration = frameDuration
+        activeVideoMaxFrameDuration = frameDuration
+    } finally {
+        unlockForConfiguration()
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDeviceFormat.supports4k60Video(): Boolean {
+    return videoPixelCount() == IOS_VIDEO_TARGET_PIXEL_COUNT &&
+        videoSupportedFrameRateRanges
+            .filterIsInstance<AVFrameRateRange>()
+            .any(AVFrameRateRange::contains60Fps)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDeviceFormat.videoPixelCount(): Long {
+    return CMVideoFormatDescriptionGetDimensions(formatDescription).useContents {
+        width.toLong() * height.toLong()
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVCaptureDeviceFormat.maxSupportedFrameRate(): Double {
+    return videoSupportedFrameRateRanges
+        .filterIsInstance<AVFrameRateRange>()
+        .maxOfOrNull { it.maxFrameRate() }
+        ?: 0.0
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun AVFrameRateRange.contains60Fps(): Boolean {
+    return minFrameRate() <= IOS_VIDEO_TARGET_FRAME_RATE &&
+        maxFrameRate() >= IOS_VIDEO_TARGET_FRAME_RATE
 }
 
 private data class IosCameraLensCandidate(
@@ -419,6 +544,10 @@ private fun focalLengthIn35mmFilm(
 }
 
 private const val NANOS_PER_SECOND = 1_000_000_000.0
+private const val IOS_VIDEO_TARGET_FRAME_RATE = 60.0
+private const val IOS_VIDEO_TARGET_WIDTH = 3_840L
+private const val IOS_VIDEO_TARGET_HEIGHT = 2_160L
+private const val IOS_VIDEO_TARGET_PIXEL_COUNT = IOS_VIDEO_TARGET_WIDTH * IOS_VIDEO_TARGET_HEIGHT
 private const val FULL_FRAME_WIDTH_MM = 36.0
 private const val DEGREES_PER_HALF_CIRCLE = 180.0
 private const val EXPOSURE_INFO_UPDATE_INTERVAL_NANOS = 250_000_000UL

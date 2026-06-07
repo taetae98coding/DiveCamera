@@ -19,8 +19,10 @@ internal class AndroidCameraController : CameraController {
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
     private val mutableCameraLensState = MutableStateFlow(CameraLensState())
+    private val mutableVideoRecordingState = MutableStateFlow(VideoRecordingState.Idle)
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private var imageCapture: AndroidPhotoCapture? = null
+    private var videoCapture: AndroidVideoCapture? = null
     private var exposureControl: AndroidExposureControl? = null
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
@@ -31,6 +33,8 @@ internal class AndroidCameraController : CameraController {
         mutableCameraExposureInfoState.asStateFlow()
     override val cameraLensState: StateFlow<CameraLensState> =
         mutableCameraLensState.asStateFlow()
+    override val videoRecordingState: StateFlow<VideoRecordingState> =
+        mutableVideoRecordingState.asStateFlow()
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages.asSharedFlow()
 
@@ -57,6 +61,34 @@ internal class AndroidCameraController : CameraController {
         }
     }
 
+    override fun startVideoRecording() {
+        if (mutableCaptureReadinessState.value == CaptureReadinessState.Busy) {
+            return
+        }
+        if (mutableVideoRecordingState.value.isRecording) {
+            return
+        }
+
+        val currentVideoCapture = videoCapture
+            ?: run {
+                mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+                return
+            }
+        runCatching {
+            currentVideoCapture.startRecording(
+                onError = ::emitPhotoSaveErrorMessage,
+                onVideoRecordingStateChange = ::updateVideoRecordingState,
+            )
+        }.onFailure { throwable ->
+            emitPhotoSaveErrorMessage(throwable.platformErrorMessage())
+            updateVideoRecordingState(VideoRecordingState.Idle)
+        }
+    }
+
+    override fun stopVideoRecording() {
+        videoCapture?.stopRecording()
+    }
+
     override fun setAutoExposure(exposureCompensationEv: Double) {
         exposureControl?.setAutoExposure(exposureCompensationEv)
     }
@@ -77,11 +109,15 @@ internal class AndroidCameraController : CameraController {
 
     fun updateImageCapture(imageCapture: AndroidPhotoCapture?) {
         this.imageCapture = imageCapture
-        mutableCaptureReadinessState.value = if (imageCapture == null) {
-            CaptureReadinessState.Busy
-        } else {
-            CaptureReadinessState.Ready
+        updateCaptureReadiness()
+    }
+
+    fun updateVideoCapture(videoCapture: AndroidVideoCapture?) {
+        this.videoCapture = videoCapture
+        if (videoCapture == null) {
+            updateVideoRecordingState(VideoRecordingState.Idle)
         }
+        updateCaptureReadiness()
     }
 
     fun updateRawCaptureSupported(isSupported: Boolean) {
@@ -102,6 +138,17 @@ internal class AndroidCameraController : CameraController {
         this.exposureControl = exposureControl
     }
 
+    fun updateVideoRecordingState(videoRecordingState: VideoRecordingState) {
+        mutableVideoRecordingState.value = videoRecordingState
+    }
+
+    private fun updateCaptureReadiness() {
+        mutableCaptureReadinessState.value = CaptureReadinessState.fromCaptureConnections(
+            hasImageCapture = imageCapture != null,
+            hasVideoCapture = videoCapture != null,
+        )
+    }
+
     private fun emitPhotoSaveErrorMessage(message: String) {
         if (message.isNotBlank()) {
             mutablePhotoSaveErrorMessages.tryEmit(message)
@@ -113,6 +160,17 @@ internal interface AndroidPhotoCapture {
     val captureMode: CameraCaptureMode
 
     suspend fun capturePhoto(onError: (String) -> Unit)
+}
+
+internal interface AndroidVideoCapture {
+    fun startRecording(
+        onError: (String) -> Unit,
+        onVideoRecordingStateChange: (VideoRecordingState) -> Unit,
+    )
+
+    fun stopRecording()
+
+    fun release()
 }
 
 internal interface AndroidExposureControl {
@@ -132,6 +190,10 @@ internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
     (this as? AndroidCameraController)?.updateRawCaptureSupported(isSupported)
 }
 
+internal fun CameraController.updateVideoCapture(videoCapture: AndroidVideoCapture?) {
+    (this as? AndroidCameraController)?.updateVideoCapture(videoCapture)
+}
+
 internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
     (this as? AndroidCameraController)?.updateCameraExposureInfo(cameraExposureInfo)
 }
@@ -142,6 +204,10 @@ internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLen
 
 internal fun CameraController.updateExposureControl(exposureControl: AndroidExposureControl?) {
     (this as? AndroidCameraController)?.updateExposureControl(exposureControl)
+}
+
+internal fun CameraController.updateVideoRecordingState(videoRecordingState: VideoRecordingState) {
+    (this as? AndroidCameraController)?.updateVideoRecordingState(videoRecordingState)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

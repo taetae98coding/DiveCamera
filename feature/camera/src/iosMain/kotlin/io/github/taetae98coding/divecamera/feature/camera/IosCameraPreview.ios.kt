@@ -7,8 +7,9 @@ import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureVideoOrientationLandscapeRight
 import platform.AVFoundation.AVCaptureVideoOrientationPortrait
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
-import platform.AVFoundation.AVLayerVideoGravityResizeAspect
+import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.CoreGraphics.CGRectZero
+import platform.UIKit.UIColor
 import platform.UIKit.UIView
 
 @OptIn(ExperimentalForeignApi::class)
@@ -19,7 +20,7 @@ internal class IosCameraPreview(session: AVCaptureSession) {
     val view: UIView = previewView
 
     init {
-        previewLayer.videoGravity = AVLayerVideoGravityResizeAspect
+        previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill
     }
 
     fun updatePreviewFrame() {
@@ -30,6 +31,7 @@ internal class IosCameraPreview(session: AVCaptureSession) {
 @OptIn(ExperimentalForeignApi::class)
 private class IosCameraPreviewView(private val previewLayer: AVCaptureVideoPreviewLayer) : UIView(frame = CGRectZero.readValue()) {
     init {
+        backgroundColor = UIColor.blackColor
         clipsToBounds = true
         layer.masksToBounds = true
         layer.addSublayer(previewLayer)

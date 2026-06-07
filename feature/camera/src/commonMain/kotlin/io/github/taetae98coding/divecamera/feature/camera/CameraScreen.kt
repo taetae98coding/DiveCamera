@@ -60,6 +60,12 @@ internal fun CameraScreen(
     val captureReadinessState by cameraController.captureReadinessState.collectAsState()
     val cameraExposureInfo by cameraController.cameraExposureInfoState.collectAsState()
     val cameraLensState by cameraController.cameraLensState.collectAsState()
+    val videoRecordingState by cameraController.videoRecordingState.collectAsState()
+    val effectiveExposureMode = if (captureMode == CameraCaptureMode.Video) {
+        CameraExposureMode.Auto
+    } else {
+        exposureMode
+    }
     val currentRegisterInput by rememberUpdatedState {
         isCameraPreviewActive = true
         inputVersion += 1L
@@ -69,9 +75,14 @@ internal fun CameraScreen(
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(inputVersion, cameraResourceIdleTimeoutMillis) {
+    LaunchedEffect(inputVersion, cameraResourceIdleTimeoutMillis, videoRecordingState.isRecording) {
+        if (videoRecordingState.isRecording) {
+            return@LaunchedEffect
+        }
         delay(cameraResourceIdleTimeoutMillis)
-        isCameraPreviewActive = false
+        if (!videoRecordingState.isRecording) {
+            isCameraPreviewActive = false
+        }
     }
 
     LaunchedEffect(cameraController) {
@@ -112,14 +123,19 @@ internal fun CameraScreen(
 
                 CameraExposureInfoOverlay(
                     cameraExposureInfo = cameraExposureInfo,
-                    exposureMode = exposureMode,
+                    captureMode = captureMode,
+                    exposureMode = effectiveExposureMode,
+                    videoRecordingState = videoRecordingState,
+                    isLensSwitchEnabled = !videoRecordingState.isRecording,
                     onExposureSettingsClick = {
                         currentRegisterInput()
                         isExposureDialogVisible = true
                     },
                     onLensClick = {
                         currentRegisterInput()
-                        cameraController.changeCameraLens()
+                        if (!videoRecordingState.isRecording) {
+                            cameraController.changeCameraLens()
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -134,9 +150,17 @@ internal fun CameraScreen(
                 CaptureModeSwitchButton(
                     captureMode = captureMode,
                     rawCaptureSupportState = rawCaptureSupportState,
+                    enabled = !videoRecordingState.isRecording,
                     onClick = {
                         currentRegisterInput()
-                        captureMode = captureMode.next()
+                        if (!videoRecordingState.isRecording) {
+                            val nextCaptureMode = captureMode.next()
+                            captureMode = nextCaptureMode
+                            if (nextCaptureMode == CameraCaptureMode.Video) {
+                                exposureMode = CameraExposureMode.Auto
+                                cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
+                            }
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -147,11 +171,26 @@ internal fun CameraScreen(
 
                 CaptureButton(
                     captureReadinessState = captureReadinessState,
+                    captureMode = captureMode,
+                    videoRecordingState = videoRecordingState,
                     onClick = {
                         currentRegisterInput()
-                        if (captureReadinessState == CaptureReadinessState.Ready) {
-                            coroutineScope.launch {
-                                cameraController.capturePhoto(captureMode)
+                        if (
+                            captureReadinessState == CaptureReadinessState.Ready ||
+                            videoRecordingState.isRecording
+                        ) {
+                            if (captureMode == CameraCaptureMode.Video) {
+                                exposureMode = CameraExposureMode.Auto
+                                if (videoRecordingState.isRecording) {
+                                    cameraController.stopVideoRecording()
+                                } else {
+                                    cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
+                                    cameraController.startVideoRecording()
+                                }
+                            } else {
+                                coroutineScope.launch {
+                                    cameraController.capturePhoto(captureMode)
+                                }
                             }
                         }
                     },
@@ -164,7 +203,8 @@ internal fun CameraScreen(
                 if (isExposureDialogVisible) {
                     CameraExposureDialog(
                         cameraExposureInfo = cameraExposureInfo,
-                        initialExposureMode = exposureMode,
+                        initialExposureMode = effectiveExposureMode,
+                        allowManualExposure = captureMode != CameraCaptureMode.Video,
                         onDismissRequest = {
                             currentRegisterInput()
                             isExposureDialogVisible = false

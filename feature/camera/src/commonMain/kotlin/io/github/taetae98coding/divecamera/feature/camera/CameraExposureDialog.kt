@@ -55,11 +55,20 @@ internal const val CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG = "camera-exposure-appl
 internal fun CameraExposureDialog(
     cameraExposureInfo: CameraExposureInfo,
     initialExposureMode: CameraExposureMode,
+    allowManualExposure: Boolean = true,
     onDismissRequest: () -> Unit,
     onAutoExposureApply: (Double) -> Unit,
     onManualExposureApply: (iso: Int, shutterSpeedNanoseconds: Long) -> Unit,
 ) {
-    var selectedMode by remember { mutableStateOf(initialExposureMode) }
+    var selectedMode by remember {
+        mutableStateOf(
+            if (allowManualExposure) {
+                initialExposureMode
+            } else {
+                CameraExposureMode.Auto
+            },
+        )
+    }
     var exposureCompensationState by remember {
         mutableStateOf(CameraExposureCompensationState.from(cameraExposureInfo.exposureCompensationEv))
     }
@@ -129,16 +138,18 @@ internal fun CameraExposureDialog(
                             .weight(1F)
                             .testTag(CAMERA_EXPOSURE_AUTO_MODE_BUTTON_TEST_TAG),
                     )
-                    ExposureModeButton(
-                        text = "Manual Mode",
-                        selected = selectedMode == CameraExposureMode.Manual,
-                        onClick = {
-                            selectedMode = CameraExposureMode.Manual
-                        },
-                        modifier = Modifier
-                            .weight(1F)
-                            .testTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG),
-                    )
+                    if (allowManualExposure) {
+                        ExposureModeButton(
+                            text = "Manual Mode",
+                            selected = selectedMode == CameraExposureMode.Manual,
+                            onClick = {
+                                selectedMode = CameraExposureMode.Manual
+                            },
+                            modifier = Modifier
+                                .weight(1F)
+                                .testTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG),
+                        )
+                    }
                 }
 
                 when (selectedMode) {

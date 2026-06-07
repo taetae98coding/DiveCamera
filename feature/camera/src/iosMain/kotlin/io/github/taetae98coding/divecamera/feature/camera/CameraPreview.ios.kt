@@ -13,8 +13,11 @@ internal actual fun CameraPreview(
     selectedCameraLens: CameraLens?,
     modifier: Modifier,
 ) {
-    val cameraSession = remember(cameraController, selectedCameraLens) {
-        cameraController.createCameraSession(selectedCameraLens = selectedCameraLens)
+    val cameraSession = remember(cameraController, captureMode, selectedCameraLens) {
+        cameraController.createCameraSession(
+            captureMode = captureMode,
+            selectedCameraLens = selectedCameraLens,
+        )
     }
 
     key(cameraSession) {

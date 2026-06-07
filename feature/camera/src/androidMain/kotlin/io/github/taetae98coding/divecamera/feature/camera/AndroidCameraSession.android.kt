@@ -16,6 +16,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExposureState
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.SurfaceRequest
+import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.lifecycle.LifecycleOwner
@@ -70,6 +71,7 @@ internal class AndroidCameraSession(
     private var cameraExposureInfoFallback = CameraExposureInfo.Unknown
     private var latestCaptureResultCameraExposureInfo = CameraExposureInfo.Unknown
     private var imageCapture: AndroidImageCapture? = null
+    private var videoCapture: AndroidCameraVideoCapture? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var isReleased = false
 
@@ -81,6 +83,7 @@ internal class AndroidCameraSession(
                 "bind start captureMode=$captureMode targetRotation=$targetRotation",
             )
             cameraController.updateImageCapture(null)
+            cameraController.updateVideoCapture(null)
             cameraController.updateExposureControl(null)
             cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
@@ -91,13 +94,7 @@ internal class AndroidCameraSession(
                 ?.toCameraSelector()
                 ?: provider.availableCameraInfos.firstOrNull()?.cameraSelector
                 ?: CameraSelector.Builder().build()
-            val currentImageCapture = imageCapture
-            if (currentImageCapture == null) {
-                provider.unbind(cameraPreview.useCase)
-            } else {
-                provider.unbind(cameraPreview.useCase, currentImageCapture.useCase)
-                currentImageCapture.release()
-            }
+            provider.unbindCurrentSessionUseCases()
 
             val camera = provider.bindToLifecycle(
                 lifecycleOwner,
@@ -106,34 +103,53 @@ internal class AndroidCameraSession(
             val supportedOutputFormats = ImageCapture.getImageCaptureCapabilities(camera.cameraInfo)
                 .supportedOutputFormats
             val isRawCaptureSupported = supportedOutputFormats.supportsRawCapture()
-            val selectedOutputFormat = supportedOutputFormats.preferredImageOutputFormat(captureMode)
+            val selectedOutputFormat = supportedOutputFormats
+                .takeIf { captureMode != CameraCaptureMode.Video }
+                ?.preferredImageOutputFormat(captureMode)
             val cameraCharacteristics = context.cameraCharacteristics(camera.cameraInfo)
             Log.d(
                 CAMERA_SESSION_LOG_TAG,
-                "capabilities captureMode=$captureMode rawSupported=$isRawCaptureSupported supported=${supportedOutputFormats.toOutputFormatNames()} selected=${selectedOutputFormat.toImageCaptureOutputFormatName()} hasCameraCharacteristics=${cameraCharacteristics != null}",
+                "capabilities captureMode=$captureMode rawSupported=$isRawCaptureSupported supported=${supportedOutputFormats.toOutputFormatNames()} selected=${selectedOutputFormat?.toImageCaptureOutputFormatName()} hasCameraCharacteristics=${cameraCharacteristics != null}",
             )
             cameraExifMetadata = AndroidCameraExifMetadata.from(
                 context = context,
                 cameraInfo = camera.cameraInfo,
             )
             cameraExposureInfoFallback = cameraExifMetadata.toCameraExposureInfo()
-            val nextImageCapture = AndroidImageCapture(
-                context = context,
-                captureMode = captureMode,
-                targetRotation = targetRotation,
-                outputFormat = selectedOutputFormat,
-                cameraExifMetadata = cameraExifMetadata,
-                cameraCharacteristics = cameraCharacteristics,
-                isFrontFacingCamera = camera.cameraInfo.isFrontFacing(),
-            )
-
-            val boundCamera = provider.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                cameraPreview.useCase,
-                nextImageCapture.useCase,
-            )
-            imageCapture = nextImageCapture
+            val boundCamera = if (captureMode == CameraCaptureMode.Video) {
+                val nextVideoCapture = AndroidCameraVideoCapture(
+                    context = context,
+                    targetRotation = targetRotation,
+                )
+                val boundCamera = provider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    cameraPreview.useCase,
+                    nextVideoCapture.useCase,
+                )
+                videoCapture = nextVideoCapture
+                cameraController.updateVideoCapture(nextVideoCapture)
+                boundCamera
+            } else {
+                val nextImageCapture = AndroidImageCapture(
+                    context = context,
+                    captureMode = captureMode,
+                    targetRotation = targetRotation,
+                    outputFormat = requireNotNull(selectedOutputFormat),
+                    cameraExifMetadata = cameraExifMetadata,
+                    cameraCharacteristics = cameraCharacteristics,
+                    isFrontFacingCamera = camera.cameraInfo.isFrontFacing(),
+                )
+                val boundCamera = provider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    cameraPreview.useCase,
+                    nextImageCapture.useCase,
+                )
+                imageCapture = nextImageCapture
+                cameraController.updateImageCapture(nextImageCapture)
+                boundCamera
+            }
             cameraProvider = provider
             cameraController.updateRawCaptureSupported(isRawCaptureSupported)
             cameraController.updateCameraLenses(
@@ -146,10 +162,9 @@ internal class AndroidCameraSession(
                 ),
             )
             cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
-            cameraController.updateImageCapture(nextImageCapture)
             Log.d(
                 CAMERA_SESSION_LOG_TAG,
-                "bind complete captureMode=$captureMode outputFormat=${selectedOutputFormat.toImageCaptureOutputFormatName()}",
+                "bind complete captureMode=$captureMode outputFormat=${selectedOutputFormat?.toImageCaptureOutputFormatName()}",
             )
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {
@@ -168,18 +183,32 @@ internal class AndroidCameraSession(
     fun release() {
         isReleased = true
         cameraController.updateImageCapture(null)
+        cameraController.updateVideoCapture(null)
         cameraController.updateExposureControl(null)
         cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
-        imageCapture?.let { currentImageCapture ->
-            currentImageCapture.release()
-            cameraProvider?.unbind(cameraPreview.useCase, currentImageCapture.useCase)
-        } ?: cameraProvider?.unbind(cameraPreview.useCase)
+        cameraProvider?.unbindCurrentSessionUseCases()
         imageCapture = null
+        videoCapture = null
         cameraProvider = null
         cameraExifMetadata = AndroidCameraExifMetadata.Empty
         cameraExposureInfoFallback = CameraExposureInfo.Unknown
         latestCaptureResultCameraExposureInfo = CameraExposureInfo.Unknown
         cameraPreview.release()
+    }
+
+    private fun ProcessCameraProvider.unbindCurrentSessionUseCases() {
+        val useCases = buildList<UseCase> {
+            add(cameraPreview.useCase)
+            imageCapture?.useCase?.let(::add)
+            videoCapture?.useCase?.let(::add)
+        }
+        if (useCases.isNotEmpty()) {
+            unbind(*useCases.toTypedArray())
+        }
+        imageCapture?.release()
+        videoCapture?.release()
+        imageCapture = null
+        videoCapture = null
     }
 
     private fun updateExposureInfoFallback(cameraExposureInfo: CameraExposureInfo) {

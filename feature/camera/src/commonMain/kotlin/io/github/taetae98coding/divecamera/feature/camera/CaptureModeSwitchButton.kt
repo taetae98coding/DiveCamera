@@ -31,6 +31,7 @@ private const val RAW_UNSUPPORTED_WARNING_CONTENT_DESCRIPTION = "RAW capture is 
 internal fun CaptureModeSwitchButton(
     captureMode: CameraCaptureMode,
     rawCaptureSupportState: RawCaptureSupportState,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -42,7 +43,10 @@ internal fun CaptureModeSwitchButton(
                 color = Color.White,
                 shape = CircleShape,
             )
-            .clickable(onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+            )
             .semantics {
                 role = Role.Button
                 contentDescription = CAPTURE_MODE_SWITCH_BUTTON_CONTENT_DESCRIPTION
@@ -67,7 +71,9 @@ internal fun CaptureModeSwitchButton(
 }
 
 private fun CameraCaptureMode.requiresRawSupport(): Boolean = when (this) {
-    CameraCaptureMode.Jpg -> false
+    CameraCaptureMode.Jpg,
+    CameraCaptureMode.Video,
+    -> false
 
     CameraCaptureMode.Raw,
     CameraCaptureMode.RawJpg,

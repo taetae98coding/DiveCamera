@@ -9,9 +9,14 @@ internal interface CameraController {
     val captureReadinessState: StateFlow<CaptureReadinessState>
     val cameraExposureInfoState: StateFlow<CameraExposureInfo>
     val cameraLensState: StateFlow<CameraLensState>
+    val videoRecordingState: StateFlow<VideoRecordingState>
     val photoSaveErrorMessages: SharedFlow<String>
 
     suspend fun capturePhoto(captureMode: CameraCaptureMode)
+
+    fun startVideoRecording()
+
+    fun stopVideoRecording()
 
     fun setAutoExposure(exposureCompensationEv: Double)
 
@@ -26,6 +31,18 @@ internal interface CameraController {
 internal enum class CaptureReadinessState {
     Busy,
     Ready,
+    ;
+
+    companion object {
+        fun fromCaptureConnections(
+            hasImageCapture: Boolean,
+            hasVideoCapture: Boolean,
+        ): CaptureReadinessState = if (hasImageCapture || hasVideoCapture) {
+            Ready
+        } else {
+            Busy
+        }
+    }
 }
 
 internal enum class RawCaptureSupportState {

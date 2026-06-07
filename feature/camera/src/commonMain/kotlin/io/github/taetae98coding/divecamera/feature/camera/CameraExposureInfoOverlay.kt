@@ -35,6 +35,9 @@ internal const val CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG = "camera-expos
 internal const val CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG = "camera-exposure-info-aperture-value"
 internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG = "camera-exposure-info-shutter-speed-button"
 internal const val CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG = "camera-exposure-info-shutter-speed-value"
+internal const val CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_TEST_TAG = "camera-exposure-info-video-recording-time"
+internal const val CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_VALUE_TEST_TAG =
+    "camera-exposure-info-video-recording-time-value"
 internal const val CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG = "camera-exposure-info-ev-button"
 internal const val CAMERA_EXPOSURE_INFO_EV_VALUE_TEST_TAG = "camera-exposure-info-ev-value"
 internal const val CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG = "camera-exposure-info-lens-button"
@@ -44,13 +47,17 @@ internal const val UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT = "--"
 private const val ISO_LABEL = "ISO"
 private const val APERTURE_LABEL = "F"
 private const val SHUTTER_SPEED_LABEL = "S"
+private const val VIDEO_RECORDING_TIME_LABEL = "REC"
 private const val EV_LABEL = "EV"
 private const val LENS_LABEL = "LENS"
 
 @Composable
 internal fun CameraExposureInfoOverlay(
     cameraExposureInfo: CameraExposureInfo,
+    captureMode: CameraCaptureMode,
     exposureMode: CameraExposureMode,
+    videoRecordingState: VideoRecordingState,
+    isLensSwitchEnabled: Boolean = true,
     onExposureSettingsClick: () -> Unit,
     onLensClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -79,30 +86,40 @@ internal fun CameraExposureInfoOverlay(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                CameraExposureInfoItem(
-                    label = ISO_LABEL,
-                    value = cameraExposureInfo.isoText(),
-                    onItemClick = onExposureSettingsClick,
-                    containerTestTag = CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG,
-                    valueTestTag = CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG,
-                    modifier = Modifier.weight(1F),
-                )
-                CameraExposureInfoItem(
-                    label = APERTURE_LABEL,
-                    value = cameraExposureInfo.apertureText(),
-                    onItemClick = onExposureSettingsClick,
-                    containerTestTag = CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG,
-                    valueTestTag = CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG,
-                    modifier = Modifier.weight(1F),
-                )
-                CameraExposureInfoItem(
-                    label = SHUTTER_SPEED_LABEL,
-                    value = cameraExposureInfo.shutterSpeedText(),
-                    onItemClick = onExposureSettingsClick,
-                    containerTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG,
-                    valueTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG,
-                    modifier = Modifier.weight(1F),
-                )
+                if (captureMode == CameraCaptureMode.Video) {
+                    CameraExposureInfoItem(
+                        label = VIDEO_RECORDING_TIME_LABEL,
+                        value = videoRecordingState.durationMillis.toVideoRecordingTimeText(),
+                        containerTestTag = CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_TEST_TAG,
+                        valueTestTag = CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_VALUE_TEST_TAG,
+                        modifier = Modifier.weight(1F),
+                    )
+                } else {
+                    CameraExposureInfoItem(
+                        label = ISO_LABEL,
+                        value = cameraExposureInfo.isoText(),
+                        onItemClick = onExposureSettingsClick,
+                        containerTestTag = CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG,
+                        valueTestTag = CAMERA_EXPOSURE_INFO_ISO_VALUE_TEST_TAG,
+                        modifier = Modifier.weight(1F),
+                    )
+                    CameraExposureInfoItem(
+                        label = APERTURE_LABEL,
+                        value = cameraExposureInfo.apertureText(),
+                        onItemClick = onExposureSettingsClick,
+                        containerTestTag = CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG,
+                        valueTestTag = CAMERA_EXPOSURE_INFO_APERTURE_VALUE_TEST_TAG,
+                        modifier = Modifier.weight(1F),
+                    )
+                    CameraExposureInfoItem(
+                        label = SHUTTER_SPEED_LABEL,
+                        value = cameraExposureInfo.shutterSpeedText(),
+                        onItemClick = onExposureSettingsClick,
+                        containerTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG,
+                        valueTestTag = CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_VALUE_TEST_TAG,
+                        modifier = Modifier.weight(1F),
+                    )
+                }
             }
 
             Row(
@@ -122,7 +139,11 @@ internal fun CameraExposureInfoOverlay(
                 CameraExposureInfoItem(
                     label = LENS_LABEL,
                     value = cameraExposureInfo.focalLengthText(),
-                    onItemClick = onLensClick,
+                    onItemClick = if (isLensSwitchEnabled) {
+                        onLensClick
+                    } else {
+                        null
+                    },
                     containerTestTag = CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG,
                     valueTestTag = CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG,
                     modifier = Modifier.weight(1F),

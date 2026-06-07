@@ -107,6 +107,22 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenDisplaysViewFinderWithPortraitVideoAspectRatioInVideoMode() {
+        setFixedSizeCameraScreen()
+
+        switchToVideoMode()
+
+        val viewFinderBounds = viewFinderBounds()
+        val expectedHeight = viewFinderBounds.width() * 16F / 9F
+
+        assertEquals(
+            expectedHeight.value,
+            viewFinderBounds.height().value,
+            POSITION_TOLERANCE_DP,
+        )
+    }
+
+    @Test
     fun cameraScreenDisplaysCameraPreviewInsideViewFinderBounds() {
         setFixedSizeCameraScreen()
         val viewFinderBounds = viewFinderBounds()
@@ -952,7 +968,7 @@ class CameraScreenTest {
     }
 
     @Test
-    fun cameraScreenChangesCaptureModeBackToJpgWhenModeSwitchButtonClickedThreeTimes() {
+    fun cameraScreenChangesCaptureModeToVideoWhenModeSwitchButtonClickedThreeTimes() {
         composeRule.setContent {
             CameraScreen()
         }
@@ -966,6 +982,23 @@ class CameraScreenTest {
         composeRule
             .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
             .performClick()
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.Video.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenChangesCaptureModeBackToJpgWhenModeSwitchButtonClickedFourTimes() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        repeat(4) {
+            composeRule
+                .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+                .performClick()
+        }
 
         composeRule
             .onNodeWithText(CameraCaptureMode.Jpg.label)
@@ -1165,6 +1198,308 @@ class CameraScreenTest {
     }
 
     @Test
+    fun cameraScreenStartsVideoRecordingWhenCaptureButtonClickedInVideoMode() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        switchToVideoMode()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.startVideoRecordingCount)
+            assertEquals(0, cameraController.photoCaptureCount)
+        }
+    }
+
+    @Test
+    fun cameraScreenStopsVideoRecordingWhenCaptureButtonClickedDuringVideoRecording() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        switchToVideoMode()
+        composeRule.runOnIdle {
+            cameraController.updateVideoRecordingState(
+                VideoRecordingState(
+                    isRecording = true,
+                    durationMillis = 1_000L,
+                ),
+            )
+        }
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.stopVideoRecordingCount)
+        }
+    }
+
+    @Test
+    fun cameraScreenDoesNotStartVideoRecordingWhenCaptureIsBusy() {
+        val cameraController = FakeCameraController(
+            captureReadinessState = CaptureReadinessState.Busy,
+        )
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = cameraController,
+            )
+        }
+
+        switchToVideoMode()
+        composeRule
+            .onNodeWithTag(CAPTURE_BUTTON_TEST_TAG)
+            .performTouchInput {
+                click()
+            }
+
+        composeRule.runOnIdle {
+            assertEquals(0, cameraController.startVideoRecordingCount)
+        }
+    }
+
+    @Test
+    fun cameraScreenDisplaysZeroVideoRecordingTimeInVideoMode() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToVideoMode()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_VALUE_TEST_TAG)
+            .assertTextEquals("00:00")
+    }
+
+    @Test
+    fun cameraScreenDisplaysUpdatedVideoRecordingTimeInVideoMode() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        switchToVideoMode()
+        composeRule.runOnIdle {
+            cameraController.updateVideoRecordingState(
+                VideoRecordingState(
+                    isRecording = true,
+                    durationMillis = 65_000L,
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_VIDEO_RECORDING_TIME_VALUE_TEST_TAG)
+            .assertTextEquals("01:05")
+    }
+
+    @Test
+    fun cameraScreenHidesIsoApertureAndShutterSpeedItemsInVideoMode() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToVideoMode()
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_APERTURE_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_SHUTTER_SPEED_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun cameraScreenDisplaysEvButtonWhenVideoModeIsSelectedAfterManualExposure() {
+        composeRule.setContent {
+            CameraScreen(
+                cameraController = FakeCameraController(
+                    cameraExposureInfo = CameraExposureInfo(
+                        iso = 400,
+                        exposureCompensationEv = 0.0,
+                    ),
+                ),
+            )
+        }
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+        switchToVideoMode()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysExposureDialogWhenEvButtonClickedInVideoMode() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToVideoMode()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_DIALOG_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureDialogDisplaysOnlyAutoModeInVideoMode() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToVideoMode()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_AUTO_MODE_BUTTON_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun exposureDialogAppliesAutoExposureInVideoMode() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                exposureCompensationEv = 1.0 / 3.0,
+            ),
+        )
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        switchToVideoMode()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(cameraController.setAutoExposureCount >= 1)
+            assertEquals(
+                1.0 / 3.0,
+                cameraController.lastAutoExposureEv ?: 0.0,
+                EXPOSURE_COMPENSATION_TOLERANCE,
+            )
+            assertEquals(0, cameraController.setManualExposureCount)
+        }
+    }
+
+    @Test
+    fun cameraScreenKeepsVideoModeWhenModeSwitchButtonClickedDuringVideoRecording() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        switchToVideoMode()
+        composeRule.runOnIdle {
+            cameraController.updateVideoRecordingState(
+                VideoRecordingState(isRecording = true),
+            )
+        }
+        composeRule
+            .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+            .performTouchInput {
+                click()
+            }
+
+        composeRule
+            .onNodeWithText(CameraCaptureMode.Video.label)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDoesNotChangeLensWhenLensButtonClickedDuringVideoRecording() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        switchToVideoMode()
+        composeRule.runOnIdle {
+            cameraController.updateVideoRecordingState(
+                VideoRecordingState(isRecording = true),
+            )
+        }
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_BUTTON_TEST_TAG)
+            .performTouchInput {
+                click()
+            }
+
+        composeRule.runOnIdle {
+            assertEquals(0, cameraController.changeCameraLensCount)
+        }
+    }
+
+    @Test
+    fun cameraScreenKeepsPreviewActiveDuringVideoRecordingAfterIdleTimeout() {
+        val cameraController = FakeCameraController()
+        var idleTimeoutMillis by mutableStateOf(LONG_IDLE_TEST_TIMEOUT_MILLIS)
+
+        composeRule.setContent {
+            CameraScreen(
+                cameraResourceIdleTimeoutMillis = idleTimeoutMillis,
+                cameraController = cameraController,
+            )
+        }
+
+        switchToVideoMode()
+        composeRule.runOnIdle {
+            cameraController.updateVideoRecordingState(
+                VideoRecordingState(isRecording = true),
+            )
+            idleTimeoutMillis = IDLE_TEST_TIMEOUT_MILLIS
+        }
+        composeRule.mainClock.advanceTimeBy(IDLE_TEST_TIMEOUT_MILLIS + 100L)
+        composeRule.waitForIdle()
+
+        composeRule
+            .onNodeWithTag(VIEW_FINDER_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_PREVIEW_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun cameraScreenDisplaysPhotoSaveErrorMessageAsSnackbar() {
         val cameraController = FakeCameraController()
         val errorMessage = "CameraX save failed"
@@ -1242,6 +1577,14 @@ class CameraScreenTest {
         .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
         .getUnclippedBoundsInRoot()
 
+    private fun switchToVideoMode() {
+        repeat(3) {
+            composeRule
+                .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+                .performClick()
+        }
+    }
+
     private fun DpRect.centerX(): Dp = left + (right - left) / 2
 
     private fun DpRect.centerY(): Dp = top + (bottom - top) / 2
@@ -1283,9 +1626,11 @@ private class FakeCameraController(
     rawCaptureSupportState: RawCaptureSupportState = RawCaptureSupportState.Checking,
     captureReadinessState: CaptureReadinessState = CaptureReadinessState.Ready,
     cameraExposureInfo: CameraExposureInfo = CameraExposureInfo.Unknown,
+    videoRecordingState: VideoRecordingState = VideoRecordingState.Idle,
 ) : CameraController {
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val mutableCameraExposureInfoState = MutableStateFlow(cameraExposureInfo)
+    private val mutableVideoRecordingState = MutableStateFlow(videoRecordingState)
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
         MutableStateFlow(rawCaptureSupportState)
@@ -1295,12 +1640,18 @@ private class FakeCameraController(
         mutableCameraExposureInfoState
     override val cameraLensState: StateFlow<CameraLensState> =
         MutableStateFlow(CameraLensState())
+    override val videoRecordingState: StateFlow<VideoRecordingState> =
+        mutableVideoRecordingState
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages
 
     var photoCaptureCount = 0
         private set
     var lastCaptureMode: CameraCaptureMode? = null
+        private set
+    var startVideoRecordingCount = 0
+        private set
+    var stopVideoRecordingCount = 0
         private set
     var changeCameraLensCount = 0
         private set
@@ -1317,6 +1668,14 @@ private class FakeCameraController(
     override suspend fun capturePhoto(captureMode: CameraCaptureMode) {
         photoCaptureCount += 1
         lastCaptureMode = captureMode
+    }
+
+    override fun startVideoRecording() {
+        startVideoRecordingCount += 1
+    }
+
+    override fun stopVideoRecording() {
+        stopVideoRecordingCount += 1
     }
 
     override fun setAutoExposure(exposureCompensationEv: Double) {
@@ -1343,5 +1702,9 @@ private class FakeCameraController(
 
     fun updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
         mutableCameraExposureInfoState.value = cameraExposureInfo
+    }
+
+    fun updateVideoRecordingState(videoRecordingState: VideoRecordingState) {
+        mutableVideoRecordingState.value = videoRecordingState
     }
 }

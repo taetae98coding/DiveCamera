@@ -19,9 +19,11 @@ private class IosCameraController : CameraController {
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
     private val mutableCameraLensState = MutableStateFlow(CameraLensState())
+    private val mutableVideoRecordingState = MutableStateFlow(VideoRecordingState.Idle)
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = PHOTO_SAVE_ERROR_BUFFER_CAPACITY)
     private val cameraSessionOwner = CameraSessionOwner()
     private var imageCapture: IosImageCapture? = null
+    private var videoCapture: IosVideoCapture? = null
     private var exposureControl: IosExposureControl? = null
     private var exposureMode = CameraExposureMode.Auto
 
@@ -33,6 +35,8 @@ private class IosCameraController : CameraController {
         mutableCameraExposureInfoState.asStateFlow()
     override val cameraLensState: StateFlow<CameraLensState> =
         mutableCameraLensState.asStateFlow()
+    override val videoRecordingState: StateFlow<VideoRecordingState> =
+        mutableVideoRecordingState.asStateFlow()
     override val photoSaveErrorMessages: SharedFlow<String> =
         mutablePhotoSaveErrorMessages.asSharedFlow()
 
@@ -63,6 +67,24 @@ private class IosCameraController : CameraController {
         }
     }
 
+    override fun startVideoRecording() {
+        val currentVideoCapture = videoCapture
+            ?: run {
+                mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+                return
+            }
+        currentVideoCapture.startRecording(
+            onError = ::emitPhotoSaveErrorMessage,
+            onVideoRecordingStateChange = { state ->
+                mutableVideoRecordingState.value = state
+            },
+        )
+    }
+
+    override fun stopVideoRecording() {
+        videoCapture?.stopRecording()
+    }
+
     override fun setAutoExposure(exposureCompensationEv: Double) {
         exposureMode = CameraExposureMode.Auto
         exposureControl?.setAutoExposure(exposureCompensationEv)
@@ -86,8 +108,10 @@ private class IosCameraController : CameraController {
     fun registerCameraSession(): Long {
         val cameraSessionId = cameraSessionOwner.registerSession()
         imageCapture = null
+        videoCapture = null
         exposureControl = null
         mutableCaptureReadinessState.value = CaptureReadinessState.Busy
+        mutableVideoRecordingState.value = VideoRecordingState.Idle
         return cameraSessionId
     }
 
@@ -100,11 +124,22 @@ private class IosCameraController : CameraController {
         }
 
         this.imageCapture = imageCapture
-        mutableCaptureReadinessState.value = if (imageCapture == null) {
-            CaptureReadinessState.Busy
-        } else {
-            CaptureReadinessState.Ready
+        updateCaptureReadiness()
+    }
+
+    fun updateVideoCapture(
+        videoCapture: IosVideoCapture?,
+        cameraSessionId: Long,
+    ) {
+        if (!cameraSessionOwner.isCurrentSession(cameraSessionId)) {
+            return
         }
+
+        this.videoCapture = videoCapture
+        if (videoCapture == null) {
+            mutableVideoRecordingState.value = VideoRecordingState.Idle
+        }
+        updateCaptureReadiness()
     }
 
     fun updateRawCaptureSupported(isSupported: Boolean) {
@@ -144,6 +179,13 @@ private class IosCameraController : CameraController {
             mutablePhotoSaveErrorMessages.tryEmit(message)
         }
     }
+
+    private fun updateCaptureReadiness() {
+        mutableCaptureReadinessState.value = CaptureReadinessState.fromCaptureConnections(
+            hasImageCapture = imageCapture != null,
+            hasVideoCapture = videoCapture != null,
+        )
+    }
 }
 
 internal interface IosExposureControl {
@@ -165,6 +207,16 @@ internal fun CameraController.updateImageCapture(
 ) {
     (this as? IosCameraController)?.updateImageCapture(
         imageCapture = imageCapture,
+        cameraSessionId = cameraSessionId,
+    )
+}
+
+internal fun CameraController.updateVideoCapture(
+    videoCapture: IosVideoCapture?,
+    cameraSessionId: Long,
+) {
+    (this as? IosCameraController)?.updateVideoCapture(
+        videoCapture = videoCapture,
         cameraSessionId = cameraSessionId,
     )
 }

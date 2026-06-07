@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,14 +22,24 @@ import androidx.compose.ui.unit.dp
 internal const val CAPTURE_BUTTON_TEST_TAG = "camera-capture-button"
 internal const val CAPTURE_BUTTON_BUSY_INDICATOR_TEST_TAG = "camera-capture-button-busy-indicator"
 private const val CAPTURE_BUTTON_CONTENT_DESCRIPTION = "Take photo"
+private const val START_VIDEO_RECORDING_CONTENT_DESCRIPTION = "Start video recording"
+private const val STOP_VIDEO_RECORDING_CONTENT_DESCRIPTION = "Stop video recording"
 
 @Composable
 internal fun CaptureButton(
     captureReadinessState: CaptureReadinessState,
+    captureMode: CameraCaptureMode = CameraCaptureMode.Jpg,
+    videoRecordingState: VideoRecordingState = VideoRecordingState.Idle,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isReady = captureReadinessState == CaptureReadinessState.Ready
+    val isVideoMode = captureMode == CameraCaptureMode.Video
+    val isReady = captureReadinessState == CaptureReadinessState.Ready || videoRecordingState.isRecording
+    val buttonContentDescription = when {
+        isVideoMode && videoRecordingState.isRecording -> STOP_VIDEO_RECORDING_CONTENT_DESCRIPTION
+        isVideoMode -> START_VIDEO_RECORDING_CONTENT_DESCRIPTION
+        else -> CAPTURE_BUTTON_CONTENT_DESCRIPTION
+    }
 
     Box(
         modifier = modifier
@@ -44,21 +55,31 @@ internal fun CaptureButton(
             )
             .semantics {
                 role = Role.Button
-                contentDescription = CAPTURE_BUTTON_CONTENT_DESCRIPTION
+                contentDescription = buttonContentDescription
             }
             .testTag(CAPTURE_BUTTON_TEST_TAG),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .background(
-                    color = if (isReady) {
-                        Color.White
+                .size(
+                    if (isVideoMode && videoRecordingState.isRecording) {
+                        34.dp
                     } else {
-                        Color.White.copy(alpha = 0.32F)
+                        64.dp
                     },
-                    shape = CircleShape,
+                )
+                .background(
+                    color = when {
+                        !isReady -> Color.White.copy(alpha = 0.32F)
+                        isVideoMode -> Color(0xFFE53935)
+                        else -> Color.White
+                    },
+                    shape = if (isVideoMode && videoRecordingState.isRecording) {
+                        RoundedCornerShape(6.dp)
+                    } else {
+                        CircleShape
+                    },
                 ),
         )
 

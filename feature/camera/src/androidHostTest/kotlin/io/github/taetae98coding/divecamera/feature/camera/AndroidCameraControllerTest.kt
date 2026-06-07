@@ -65,6 +65,55 @@ class AndroidCameraControllerTest {
     }
 
     @Test
+    fun androidCameraControllerIsReadyWhenVideoCaptureIsConnected() {
+        val controller = AndroidCameraController()
+        controller.updateVideoCapture(FakeAndroidVideoCapture())
+
+        assertEquals(
+            CaptureReadinessState.Ready,
+            controller.captureReadinessState.value,
+        )
+    }
+
+    @Test
+    fun androidCameraControllerUpdatesVideoRecordingState() {
+        val controller = AndroidCameraController()
+        val videoRecordingState = VideoRecordingState(
+            isRecording = true,
+            durationMillis = 65_000L,
+        )
+
+        controller.updateVideoRecordingState(videoRecordingState)
+
+        assertEquals(
+            videoRecordingState,
+            controller.videoRecordingState.value,
+        )
+    }
+
+    @Test
+    fun androidCameraControllerStartsVideoRecordingWhenVideoCaptureIsConnected() {
+        val controller = AndroidCameraController()
+        val videoCapture = FakeAndroidVideoCapture()
+        controller.updateVideoCapture(videoCapture)
+
+        controller.startVideoRecording()
+
+        assertEquals(1, videoCapture.startRecordingCount)
+    }
+
+    @Test
+    fun androidCameraControllerStopsVideoRecordingWhenVideoCaptureIsConnected() {
+        val controller = AndroidCameraController()
+        val videoCapture = FakeAndroidVideoCapture()
+        controller.updateVideoCapture(videoCapture)
+
+        controller.stopVideoRecording()
+
+        assertEquals(1, videoCapture.stopRecordingCount)
+    }
+
+    @Test
     fun androidCameraControllerIsBusyWhileCapturingAndReadyAfterCaptureReturns() = runBlocking {
         val controller = AndroidCameraController()
         val photoCapture = FakeAndroidPhotoCapture(
@@ -302,6 +351,36 @@ private class FakeAndroidPhotoCapture(
     override suspend fun capturePhoto(onError: (String) -> Unit) {
         capturePhotoCount += 1
         onCapturePhoto(onError)
+    }
+}
+
+private class FakeAndroidVideoCapture : AndroidVideoCapture {
+    var startRecordingCount = 0
+        private set
+    var stopRecordingCount = 0
+        private set
+    var releaseCount = 0
+        private set
+
+    override fun startRecording(
+        onError: (String) -> Unit,
+        onVideoRecordingStateChange: (VideoRecordingState) -> Unit,
+    ) {
+        startRecordingCount += 1
+        onVideoRecordingStateChange(
+            VideoRecordingState(
+                isRecording = true,
+                durationMillis = 0L,
+            ),
+        )
+    }
+
+    override fun stopRecording() {
+        stopRecordingCount += 1
+    }
+
+    override fun release() {
+        releaseCount += 1
     }
 }
 
