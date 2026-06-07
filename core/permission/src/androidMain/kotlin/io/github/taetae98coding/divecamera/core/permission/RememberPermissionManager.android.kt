@@ -1,5 +1,6 @@
 package io.github.taetae98coding.divecamera.core.permission
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -10,45 +11,93 @@ import androidx.compose.ui.platform.LocalContext
 actual fun rememberPermissionManager(): PermissionManager {
     val context = LocalContext.current
     val applicationContext = context.applicationContext
-    val permissionState = remember(applicationContext) {
-        AndroidPermissionState(applicationContext)
+    val cameraPermissionState = remember(applicationContext) {
+        AndroidSinglePermissionState(
+            context = applicationContext,
+            permission = Manifest.permission.CAMERA,
+        )
+    }
+    val microphonePermissionState = remember(applicationContext) {
+        AndroidSinglePermissionState(
+            context = applicationContext,
+            permission = Manifest.permission.RECORD_AUDIO,
+        )
+    }
+    val locationPermissionState = remember(applicationContext) {
+        AndroidLocationPermissionState(applicationContext)
+    }
+    val permissionStates = remember(
+        cameraPermissionState,
+        microphonePermissionState,
+        locationPermissionState,
+    ) {
+        listOf(
+            cameraPermissionState,
+            microphonePermissionState,
+            locationPermissionState,
+        )
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) {
-        permissionState.refreshPermissions()
+        cameraPermissionState.refreshPermission()
     }
     val microphonePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) {
-        permissionState.refreshPermissions()
+        microphonePermissionState.refreshPermission()
     }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) {
-        permissionState.refreshPermissions()
+        locationPermissionState.refreshPermission()
     }
     val appSettingsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) {
-        permissionState.refreshPermissions()
+        permissionStates.refreshPermissions()
+    }
+    val cameraPermissionManager = remember(cameraPermissionState, cameraPermissionLauncher) {
+        AndroidCameraPermissionManager(
+            permissionState = cameraPermissionState,
+            permissionLauncher = cameraPermissionLauncher,
+        )
+    }
+    val microphonePermissionManager = remember(microphonePermissionState, microphonePermissionLauncher) {
+        AndroidMicrophonePermissionManager(
+            permissionState = microphonePermissionState,
+            permissionLauncher = microphonePermissionLauncher,
+        )
+    }
+    val locationPermissionManager = remember(locationPermissionState, locationPermissionLauncher) {
+        AndroidLocationPermissionManager(
+            permissionState = locationPermissionState,
+            permissionLauncher = locationPermissionLauncher,
+        )
+    }
+    val photoSavePermissionManager = remember {
+        AndroidPhotoSavePermissionManager()
+    }
+    val appSettingsManager = remember(applicationContext, appSettingsLauncher) {
+        AndroidAppSettingsManager(
+            context = applicationContext,
+            appSettingsLauncher = appSettingsLauncher,
+        )
     }
 
     return remember(
-        applicationContext,
-        permissionState,
-        cameraPermissionLauncher,
-        microphonePermissionLauncher,
-        locationPermissionLauncher,
-        appSettingsLauncher,
+        cameraPermissionManager,
+        microphonePermissionManager,
+        locationPermissionManager,
+        photoSavePermissionManager,
+        appSettingsManager,
     ) {
-        AndroidPermissionManager(
-            context = applicationContext,
-            permissionState = permissionState,
-            cameraPermissionLauncher = cameraPermissionLauncher,
-            microphonePermissionLauncher = microphonePermissionLauncher,
-            locationPermissionLauncher = locationPermissionLauncher,
-            appSettingsLauncher = appSettingsLauncher,
+        DelegatingPermissionManager(
+            cameraPermissionManager = cameraPermissionManager,
+            microphonePermissionManager = microphonePermissionManager,
+            locationPermissionManager = locationPermissionManager,
+            photoSavePermissionManager = photoSavePermissionManager,
+            appSettingsManager = appSettingsManager,
         )
     }
 }
