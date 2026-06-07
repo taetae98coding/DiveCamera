@@ -462,11 +462,26 @@ class CameraScreenTest {
         openShortcutOverlayBySwipeRight()
 
         composeRule
-            .onNodeWithText("Mode")
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG)
             .assertIsDisplayed()
         composeRule
-            .onNodeWithText("Close")
+            .onNodeWithTag(CAMERA_SHORTCUT_ANGLE_ITEM_TEST_TAG)
             .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_EXPOSURE_ITEM_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_EV_ITEM_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_ISO_ITEM_TEST_TAG)
+            .assertCountEquals(0)
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_SHUTTER_ITEM_TEST_TAG)
+            .assertCountEquals(0)
 
         val modeItemBounds = composeRule
             .onNodeWithTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG)
@@ -535,7 +550,7 @@ class CameraScreenTest {
     }
 
     @Test
-    fun shortcutOverlaySelectsNextItemWhenSwipedLeftToRight() {
+    fun shortcutOverlaySelectsPreviousItemWhenSwipedLeftToRight() {
         composeRule.setContent {
             CameraScreen()
         }
@@ -549,7 +564,7 @@ class CameraScreenTest {
     }
 
     @Test
-    fun shortcutOverlaySelectsPreviousItemWhenSwipedRightToLeft() {
+    fun shortcutOverlaySelectsNextItemWhenSwipedRightToLeft() {
         composeRule.setContent {
             CameraScreen()
         }
@@ -558,7 +573,7 @@ class CameraScreenTest {
         swipeShortcutOverlayLeft()
 
         composeRule
-            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .onNodeWithTag(CAMERA_SHORTCUT_ANGLE_ITEM_TEST_TAG)
             .assertIsSelected()
     }
 
@@ -575,6 +590,276 @@ class CameraScreenTest {
         composeRule
             .onAllNodesWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
             .assertCountEquals(0)
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysAngleSettingOverlayWhenVolumeUpButtonPressedOnAngleItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(CAMERA_SHORTCUT_ANGLE_INDEX)
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_ANGLE_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysManualExposureItemsWhenManualExposureIsApplied() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        applyManualExposure()
+
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_ISO_ITEM_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_SHUTTER_ITEM_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_EV_ITEM_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun angleSettingOverlayChangesLensWhenSwipeSelectedLensApplied() {
+        val cameraController = FakeCameraController(
+            cameraLensState = CameraLensState(
+                availableLenses = listOf(
+                    CameraLens(cameraId = "0"),
+                    CameraLens(cameraId = "1"),
+                ),
+            ),
+        )
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(CAMERA_SHORTCUT_ANGLE_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+        swipeOverlayRight(CAMERA_ANGLE_SETTING_OVERLAY_TEST_TAG)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.changeCameraLensCount)
+        }
+    }
+
+    @Test
+    fun angleSettingOverlayDisplaysLensAngleText() {
+        val cameraController = FakeCameraController(
+            cameraLensState = CameraLensState(
+                availableLenses = listOf(
+                    CameraLens(
+                        cameraId = "0",
+                        focalLengthIn35mmFilmMillimeters = 13,
+                    ),
+                    CameraLens(
+                        cameraId = "1",
+                        focalLengthIn35mmFilmMillimeters = 24,
+                    ),
+                ),
+            ),
+        )
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(CAMERA_SHORTCUT_ANGLE_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithText("13mm")
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithText("24mm")
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithText("Lens 1")
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysExposureModeSettingOverlayWhenVolumeUpButtonPressedOnExposureItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(CAMERA_SHORTCUT_EXPOSURE_INDEX)
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureModeSettingOverlayAppliesManualExposureWhenManualModeSelected() {
+        val cameraController = FakeCameraController(
+            cameraExposureInfo = CameraExposureInfo(
+                iso = 400,
+                shutterSpeedNanoseconds = 16_666_667L,
+            ),
+        )
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(CAMERA_SHORTCUT_EXPOSURE_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+        swipeOverlayRight(CAMERA_EXPOSURE_MODE_SETTING_OVERLAY_TEST_TAG)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.setManualExposureCount)
+            assertEquals(400, cameraController.lastManualExposureIso)
+            assertEquals(16_666_667L, cameraController.lastManualExposureShutterSpeedNanoseconds)
+        }
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysIsoSettingOverlayWhenVolumeUpButtonPressedOnIsoItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        applyManualExposure()
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(MANUAL_SHORTCUT_ISO_INDEX)
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_ISO_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun isoSettingOverlayAppliesSwipeSelectedIso() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        applyManualExposure()
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(MANUAL_SHORTCUT_ISO_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+        swipeOverlayLeft(CAMERA_ISO_SETTING_OVERLAY_TEST_TAG)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule.runOnIdle {
+            assertEquals(2, cameraController.setManualExposureCount)
+            assertEquals(125, cameraController.lastManualExposureIso)
+        }
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysShutterSettingOverlayWhenVolumeUpButtonPressedOnShutterItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        applyManualExposure()
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(MANUAL_SHORTCUT_SHUTTER_INDEX)
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHUTTER_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun shortcutOverlaySelectsCloseItemAfterManualShutterItemWhenSwipedRightToLeft() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        applyManualExposure()
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(MANUAL_SHORTCUT_SHUTTER_INDEX)
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_SHUTTER_ITEM_TEST_TAG)
+            .assertIsSelected()
+        swipeShortcutOverlayLeft()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .assertIsSelected()
+    }
+
+    @Test
+    fun shutterSettingOverlayAppliesSwipeSelectedShutterSpeed() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        applyManualExposure()
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(MANUAL_SHORTCUT_SHUTTER_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+        swipeOverlayLeft(CAMERA_SHUTTER_SETTING_OVERLAY_TEST_TAG)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule.runOnIdle {
+            assertEquals(2, cameraController.setManualExposureCount)
+            assertEquals(20_000_000L, cameraController.lastManualExposureShutterSpeedNanoseconds)
+        }
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysEvSettingOverlayWhenVolumeUpButtonPressedOnEvItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(AUTO_SHORTCUT_EV_INDEX)
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_EV_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun evSettingOverlayAppliesSwipeSelectedEv() {
+        val cameraController = FakeCameraController()
+
+        composeRule.setContent {
+            CameraScreen(cameraController = cameraController)
+        }
+
+        openShortcutOverlayBySwipeRight()
+        selectShortcutItem(AUTO_SHORTCUT_EV_INDEX)
+        pressVolumeCaptureButton(Key.VolumeUp)
+        swipeOverlayLeft(CAMERA_EV_SETTING_OVERLAY_TEST_TAG)
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule.runOnIdle {
+            assertEquals(1, cameraController.setAutoExposureCount)
+            assertEquals(
+                1.0 / 3.0,
+                cameraController.lastAutoExposureEv ?: 0.0,
+                EXPOSURE_COMPENSATION_TOLERANCE,
+            )
+        }
     }
 
     @Test
@@ -647,7 +932,7 @@ class CameraScreenTest {
     }
 
     @Test
-    fun captureModeSettingOverlaySelectsNextCaptureModeWhenSwipedLeftToRight() {
+    fun captureModeSettingOverlaySelectsPreviousCaptureModeWhenSwipedLeftToRight() {
         composeRule.setContent {
             CameraScreen()
         }
@@ -656,12 +941,12 @@ class CameraScreenTest {
         swipeCaptureModeSettingOverlayRight()
 
         composeRule
-            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Raw))
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Video))
             .assertIsSelected()
     }
 
     @Test
-    fun captureModeSettingOverlaySelectsPreviousCaptureModeWhenSwipedRightToLeft() {
+    fun captureModeSettingOverlaySelectsNextCaptureModeWhenSwipedRightToLeft() {
         composeRule.setContent {
             CameraScreen()
         }
@@ -670,7 +955,7 @@ class CameraScreenTest {
         swipeCaptureModeSettingOverlayLeft()
 
         composeRule
-            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Video))
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Raw))
             .assertIsSelected()
     }
 
@@ -681,7 +966,7 @@ class CameraScreenTest {
         }
 
         openCaptureModeSettingOverlay()
-        swipeCaptureModeSettingOverlayRight()
+        swipeCaptureModeSettingOverlayLeft()
         pressVolumeCaptureButton(Key.VolumeUp)
 
         composeRule
@@ -2032,25 +2317,58 @@ class CameraScreenTest {
             }
     }
 
+    private fun selectShortcutItem(index: Int) {
+        repeat(index) {
+            swipeShortcutOverlayLeft()
+            composeRule.waitForIdle()
+        }
+    }
+
+    private fun applyManualExposure() {
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_INFO_ISO_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_MANUAL_MODE_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule
+            .onNodeWithTag(CAMERA_EXPOSURE_APPLY_BUTTON_TEST_TAG)
+            .performClick()
+        composeRule.waitUntil(timeoutMillis = WAIT_UNTIL_TIMEOUT_MILLIS) {
+            composeRule
+                .onAllNodesWithTag(CAMERA_EXPOSURE_INFO_EV_BUTTON_TEST_TAG)
+                .fetchSemanticsNodes()
+                .isEmpty()
+        }
+    }
+
     private fun openCaptureModeSettingOverlay() {
         openShortcutOverlayBySwipeRight()
         pressVolumeCaptureButton(Key.VolumeUp)
     }
 
-    private fun swipeCaptureModeSettingOverlayRight() {
+    private fun swipeOverlayRight(testTag: String) {
         composeRule
-            .onNodeWithTag(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .onNodeWithTag(testTag)
             .performTouchInput {
                 swipeRight()
             }
     }
 
-    private fun swipeCaptureModeSettingOverlayLeft() {
+    private fun swipeOverlayLeft(testTag: String) {
         composeRule
-            .onNodeWithTag(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .onNodeWithTag(testTag)
             .performTouchInput {
                 swipeLeft()
             }
+    }
+
+    private fun swipeCaptureModeSettingOverlayRight() {
+        swipeOverlayRight(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+    }
+
+    private fun swipeCaptureModeSettingOverlayLeft() {
+        swipeOverlayLeft(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
     }
 
     private fun DpRect.centerX(): Dp = left + (right - left) / 2
@@ -2087,6 +2405,9 @@ class CameraScreenTest {
         private const val LONG_IDLE_TEST_TIMEOUT_MILLIS = 10_000L
         private const val WAIT_UNTIL_TIMEOUT_MILLIS = 5_000L
         private const val EXPOSURE_COMPENSATION_TOLERANCE = 0.0001
+        private const val AUTO_SHORTCUT_EV_INDEX = 3
+        private const val MANUAL_SHORTCUT_ISO_INDEX = 3
+        private const val MANUAL_SHORTCUT_SHUTTER_INDEX = 4
     }
 }
 
@@ -2094,10 +2415,12 @@ private class FakeCameraController(
     rawCaptureSupportState: RawCaptureSupportState = RawCaptureSupportState.Checking,
     captureReadinessState: CaptureReadinessState = CaptureReadinessState.Ready,
     cameraExposureInfo: CameraExposureInfo = CameraExposureInfo.Unknown,
+    cameraLensState: CameraLensState = CameraLensState(),
     videoRecordingState: VideoRecordingState = VideoRecordingState.Idle,
 ) : CameraController {
     private val mutablePhotoSaveErrorMessages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val mutableCameraExposureInfoState = MutableStateFlow(cameraExposureInfo)
+    private val mutableCameraLensState = MutableStateFlow(cameraLensState)
     private val mutableVideoRecordingState = MutableStateFlow(videoRecordingState)
 
     override val rawCaptureSupportState: StateFlow<RawCaptureSupportState> =
@@ -2107,7 +2430,7 @@ private class FakeCameraController(
     override val cameraExposureInfoState: StateFlow<CameraExposureInfo> =
         mutableCameraExposureInfoState
     override val cameraLensState: StateFlow<CameraLensState> =
-        MutableStateFlow(CameraLensState())
+        mutableCameraLensState
     override val videoRecordingState: StateFlow<VideoRecordingState> =
         mutableVideoRecordingState
     override val photoSaveErrorMessages: SharedFlow<String> =
@@ -2162,6 +2485,7 @@ private class FakeCameraController(
 
     override fun changeCameraLens() {
         changeCameraLensCount += 1
+        mutableCameraLensState.value = mutableCameraLensState.value.changeLens()
     }
 
     fun emitPhotoSaveErrorMessage(message: String) {

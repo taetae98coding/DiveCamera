@@ -61,8 +61,16 @@ internal fun CameraScreen(
     var isCameraPreviewActive by remember { mutableStateOf(true) }
     var isExposureDialogVisible by remember { mutableStateOf(false) }
     var activeShortcutOverlay by remember { mutableStateOf<CameraShortcutOverlayScreen?>(null) }
-    var selectedShortcutIndex by remember { mutableIntStateOf(CAMERA_SHORTCUT_MODE_INDEX) }
+    var selectedShortcutItem by remember { mutableStateOf(CameraShortcutItem.Mode) }
     var selectedCaptureModeIndex by remember { mutableIntStateOf(CameraCaptureMode.Jpg.ordinal) }
+    var selectedLensIndex by remember { mutableIntStateOf(0) }
+    var selectedExposureModeIndex by remember { mutableIntStateOf(CameraExposureMode.Auto.ordinal) }
+    var shortcutManualExposureState by remember {
+        mutableStateOf(CameraManualExposureState.from(null, null))
+    }
+    var shortcutExposureCompensationState by remember {
+        mutableStateOf(CameraExposureCompensationState.from(null))
+    }
     var exposureMode by remember { mutableStateOf(CameraExposureMode.Auto) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -135,14 +143,58 @@ internal fun CameraScreen(
         }
     }
 
+    fun currentManualExposureState(): CameraManualExposureState {
+        return if (exposureMode == CameraExposureMode.Manual) {
+            shortcutManualExposureState
+        } else {
+            CameraManualExposureState.from(
+                iso = cameraExposureInfo.iso,
+                shutterSpeedNanoseconds = cameraExposureInfo.shutterSpeedNanoseconds,
+            )
+        }
+    }
+
+    fun currentExposureCompensationState(): CameraExposureCompensationState {
+        return if (exposureMode == CameraExposureMode.Auto) {
+            shortcutExposureCompensationState
+        } else {
+            CameraExposureCompensationState.from(cameraExposureInfo.exposureCompensationEv)
+        }
+    }
+
+    fun currentShortcutItems(): List<CameraShortcutItem> {
+        return cameraShortcutItems(effectiveExposureMode)
+    }
+
+    fun currentSelectedShortcutIndex(): Int {
+        return currentShortcutItems()
+            .indexOf(selectedShortcutItem)
+            .takeIf { it >= 0 }
+            ?: CAMERA_SHORTCUT_MODE_INDEX
+    }
+
+    fun currentSelectedShortcutItem(): CameraShortcutItem {
+        return currentShortcutItems().getOrNull(currentSelectedShortcutIndex())
+            ?: CameraShortcutItem.Mode
+    }
+
+    fun currentAngleText(): String {
+        val lensAngleText = cameraLensState.selectedLens?.angleText()
+        return if (lensAngleText != null && lensAngleText != UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT) {
+            lensAngleText
+        } else {
+            cameraExposureInfo.shortcutAngleText()
+        }
+    }
+
     fun openShortcutOverlay() {
-        selectedShortcutIndex = CAMERA_SHORTCUT_MODE_INDEX
+        selectedShortcutItem = CameraShortcutItem.Mode
         activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
     }
 
     fun closeShortcutOverlay() {
         activeShortcutOverlay = null
-        selectedShortcutIndex = CAMERA_SHORTCUT_MODE_INDEX
+        selectedShortcutItem = CameraShortcutItem.Mode
     }
 
     fun openCaptureModeSettingOverlay() {
@@ -150,8 +202,85 @@ internal fun CameraScreen(
         activeShortcutOverlay = CameraShortcutOverlayScreen.CaptureModeSetting
     }
 
+    fun openAngleSettingOverlay() {
+        selectedLensIndex = cameraLensState.selectedLensIndex
+        activeShortcutOverlay = CameraShortcutOverlayScreen.AngleSetting
+    }
+
+    fun openExposureModeSettingOverlay() {
+        shortcutManualExposureState = currentManualExposureState()
+        shortcutExposureCompensationState = currentExposureCompensationState()
+        selectedExposureModeIndex = effectiveExposureMode.ordinal
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ExposureModeSetting
+    }
+
+    fun openIsoSettingOverlay() {
+        shortcutManualExposureState = currentManualExposureState()
+        activeShortcutOverlay = CameraShortcutOverlayScreen.IsoSetting
+    }
+
+    fun openShutterSettingOverlay() {
+        shortcutManualExposureState = currentManualExposureState()
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShutterSetting
+    }
+
+    fun openEvSettingOverlay() {
+        shortcutExposureCompensationState = currentExposureCompensationState()
+        activeShortcutOverlay = CameraShortcutOverlayScreen.EvSetting
+    }
+
     fun applySelectedCaptureMode() {
         selectCaptureMode(CameraCaptureMode.entries[selectedCaptureModeIndex])
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun applySelectedLens() {
+        val lensCount = cameraLensState.availableLenses.size
+        if (lensCount > 1) {
+            val currentIndex = cameraLensState.selectedLensIndex.coerceIn(0, lensCount - 1)
+            val targetIndex = selectedLensIndex.coerceIn(0, lensCount - 1)
+            val changeCount = (targetIndex - currentIndex + lensCount) % lensCount
+            repeat(changeCount) {
+                cameraController.changeCameraLens()
+            }
+        }
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun applySelectedExposureMode() {
+        when (CameraExposureMode.entries[selectedExposureModeIndex]) {
+            CameraExposureMode.Auto -> {
+                exposureMode = CameraExposureMode.Auto
+                cameraController.setAutoExposure(shortcutExposureCompensationState.exposureCompensationEv)
+            }
+
+            CameraExposureMode.Manual -> {
+                if (captureMode != CameraCaptureMode.Video) {
+                    exposureMode = CameraExposureMode.Manual
+                    cameraController.setManualExposure(
+                        iso = shortcutManualExposureState.iso,
+                        shutterSpeedNanoseconds = shortcutManualExposureState.shutterSpeedNanoseconds,
+                    )
+                }
+            }
+        }
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun applySelectedManualExposure() {
+        if (captureMode != CameraCaptureMode.Video) {
+            exposureMode = CameraExposureMode.Manual
+            cameraController.setManualExposure(
+                iso = shortcutManualExposureState.iso,
+                shutterSpeedNanoseconds = shortcutManualExposureState.shutterSpeedNanoseconds,
+            )
+        }
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun applySelectedEv() {
+        exposureMode = CameraExposureMode.Auto
+        cameraController.setAutoExposure(shortcutExposureCompensationState.exposureCompensationEv)
         activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
     }
 
@@ -165,28 +294,106 @@ internal fun CameraScreen(
     }
 
     fun selectNextShortcutIndex() {
-        selectedShortcutIndex = (selectedShortcutIndex + 1) % CAMERA_SHORTCUT_ITEM_COUNT
+        val shortcutItems = currentShortcutItems()
+        val selectedIndex = currentSelectedShortcutIndex()
+        selectedShortcutItem = shortcutItems[(selectedIndex + 1) % shortcutItems.size]
     }
 
     fun selectPreviousShortcutIndex() {
-        selectedShortcutIndex = (selectedShortcutIndex + CAMERA_SHORTCUT_ITEM_COUNT - 1) % CAMERA_SHORTCUT_ITEM_COUNT
+        val shortcutItems = currentShortcutItems()
+        val selectedIndex = currentSelectedShortcutIndex()
+        selectedShortcutItem = shortcutItems[(selectedIndex + shortcutItems.size - 1) % shortcutItems.size]
+    }
+
+    fun selectNextLensIndex() {
+        val lensCount = cameraLensState.availableLenses.size.coerceAtLeast(1)
+        selectedLensIndex = (selectedLensIndex + 1) % lensCount
+    }
+
+    fun selectPreviousLensIndex() {
+        val lensCount = cameraLensState.availableLenses.size.coerceAtLeast(1)
+        selectedLensIndex = (selectedLensIndex + lensCount - 1) % lensCount
+    }
+
+    fun selectNextExposureModeIndex() {
+        val exposureModeCount = if (captureMode == CameraCaptureMode.Video) {
+            1
+        } else {
+            CameraExposureMode.entries.size
+        }
+        selectedExposureModeIndex = (selectedExposureModeIndex + 1) % exposureModeCount
+    }
+
+    fun selectPreviousExposureModeIndex() {
+        val exposureModeCount = if (captureMode == CameraCaptureMode.Video) {
+            1
+        } else {
+            CameraExposureMode.entries.size
+        }
+        selectedExposureModeIndex = (selectedExposureModeIndex + exposureModeCount - 1) % exposureModeCount
     }
 
     fun handleHorizontalSwipe(horizontalDragAmount: Float) {
         when (activeShortcutOverlay) {
             CameraShortcutOverlayScreen.CaptureModeSetting -> {
                 if (horizontalDragAmount > 0F) {
-                    selectNextCaptureModeIndex()
-                } else if (horizontalDragAmount < 0F) {
                     selectPreviousCaptureModeIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectNextCaptureModeIndex()
+                }
+            }
+
+            CameraShortcutOverlayScreen.AngleSetting -> {
+                if (horizontalDragAmount > 0F) {
+                    selectPreviousLensIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectNextLensIndex()
+                }
+            }
+
+            CameraShortcutOverlayScreen.ExposureModeSetting -> {
+                if (horizontalDragAmount > 0F) {
+                    selectPreviousExposureModeIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectNextExposureModeIndex()
+                }
+            }
+
+            CameraShortcutOverlayScreen.IsoSetting -> {
+                shortcutManualExposureState = if (horizontalDragAmount > 0F) {
+                    shortcutManualExposureState.decreaseIso()
+                } else if (horizontalDragAmount < 0F) {
+                    shortcutManualExposureState.increaseIso()
+                } else {
+                    shortcutManualExposureState
+                }
+            }
+
+            CameraShortcutOverlayScreen.ShutterSetting -> {
+                shortcutManualExposureState = if (horizontalDragAmount > 0F) {
+                    shortcutManualExposureState.decreaseShutterSpeed()
+                } else if (horizontalDragAmount < 0F) {
+                    shortcutManualExposureState.increaseShutterSpeed()
+                } else {
+                    shortcutManualExposureState
+                }
+            }
+
+            CameraShortcutOverlayScreen.EvSetting -> {
+                shortcutExposureCompensationState = if (horizontalDragAmount > 0F) {
+                    shortcutExposureCompensationState.decrease()
+                } else if (horizontalDragAmount < 0F) {
+                    shortcutExposureCompensationState.increase()
+                } else {
+                    shortcutExposureCompensationState
                 }
             }
 
             CameraShortcutOverlayScreen.ShortcutList -> {
                 if (horizontalDragAmount > 0F) {
-                    selectNextShortcutIndex()
-                } else if (horizontalDragAmount < 0F) {
                     selectPreviousShortcutIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectNextShortcutIndex()
                 }
             }
 
@@ -198,9 +405,14 @@ internal fun CameraScreen(
         when (activeShortcutOverlay) {
             CameraShortcutOverlayScreen.ShortcutList -> {
                 if (key == Key.VolumeUp) {
-                    when (selectedShortcutIndex) {
-                        CAMERA_SHORTCUT_MODE_INDEX -> openCaptureModeSettingOverlay()
-                        CAMERA_SHORTCUT_CLOSE_INDEX -> closeShortcutOverlay()
+                    when (currentSelectedShortcutItem()) {
+                        CameraShortcutItem.Mode -> openCaptureModeSettingOverlay()
+                        CameraShortcutItem.Angle -> openAngleSettingOverlay()
+                        CameraShortcutItem.Exposure -> openExposureModeSettingOverlay()
+                        CameraShortcutItem.Iso -> openIsoSettingOverlay()
+                        CameraShortcutItem.Shutter -> openShutterSettingOverlay()
+                        CameraShortcutItem.Ev -> openEvSettingOverlay()
+                        CameraShortcutItem.Close -> closeShortcutOverlay()
                     }
                 }
             }
@@ -211,10 +423,40 @@ internal fun CameraScreen(
                 }
             }
 
+            CameraShortcutOverlayScreen.AngleSetting -> {
+                if (key == Key.VolumeUp) {
+                    applySelectedLens()
+                }
+            }
+
+            CameraShortcutOverlayScreen.ExposureModeSetting -> {
+                if (key == Key.VolumeUp) {
+                    applySelectedExposureMode()
+                }
+            }
+
+            CameraShortcutOverlayScreen.IsoSetting,
+            CameraShortcutOverlayScreen.ShutterSetting,
+            -> {
+                if (key == Key.VolumeUp) {
+                    applySelectedManualExposure()
+                }
+            }
+
+            CameraShortcutOverlayScreen.EvSetting -> {
+                if (key == Key.VolumeUp) {
+                    applySelectedEv()
+                }
+            }
+
             null -> {
                 requestCapture()
             }
         }
+    }
+
+    val currentHandleHorizontalSwipe by rememberUpdatedState { horizontalDragAmount: Float ->
+        handleHorizontalSwipe(horizontalDragAmount)
     }
 
     CameraHardwareCaptureButtonEffect(
@@ -250,7 +492,7 @@ internal fun CameraScreen(
                     onDragEnd = {
                         if (horizontalDragAmount != 0F) {
                             currentRegisterInput()
-                            handleHorizontalSwipe(horizontalDragAmount)
+                            currentHandleHorizontalSwipe(horizontalDragAmount)
                         }
                         horizontalDragAmount = 0F
                     },
@@ -355,11 +597,16 @@ internal fun CameraScreen(
                         onAutoExposureApply = { ev ->
                             currentRegisterInput()
                             exposureMode = CameraExposureMode.Auto
+                            shortcutExposureCompensationState = CameraExposureCompensationState.from(ev)
                             cameraController.setAutoExposure(ev)
                         },
                         onManualExposureApply = { iso, shutterSpeedNanoseconds ->
                             currentRegisterInput()
                             exposureMode = CameraExposureMode.Manual
+                            shortcutManualExposureState = CameraManualExposureState.from(
+                                iso = iso,
+                                shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+                            )
                             cameraController.setManualExposure(
                                 iso = iso,
                                 shutterSpeedNanoseconds = shutterSpeedNanoseconds,
@@ -370,12 +617,41 @@ internal fun CameraScreen(
 
                 when (activeShortcutOverlay) {
                     CameraShortcutOverlayScreen.ShortcutList -> {
+                        val shortcutItems = currentShortcutItems()
                         CameraShortcutOverlay(
-                            selectedIndex = selectedShortcutIndex,
+                            items = shortcutItems,
+                            selectedIndex = currentSelectedShortcutIndex(),
                             captureMode = captureMode,
+                            angleText = currentAngleText(),
+                            exposureMode = effectiveExposureMode,
+                            isoText = currentManualExposureState().iso.toString(),
+                            shutterSpeedText = currentManualExposureState().shutterSpeedNanoseconds
+                                .toCameraShutterSpeedText(),
+                            evText = currentExposureCompensationState().exposureCompensationEv
+                                .toCameraExposureCompensationText(),
                             onModeClick = {
                                 currentRegisterInput()
                                 openCaptureModeSettingOverlay()
+                            },
+                            onAngleClick = {
+                                currentRegisterInput()
+                                openAngleSettingOverlay()
+                            },
+                            onExposureClick = {
+                                currentRegisterInput()
+                                openExposureModeSettingOverlay()
+                            },
+                            onIsoClick = {
+                                currentRegisterInput()
+                                openIsoSettingOverlay()
+                            },
+                            onShutterClick = {
+                                currentRegisterInput()
+                                openShutterSettingOverlay()
+                            },
+                            onEvClick = {
+                                currentRegisterInput()
+                                openEvSettingOverlay()
                             },
                             onCloseClick = {
                                 currentRegisterInput()
@@ -391,6 +667,69 @@ internal fun CameraScreen(
                                 currentRegisterInput()
                                 selectedCaptureModeIndex = selectedCaptureMode.ordinal
                                 applySelectedCaptureMode()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.AngleSetting -> {
+                        CameraAngleSettingOverlay(
+                            lenses = cameraLensState.availableLenses,
+                            selectedLensIndex = selectedLensIndex,
+                            onLensClick = { lensIndex ->
+                                currentRegisterInput()
+                                selectedLensIndex = lensIndex
+                                applySelectedLens()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.ExposureModeSetting -> {
+                        CameraExposureModeSettingOverlay(
+                            selectedExposureMode = CameraExposureMode.entries[selectedExposureModeIndex],
+                            allowManualExposure = captureMode != CameraCaptureMode.Video,
+                            onExposureModeClick = { selectedExposureMode ->
+                                currentRegisterInput()
+                                selectedExposureModeIndex = selectedExposureMode.ordinal
+                                applySelectedExposureMode()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.IsoSetting -> {
+                        CameraIsoSettingOverlay(
+                            selectedIso = shortcutManualExposureState.iso,
+                            onIsoClick = { iso ->
+                                currentRegisterInput()
+                                shortcutManualExposureState = CameraManualExposureState.from(
+                                    iso = iso,
+                                    shutterSpeedNanoseconds = shortcutManualExposureState.shutterSpeedNanoseconds,
+                                )
+                                applySelectedManualExposure()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.ShutterSetting -> {
+                        CameraShutterSettingOverlay(
+                            selectedShutterSpeedNanoseconds = shortcutManualExposureState.shutterSpeedNanoseconds,
+                            onShutterSpeedClick = { shutterSpeedNanoseconds ->
+                                currentRegisterInput()
+                                shortcutManualExposureState = CameraManualExposureState.from(
+                                    iso = shortcutManualExposureState.iso,
+                                    shutterSpeedNanoseconds = shutterSpeedNanoseconds,
+                                )
+                                applySelectedManualExposure()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.EvSetting -> {
+                        CameraEvSettingOverlay(
+                            selectedExposureCompensationState = shortcutExposureCompensationState,
+                            onExposureCompensationClick = { exposureCompensationState ->
+                                currentRegisterInput()
+                                shortcutExposureCompensationState = exposureCompensationState
+                                applySelectedEv()
                             },
                         )
                     }
@@ -420,7 +759,25 @@ internal fun CameraScreen(
 
 private fun KeyEvent.isVolumeCaptureKey(): Boolean = key == Key.VolumeUp || key == Key.VolumeDown
 
+private fun CameraExposureInfo.shortcutAngleText(): String {
+    focalLengthIn35mmFilmMillimeters
+        ?.takeIf { it > 0 }
+        ?.let { return "${it}mm" }
+
+    return focalLengthMillimeters
+        ?.takeIf { it > 0F }
+        ?.toDouble()
+        ?.formatCameraSingleDecimal(trimTrailingZero = true)
+        ?.let { "${it}mm" }
+        ?: UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT
+}
+
 private enum class CameraShortcutOverlayScreen {
     ShortcutList,
     CaptureModeSetting,
+    AngleSetting,
+    ExposureModeSetting,
+    IsoSetting,
+    ShutterSetting,
+    EvSetting,
 }

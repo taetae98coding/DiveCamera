@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -24,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,21 +44,103 @@ import androidx.compose.ui.unit.sp
 internal const val CAMERA_SHORTCUT_OVERLAY_TEST_TAG = "camera-shortcut-overlay"
 internal const val CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG = "camera-shortcut-mode-item"
 internal const val CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG = "camera-shortcut-mode-value"
+internal const val CAMERA_SHORTCUT_ANGLE_ITEM_TEST_TAG = "camera-shortcut-angle-item"
+internal const val CAMERA_SHORTCUT_ANGLE_VALUE_TEST_TAG = "camera-shortcut-angle-value"
+internal const val CAMERA_SHORTCUT_EXPOSURE_ITEM_TEST_TAG = "camera-shortcut-exposure-item"
+internal const val CAMERA_SHORTCUT_EXPOSURE_VALUE_TEST_TAG = "camera-shortcut-exposure-value"
+internal const val CAMERA_SHORTCUT_ISO_ITEM_TEST_TAG = "camera-shortcut-iso-item"
+internal const val CAMERA_SHORTCUT_ISO_VALUE_TEST_TAG = "camera-shortcut-iso-value"
+internal const val CAMERA_SHORTCUT_SHUTTER_ITEM_TEST_TAG = "camera-shortcut-shutter-item"
+internal const val CAMERA_SHORTCUT_SHUTTER_VALUE_TEST_TAG = "camera-shortcut-shutter-value"
+internal const val CAMERA_SHORTCUT_EV_ITEM_TEST_TAG = "camera-shortcut-ev-item"
+internal const val CAMERA_SHORTCUT_EV_VALUE_TEST_TAG = "camera-shortcut-ev-value"
 internal const val CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG = "camera-shortcut-close-item"
 internal const val CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG = "camera-capture-mode-setting-overlay"
+internal const val CAMERA_ANGLE_SETTING_OVERLAY_TEST_TAG = "camera-angle-setting-overlay"
+internal const val CAMERA_EXPOSURE_MODE_SETTING_OVERLAY_TEST_TAG = "camera-exposure-mode-setting-overlay"
+internal const val CAMERA_ISO_SETTING_OVERLAY_TEST_TAG = "camera-iso-setting-overlay"
+internal const val CAMERA_SHUTTER_SETTING_OVERLAY_TEST_TAG = "camera-shutter-setting-overlay"
+internal const val CAMERA_EV_SETTING_OVERLAY_TEST_TAG = "camera-ev-setting-overlay"
 
 private const val MODE_SHORTCUT_LABEL = "Mode"
+private const val ANGLE_SHORTCUT_LABEL = "Angle"
+private const val EXPOSURE_SHORTCUT_LABEL = "Exposure"
+private const val ISO_SHORTCUT_LABEL = "ISO"
+private const val SHUTTER_SHORTCUT_LABEL = "Shutter"
+private const val EV_SHORTCUT_LABEL = "EV"
 private const val CLOSE_SHORTCUT_LABEL = "Close"
 
 internal fun cameraCaptureModeSettingItemTestTag(captureMode: CameraCaptureMode): String {
     return "camera-capture-mode-setting-item-${captureMode.name}"
 }
 
+internal fun cameraAngleSettingItemTestTag(index: Int): String {
+    return "camera-angle-setting-item-$index"
+}
+
+internal fun cameraExposureModeSettingItemTestTag(exposureMode: CameraExposureMode): String {
+    return "camera-exposure-mode-setting-item-${exposureMode.name}"
+}
+
+internal fun cameraIsoSettingItemTestTag(iso: Int): String {
+    return "camera-iso-setting-item-$iso"
+}
+
+internal fun cameraShutterSettingItemTestTag(shutterSpeedNanoseconds: Long): String {
+    return "camera-shutter-setting-item-$shutterSpeedNanoseconds"
+}
+
+internal fun cameraEvSettingItemTestTag(exposureCompensationState: CameraExposureCompensationState): String {
+    return "camera-ev-setting-item-${exposureCompensationState.stepIndex}"
+}
+
+internal enum class CameraShortcutItem {
+    Mode,
+    Angle,
+    Exposure,
+    Iso,
+    Shutter,
+    Ev,
+    Close,
+}
+
+internal fun cameraShortcutItems(exposureMode: CameraExposureMode): List<CameraShortcutItem> {
+    return when (exposureMode) {
+        CameraExposureMode.Auto -> listOf(
+            CameraShortcutItem.Mode,
+            CameraShortcutItem.Angle,
+            CameraShortcutItem.Exposure,
+            CameraShortcutItem.Ev,
+            CameraShortcutItem.Close,
+        )
+
+        CameraExposureMode.Manual -> listOf(
+            CameraShortcutItem.Mode,
+            CameraShortcutItem.Angle,
+            CameraShortcutItem.Exposure,
+            CameraShortcutItem.Iso,
+            CameraShortcutItem.Shutter,
+            CameraShortcutItem.Close,
+        )
+    }
+}
+
 @Composable
 internal fun CameraShortcutOverlay(
+    items: List<CameraShortcutItem>,
     selectedIndex: Int,
     captureMode: CameraCaptureMode,
+    angleText: String,
+    exposureMode: CameraExposureMode,
+    isoText: String,
+    shutterSpeedText: String,
+    evText: String,
     onModeClick: () -> Unit,
+    onAngleClick: () -> Unit,
+    onExposureClick: () -> Unit,
+    onIsoClick: () -> Unit,
+    onShutterClick: () -> Unit,
+    onEvClick: () -> Unit,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -60,25 +148,95 @@ internal fun CameraShortcutOverlay(
         contentTestTag = CAMERA_SHORTCUT_OVERLAY_TEST_TAG,
         modifier = modifier,
     ) {
-        CameraShortcutOverlayItem(
-            text = MODE_SHORTCUT_LABEL,
-            value = captureMode.shortcutLabel,
-            imageVector = Icons.Filled.Tune,
-            selected = selectedIndex == CAMERA_SHORTCUT_MODE_INDEX,
-            onClick = onModeClick,
-            valueTestTag = CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG,
-            modifier = Modifier.testTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG),
-        )
+        items.forEachIndexed { index, item ->
+            when (item) {
+                CameraShortcutItem.Mode -> {
+                    CameraShortcutOverlayItem(
+                        text = MODE_SHORTCUT_LABEL,
+                        value = captureMode.shortcutLabel,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onModeClick,
+                        valueTestTag = CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG),
+                    )
+                }
 
-        CameraShortcutOverlayDivider()
+                CameraShortcutItem.Angle -> {
+                    CameraShortcutOverlayItem(
+                        text = ANGLE_SHORTCUT_LABEL,
+                        value = angleText,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onAngleClick,
+                        valueTestTag = CAMERA_SHORTCUT_ANGLE_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_ANGLE_ITEM_TEST_TAG),
+                    )
+                }
 
-        CameraShortcutOverlayItem(
-            text = CLOSE_SHORTCUT_LABEL,
-            imageVector = Icons.Filled.Close,
-            selected = selectedIndex == CAMERA_SHORTCUT_CLOSE_INDEX,
-            onClick = onCloseClick,
-            modifier = Modifier.testTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG),
-        )
+                CameraShortcutItem.Exposure -> {
+                    CameraShortcutOverlayItem(
+                        text = EXPOSURE_SHORTCUT_LABEL,
+                        value = exposureMode.shortcutLabel,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onExposureClick,
+                        valueTestTag = CAMERA_SHORTCUT_EXPOSURE_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_EXPOSURE_ITEM_TEST_TAG),
+                    )
+                }
+
+                CameraShortcutItem.Iso -> {
+                    CameraShortcutOverlayItem(
+                        text = ISO_SHORTCUT_LABEL,
+                        value = isoText,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onIsoClick,
+                        valueTestTag = CAMERA_SHORTCUT_ISO_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_ISO_ITEM_TEST_TAG),
+                    )
+                }
+
+                CameraShortcutItem.Shutter -> {
+                    CameraShortcutOverlayItem(
+                        text = SHUTTER_SHORTCUT_LABEL,
+                        value = shutterSpeedText,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onShutterClick,
+                        valueTestTag = CAMERA_SHORTCUT_SHUTTER_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_SHUTTER_ITEM_TEST_TAG),
+                    )
+                }
+
+                CameraShortcutItem.Ev -> {
+                    CameraShortcutOverlayItem(
+                        text = EV_SHORTCUT_LABEL,
+                        value = evText,
+                        imageVector = Icons.Filled.Tune,
+                        selected = selectedIndex == index,
+                        onClick = onEvClick,
+                        valueTestTag = CAMERA_SHORTCUT_EV_VALUE_TEST_TAG,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_EV_ITEM_TEST_TAG),
+                    )
+                }
+
+                CameraShortcutItem.Close -> {
+                    CameraShortcutOverlayItem(
+                        text = CLOSE_SHORTCUT_LABEL,
+                        imageVector = Icons.Filled.Close,
+                        selected = selectedIndex == index,
+                        onClick = onCloseClick,
+                        modifier = Modifier.testTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG),
+                    )
+                }
+            }
+
+            if (index < items.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
     }
 }
 
@@ -104,6 +262,157 @@ internal fun CameraCaptureModeSettingOverlay(
             )
 
             if (index < CameraCaptureMode.entries.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraAngleSettingOverlay(
+    lenses: List<CameraLens>,
+    selectedLensIndex: Int,
+    onLensClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CameraShortcutOverlayContainer(
+        contentTestTag = CAMERA_ANGLE_SETTING_OVERLAY_TEST_TAG,
+        modifier = modifier,
+    ) {
+        val lensLabels = lenses
+            .map(CameraLens::angleText)
+            .ifEmpty { listOf(UNKNOWN_CAMERA_EXPOSURE_INFO_TEXT) }
+        lensLabels.forEachIndexed { index, label ->
+            CameraShortcutOverlayItem(
+                text = label,
+                imageVector = Icons.Filled.Tune,
+                selected = index == selectedLensIndex.coerceIn(0, lensLabels.lastIndex),
+                onClick = {
+                    onLensClick(index)
+                },
+                modifier = Modifier.testTag(cameraAngleSettingItemTestTag(index)),
+            )
+
+            if (index < lensLabels.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraExposureModeSettingOverlay(
+    selectedExposureMode: CameraExposureMode,
+    allowManualExposure: Boolean,
+    onExposureModeClick: (CameraExposureMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val exposureModes = if (allowManualExposure) {
+        CameraExposureMode.entries
+    } else {
+        listOf(CameraExposureMode.Auto)
+    }
+
+    CameraShortcutOverlayContainer(
+        contentTestTag = CAMERA_EXPOSURE_MODE_SETTING_OVERLAY_TEST_TAG,
+        modifier = modifier,
+    ) {
+        exposureModes.forEachIndexed { index, exposureMode ->
+            CameraShortcutOverlayItem(
+                text = exposureMode.shortcutLabel,
+                imageVector = Icons.Filled.Tune,
+                selected = exposureMode == selectedExposureMode,
+                onClick = {
+                    onExposureModeClick(exposureMode)
+                },
+                modifier = Modifier.testTag(cameraExposureModeSettingItemTestTag(exposureMode)),
+            )
+
+            if (index < exposureModes.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraIsoSettingOverlay(
+    selectedIso: Int,
+    onIsoClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CameraShortcutOverlayContainer(
+        contentTestTag = CAMERA_ISO_SETTING_OVERLAY_TEST_TAG,
+        modifier = modifier,
+    ) {
+        CAMERA_MANUAL_EXPOSURE_ISO_OPTIONS.forEachIndexed { index, iso ->
+            CameraShortcutOverlayItem(
+                text = iso.toString(),
+                imageVector = Icons.Filled.Tune,
+                selected = iso == selectedIso,
+                onClick = {
+                    onIsoClick(iso)
+                },
+                modifier = Modifier.testTag(cameraIsoSettingItemTestTag(iso)),
+            )
+
+            if (index < CAMERA_MANUAL_EXPOSURE_ISO_OPTIONS.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraShutterSettingOverlay(
+    selectedShutterSpeedNanoseconds: Long,
+    onShutterSpeedClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CameraShortcutOverlayContainer(
+        contentTestTag = CAMERA_SHUTTER_SETTING_OVERLAY_TEST_TAG,
+        modifier = modifier,
+    ) {
+        CAMERA_MANUAL_EXPOSURE_SHUTTER_SPEED_OPTIONS.forEachIndexed { index, shutterSpeedNanoseconds ->
+            CameraShortcutOverlayItem(
+                text = shutterSpeedNanoseconds.toCameraShutterSpeedText(),
+                imageVector = Icons.Filled.Tune,
+                selected = shutterSpeedNanoseconds == selectedShutterSpeedNanoseconds,
+                onClick = {
+                    onShutterSpeedClick(shutterSpeedNanoseconds)
+                },
+                modifier = Modifier.testTag(cameraShutterSettingItemTestTag(shutterSpeedNanoseconds)),
+            )
+
+            if (index < CAMERA_MANUAL_EXPOSURE_SHUTTER_SPEED_OPTIONS.lastIndex) {
+                CameraShortcutOverlayDivider()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraEvSettingOverlay(
+    selectedExposureCompensationState: CameraExposureCompensationState,
+    onExposureCompensationClick: (CameraExposureCompensationState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CameraShortcutOverlayContainer(
+        contentTestTag = CAMERA_EV_SETTING_OVERLAY_TEST_TAG,
+        modifier = modifier,
+    ) {
+        cameraExposureCompensationOptions.forEachIndexed { index, exposureCompensationState ->
+            CameraShortcutOverlayItem(
+                text = exposureCompensationState.exposureCompensationEv.toCameraExposureCompensationText(),
+                imageVector = Icons.Filled.Tune,
+                selected = exposureCompensationState == selectedExposureCompensationState,
+                onClick = {
+                    onExposureCompensationClick(exposureCompensationState)
+                },
+                modifier = Modifier.testTag(cameraEvSettingItemTestTag(exposureCompensationState)),
+            )
+
+            if (index < cameraExposureCompensationOptions.lastIndex) {
                 CameraShortcutOverlayDivider()
             }
         }
@@ -146,7 +455,10 @@ private fun CameraShortcutOverlayContainer(
                 }
                 .testTag(contentTestTag),
         ) {
-            Column(content = { content() })
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                content = { content() },
+            )
         }
     }
 }
@@ -161,10 +473,18 @@ private fun CameraShortcutOverlayItem(
     value: String? = null,
     valueTestTag: String? = null,
 ) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(selected) {
+        if (selected) {
+            bringIntoViewRequester.bringIntoView()
+        }
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
             .background(
                 if (selected) {
                     Color.White.copy(alpha = 0.14F)
@@ -226,8 +546,8 @@ private fun CameraShortcutOverlayDivider() {
 }
 
 internal const val CAMERA_SHORTCUT_MODE_INDEX = 0
-internal const val CAMERA_SHORTCUT_CLOSE_INDEX = 1
-internal const val CAMERA_SHORTCUT_ITEM_COUNT = 2
+internal const val CAMERA_SHORTCUT_ANGLE_INDEX = 1
+internal const val CAMERA_SHORTCUT_EXPOSURE_INDEX = 2
 
 private val CameraCaptureMode.shortcutLabel: String
     get() = when (this) {
@@ -236,3 +556,13 @@ private val CameraCaptureMode.shortcutLabel: String
         CameraCaptureMode.RawJpg -> "RAW+JPG"
         CameraCaptureMode.Video -> "VIDEO"
     }
+
+private val CameraExposureMode.shortcutLabel: String
+    get() = when (this) {
+        CameraExposureMode.Auto -> "Auto Mode"
+        CameraExposureMode.Manual -> "Manual Mode"
+    }
+
+private val cameraExposureCompensationOptions = (-6..6).map { stepIndex ->
+    CameraExposureCompensationState(stepIndex)
+}
