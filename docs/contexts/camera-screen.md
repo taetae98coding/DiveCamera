@@ -124,7 +124,15 @@
 - Android `VIDEO` 모드는 `QualitySelector.fromOrderedList(listOf(Quality.UHD, Quality.FHD, Quality.HD, Quality.SD), FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))`를 사용해 4K UHD를 우선 요청하고 미지원 시 지원 품질로 fallback한다.
 - Android `VIDEO` 모드는 `VideoCapture.Builder.setTargetFrameRate(Range(60, 60))`으로 60fps를 target frame rate로 요청한다.
 - Android CameraX target frame rate는 동시 바인딩된 UseCase와 기기 제약을 반영한 선택 알고리즘의 입력이므로 실제 저장 fps와 다를 수 있다.
+- Android `VIDEO` 모드는 `Recorder.getVideoCapabilities(cameraInfo)`에서 `DynamicRange.HDR_UNSPECIFIED_10_BIT`을 지원하는 품질이 있으면 `VideoCapture.Builder.setDynamicRange(DynamicRange.HDR_UNSPECIFIED_10_BIT)`으로 10-bit HDR 비디오를 요청한다.
+- Android `VIDEO` 모드는 `DynamicRange.HDR_UNSPECIFIED_10_BIT`을 지원하는 품질이 없으면 `DynamicRange.SDR`을 요청한다.
+- Android에서 요청 가능한 CameraX 손떨림 보정 항목은 `VideoCapture.Builder.setVideoStabilizationEnabled(true)`와 `Preview.Builder.setPreviewStabilizationEnabled(true)`이다.
+- Android `VIDEO` 모드는 녹화 비디오 손떨림 보정을 최대화하기 위해 `Recorder.getVideoCapabilities(cameraInfo).isStabilizationSupported()`가 true이면 `VideoCapture.Builder.setVideoStabilizationEnabled(true)`로 비디오 손떨림 보정을 요청한다.
+- Android `VIDEO` 모드는 `Preview.Builder.setPreviewStabilizationEnabled(true)`를 요청하지 않는다. CameraX는 Preview stabilization과 VideoCapture stabilization을 함께 켜면 VideoCapture만 보정할 때보다 녹화 품질이 낮아질 수 있다고 설명하므로, 저장 비디오 보정 품질을 우선한다.
+- Android CameraX video stabilization은 기기가 지원을 보고해도 1920x1080 이하 및 30fps 이하에서만 적용이 보장되며, 4K 또는 60fps에서는 실제 적용되지 않을 수 있다.
+- Android `VIDEO` 모드는 임의의 고정 비트레이트를 직접 지정하지 않고 CameraX `Recorder`와 기기 제조사의 recording profile이 선택하는 비트레이트를 사용한다.
 - Android `VIDEO` 모드는 `Recorder.prepareRecording()`에 `MediaStoreOutputOptions`를 전달해 비디오 컬렉션에 저장한다.
+- Android `VIDEO` 모드는 앱이 확인한 위치를 `MediaStoreOutputOptions.Builder.setLocation()`에 전달해 MP4 위치 메타데이터 저장을 요청한다.
 - Android `VIDEO` 모드는 `PendingRecording.withAudioEnabled()`를 사용해 오디오 녹음을 요청한다.
 - Android `VIDEO` 모드의 녹화 시간은 `VideoRecordEvent`가 제공하는 `RecordingStats.getRecordedDurationNanos()` 값을 사용한다.
 - Android `VIDEO` 모드의 전면 카메라 저장 결과는 `VideoCapture.MIRROR_MODE_ON_FRONT_ONLY`를 사용해 미리보기와 같은 좌우 방향을 요청한다.
@@ -164,8 +172,22 @@
 - iOS `VIDEO` 모드는 AVFoundation 동영상 출력 경로를 사용한다.
 - iOS `VIDEO` 모드는 `AVCaptureSessionPreset3840x2160`을 우선 요청하고, 사용할 수 없으면 `AVCaptureSessionPresetHigh`로 fallback한다.
 - iOS `VIDEO` 모드는 `AVCaptureDevice.formats`에서 3840x2160 해상도와 60fps frame rate range를 모두 지원하는 format을 찾으면 해당 format을 `activeFormat`으로 설정하고 `activeVideoMinFrameDuration`, `activeVideoMaxFrameDuration`을 1/60초로 설정한다.
+- iOS `VIDEO` 모드는 4K 60fps format 중 `AVCaptureColorSpace_HLG_BT2020`을 지원하는 format을 우선 선택한다.
+- iOS `VIDEO` 모드는 선택된 format이 `AVCaptureColorSpace_HLG_BT2020`을 지원하면 `activeColorSpace`를 HLG BT.2020으로 설정해 10-bit HDR 비디오를 요청한다.
+- iOS `VIDEO` 모드는 선택된 format이 `videoHDRSupported`를 지원하면 `automaticallyAdjustsVideoHDREnabled`를 끄고 `videoHDREnabled`를 켜 EDR HDR 비디오를 요청한다.
 - iOS `VIDEO` 모드는 4K 60fps format을 찾을 수 없으면 session preset 기반 플랫폼 선택을 사용한다.
+- iOS에서 `AVCaptureConnection.preferredVideoStabilizationMode`로 요청 가능한 손떨림 보정 모드는 `Off`, `Standard`, `Cinematic`, `CinematicExtended`(iOS 13+), `PreviewOptimized`(iOS 17+), `CinematicExtendedEnhanced`(iOS 18+), `LowLatency`(iOS 26+), `Auto`이다.
+- iOS `VIDEO` 모드는 녹화 비디오 손떨림 보정을 최대화하기 위해 선택된 `AVCaptureDevice.Format`이 지원하는 모드 중 `CinematicExtendedEnhanced`, `CinematicExtended`, `Cinematic`, `Standard` 순서로 가장 높은 모드를 `AVCaptureMovieFileOutput` video connection의 `preferredVideoStabilizationMode`에 설정한다.
+- iOS `VIDEO` 모드는 위 녹화용 모드 중 지원되는 모드가 없으면 `AVCaptureVideoStabilizationModeAuto`로 fallback한다.
+- iOS `VIDEO` 모드는 `PreviewOptimized`와 `LowLatency`를 최대 녹화 보정 후보로 사용하지 않는다. 두 모드는 각각 preview 또는 latency에 최적화된 정책이므로 저장 비디오 보정 강도 우선순위와 다르다.
+- iOS `VIDEO` 모드는 `AVCaptureMovieFileOutput.availableVideoCodecTypes`에 HEVC가 있으면 `AVVideoCodecKey`를 HEVC로 설정한다.
+- iOS `VIDEO` 모드는 `AVCaptureMovieFileOutput.availableVideoCodecTypes`에 HEVC가 없고 H.264가 있으면 `AVVideoCodecKey`를 H.264로 설정한다.
+- iOS `VIDEO` 모드는 4K 60fps active format 후보에서 HEVC 또는 H.264를 사용할 수 없는 후보를 선택하지 않는다.
+- iOS `VIDEO` 모드는 녹화 시작 시점에 HEVC 또는 H.264를 사용할 수 없으면 ProRes로 녹화를 시작하지 않고 오류를 전달한다.
+- iOS `VIDEO` 모드는 ProRes를 기본 코덱으로 요청하지 않는다.
+- iOS ProRes 녹화는 별도 `inputPriority` preset, ProRes에 맞는 10-bit 4:2:2 active format 선택, 기기별 해상도와 fps 제한, 큰 파일 크기 정책이 함께 필요한 전문가용 녹화 정책이다.
 - iOS `VIDEO` 모드는 Photos 라이브러리에 처리 비디오 파일을 등록한다.
+- iOS `VIDEO` 모드는 앱이 확인한 위치를 `PHAssetCreationRequest.location`에 설정해 Photos asset 위치 메타데이터 저장을 요청한다.
 - iOS `VIDEO` 모드는 오디오 입력을 함께 구성한다.
 
 ## 메타데이터 구현 배경
@@ -203,7 +225,11 @@
 - [AndroidX CameraControl](https://developer.android.com/reference/androidx/camera/core/CameraControl)
 - [Android CameraX 비디오 캡처](https://developer.android.com/media/camera/camerax/video-capture)
 - [AndroidX VideoCapture](https://developer.android.com/reference/androidx/camera/video/VideoCapture)
+- [AndroidX VideoCapture.Builder](https://developer.android.com/reference/androidx/camera/video/VideoCapture.Builder)
 - [AndroidX Recorder](https://developer.android.com/reference/androidx/camera/video/Recorder)
+- [AndroidX VideoCapabilities](https://developer.android.com/reference/androidx/camera/video/VideoCapabilities)
+- [AndroidX Preview.Builder](https://developer.android.com/reference/androidx/camera/core/Preview.Builder)
+- [AndroidX PreviewCapabilities](https://developer.android.com/reference/androidx/camera/core/PreviewCapabilities)
 - [AndroidX MediaStoreOutputOptions](https://developer.android.com/reference/androidx/camera/video/MediaStoreOutputOptions)
 - [AndroidX RecordingStats](https://developer.android.com/reference/androidx/camera/video/RecordingStats)
 - [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
@@ -215,6 +241,13 @@
 - [Apple AVCapturePhotoSettings](https://developer.apple.com/documentation/avfoundation/avcapturephotosettings)
 - [Apple AVCaptureDevice](https://developer.apple.com/documentation/avfoundation/avcapturedevice)
 - [Apple AVCaptureDevice.Format](https://developer.apple.com/documentation/avfoundation/avcapturedevice/format)
+- [Apple AVCaptureDevice videoHDREnabled](https://developer.apple.com/documentation/avfoundation/avcapturedevice/isvideohdrenabled)
+- [Apple AVCaptureDevice automaticallyAdjustsVideoHDREnabled](https://developer.apple.com/documentation/avfoundation/avcapturedevice/automaticallyadjustsvideohdrenabled)
+- [Apple AVCaptureDevice.Format isVideoHDRSupported](https://developer.apple.com/documentation/avfoundation/avcapturedevice/format/isvideohdrsupported)
+- [Apple AVCaptureConnection preferredVideoStabilizationMode](https://developer.apple.com/documentation/avfoundation/avcaptureconnection/preferredvideostabilizationmode)
+- [Apple AVCaptureVideoStabilizationMode](https://developer.apple.com/documentation/avfoundation/avcapturevideostabilizationmode)
+- [Apple AVCaptureMovieFileOutput availableVideoCodecTypes](https://developer.apple.com/documentation/avfoundation/avcapturemoviefileoutput/availablevideocodectypes)
+- [Apple TN3104 Recording video in Apple ProRes](https://developer.apple.com/documentation/technotes/tn3104-recording-video-in-apple-prores)
 - [Apple GPS Dictionary Keys](https://developer.apple.com/documentation/imageio/gps-dictionary-keys)
 - [Apple PHAssetChangeRequest location](https://developer.apple.com/documentation/photos/phassetchangerequest/location)
 - [Apple AVCapturePhoto](https://developer.apple.com/documentation/AVFoundation/AVCapturePhoto)

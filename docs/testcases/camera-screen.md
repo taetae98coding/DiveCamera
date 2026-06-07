@@ -120,6 +120,11 @@
 116. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 생성하면 target frame rate는 `60..60`이다.
 117. Robolectric `androidHostTest`에서 Android 비디오 촬영 Recorder를 생성하면 품질 선택 우선순위는 `UHD`, `FHD`, `HD`, `SD` 순서이다.
 118. Robolectric `androidHostTest`에서 Android 사진 촬영 UseCase를 생성하면 외부 ImageCapture Builder 설정 callback이 호출된다.
+119. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 GPS 위치와 함께 생성하면 출력 옵션 위치는 GPS 위치와 같다.
+120. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 위치 없이 생성하면 출력 옵션 위치는 없다.
+121. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 HDR dynamic range로 생성하면 UseCase dynamic range는 HDR dynamic range이다.
+122. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 stabilization enabled로 생성하면 UseCase video stabilization은 enabled이다.
+123. Robolectric `androidHostTest`에서 Android 카메라 미리보기 UseCase를 생성하면 UseCase preview stabilization은 disabled이다.
 
 ## unitTest
 
@@ -153,3 +158,6 @@
 28. 사진 촬영 객체와 비디오 촬영 객체가 모두 연결되지 않았으면 촬영 준비 상태는 `Busy`이다.
 29. 사진 촬영 객체가 연결되어 있으면 비디오 촬영 객체가 연결되지 않았어도 촬영 준비 상태는 `Ready`이다.
 30. 비디오 촬영 객체가 연결되어 있으면 사진 촬영 객체가 연결되지 않았어도 촬영 준비 상태는 `Ready`이다.
+31. 사용 가능한 비디오 코덱에 HEVC와 H.264가 모두 있으면 선호 비디오 코덱은 HEVC이다.
+32. 사용 가능한 비디오 코덱에 HEVC가 없고 H.264가 있으면 선호 비디오 코덱은 H.264이다.
+33. 사용 가능한 비디오 코덱에 ProRes만 있으면 선호 비디오 코덱은 없다.
