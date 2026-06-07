@@ -134,21 +134,33 @@
 130. Robolectric `androidHostTest`에서 `CameraScreen`을 렌더링하면 단축키 오버레이는 표시되지 않는다.
 131. Robolectric `androidHostTest`에서 `CameraScreen`을 좌에서 우로 스와이프하면 단축키 오버레이가 표시된다.
 132. Robolectric `androidHostTest`에서 `CameraScreen`을 우에서 좌로 스와이프하면 단축키 오버레이가 표시된다.
-133. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 첫 번째 항목은 `Mode`이고 두 번째 항목은 `Close`이다.
+133. Robolectric `androidHostTest`에서 `Auto Mode` 단축키 오버레이가 표시되면 `Mode`, `Angle`, `Exposure`, `EV`, `Close` 항목을 표시하고 `ISO`, `Shutter` 항목은 표시하지 않는다.
 134. Robolectric `androidHostTest`에서 단축키 오버레이의 `Close` 항목을 클릭하면 단축키 오버레이가 닫힌다.
 135. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 `Mode` 항목은 선택 상태이다.
 136. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 `Mode` 항목은 현재 캡처 모드 `JPG`를 표시한다.
 137. Robolectric `androidHostTest`에서 현재 캡처 모드가 `RAW+JPG`인 상태로 단축키 오버레이가 표시되면 `Mode` 항목은 `RAW+JPG`를 표시한다.
 138. Robolectric `androidHostTest`에서 단축키 오버레이가 표시된 상태로 좌에서 우로 스와이프하면 `Close` 항목은 선택 상태이다.
-139. Robolectric `androidHostTest`에서 단축키 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `Close` 항목은 선택 상태이다.
+139. Robolectric `androidHostTest`에서 단축키 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `Angle` 항목은 선택 상태이다.
 140. Robolectric `androidHostTest`에서 단축키 오버레이의 `Close` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 단축키 오버레이가 닫힌다.
 141. Robolectric `androidHostTest`에서 단축키 오버레이의 `Mode` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 캡처 모드 설정 오버레이가 표시된다.
 142. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시되면 `JPG`, `RAW`, `RAW+JPG`, `VIDEO` 항목이 표시된다.
 143. Robolectric `androidHostTest`에서 현재 캡처 모드가 `RAW+JPG`인 상태로 캡처 모드 설정 오버레이가 표시되면 `RAW+JPG` 항목은 선택 상태이다.
 144. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이의 `VIDEO` 항목을 클릭하면 단축키 오버레이의 `Mode` 항목은 `VIDEO`를 표시한다.
-145. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프하면 `RAW` 항목은 선택 상태이다.
-146. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `VIDEO` 항목은 선택 상태이다.
-147. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프한 뒤 볼륨 업 버튼을 누르면 단축키 오버레이의 `Mode` 항목은 `RAW`를 표시한다.
+145. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프하면 `VIDEO` 항목은 선택 상태이다.
+146. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `RAW` 항목은 선택 상태이다.
+147. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프한 뒤 볼륨 업 버튼을 누르면 단축키 오버레이의 `Mode` 항목은 `RAW`를 표시한다.
+148. Robolectric `androidHostTest`에서 단축키 오버레이의 `Angle` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 화각 설정 오버레이가 표시된다.
+149. Robolectric `androidHostTest`에서 화각 설정 오버레이가 표시되면 렌즈 항목은 화각 초점거리 mm 라벨로 표시된다.
+150. Robolectric `androidHostTest`에서 단축키 오버레이의 `Exposure` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 노출 모드 설정 오버레이가 표시된다.
+151. Robolectric `androidHostTest`에서 노출 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프한 뒤 볼륨 업 버튼을 누르면 `CameraController.setManualExposure()`가 호출된다.
+152. Robolectric `androidHostTest`에서 `Manual Mode` 단축키 오버레이가 표시되면 `ISO`, `Shutter` 항목을 표시하고 `EV` 항목은 표시하지 않는다.
+153. Robolectric `androidHostTest`에서 ISO 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프한 뒤 볼륨 업 버튼을 누르면 `CameraController.setManualExposure()`가 선택된 ISO 감도로 호출된다.
+154. Robolectric `androidHostTest`에서 단축키 오버레이의 `Shutter` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 셔터 스피드 설정 오버레이가 표시된다.
+155. Robolectric `androidHostTest`에서 셔터 스피드 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프한 뒤 볼륨 업 버튼을 누르면 `CameraController.setManualExposure()`가 선택된 셔터 스피드로 호출된다.
+156. Robolectric `androidHostTest`에서 단축키 오버레이의 `EV` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 EV 설정 오버레이가 표시된다.
+157. Robolectric `androidHostTest`에서 EV 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프한 뒤 볼륨 업 버튼을 누르면 `CameraController.setAutoExposure()`가 선택된 EV값으로 호출된다.
+158. Robolectric `androidHostTest`에서 화각 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프한 뒤 볼륨 업 버튼을 누르면 `CameraController.changeCameraLens()`가 호출된다.
+159. Robolectric `androidHostTest`에서 `Manual Mode` 단축키 오버레이의 `Shutter` 항목이 선택된 상태로 우에서 좌로 스와이프하면 `Close` 항목은 선택 상태이다.
 
 ## unitTest
 

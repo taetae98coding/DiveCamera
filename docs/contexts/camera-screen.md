@@ -10,15 +10,21 @@
 - CameraManager는 플랫폼이 최초로 제공한 non-empty 렌즈 목록을 보관하고, 이후 렌즈 전환으로 발생한 세션 재생성이 현재 렌즈 목록이나 선택 index를 덮어쓰지 않는다.
 - 단축키 오버레이는 공통 Compose UI 상태로 관리한다.
 - 단축키 오버레이 표시 트리거는 direction과 무관한 horizontal drag gesture로 처리한다.
-- 단축키 오버레이는 선택된 index를 화면 상태로 관리한다.
-- 단축키 오버레이에서 horizontal drag amount가 양수이면 선택 index를 1 증가시키고, 음수이면 1 감소시킨다.
-- 단축키 오버레이에서 Android `Key.VolumeUp`은 현재 선택 index 실행으로 처리한다.
-- iOS `AVCaptureEventInteraction` 하드웨어 캡처 이벤트는 볼륨 업과 볼륨 다운을 구분하지 않으므로 단축키 오버레이가 표시된 상태에서는 현재 선택 index 실행으로 처리한다.
-- 캡처 모드 설정 오버레이는 선택된 캡처 모드 index를 화면 상태로 관리한다.
-- 캡처 모드 설정 오버레이에서 horizontal drag amount가 양수이면 선택 캡처 모드 index를 1 증가시키고, 음수이면 1 감소시킨다.
-- 캡처 모드 설정 오버레이에서 Android `Key.VolumeUp`은 현재 선택된 캡처 모드 index 적용으로 처리한다.
-- iOS `AVCaptureEventInteraction` 하드웨어 캡처 이벤트는 볼륨 업과 볼륨 다운을 구분하지 않으므로 캡처 모드 설정 오버레이가 표시된 상태에서는 현재 선택된 캡처 모드 index 적용으로 처리한다.
+- 단축키 오버레이는 선택된 항목을 화면 상태로 관리하고, 렌더링과 실행 시 현재 항목 목록 기준 index로 변환한다.
+- 단축키 오버레이 항목 목록은 현재 노출 모드에 따라 구성한다. `Auto Mode`에서는 `EV`를 노출하고, `Manual Mode`에서는 `ISO`와 `Shutter`를 노출한다.
+- 단축키 오버레이에서 horizontal drag amount가 양수이면 선택 index를 1 감소시키고, 음수이면 1 증가시킨다.
+- 단축키 오버레이 스와이프 입력은 `pointerInput(Unit)` coroutine이 오래 유지되므로 최신 overlay 상태와 노출 모드를 참조하는 handler로 전달한다.
+- 단축키 오버레이에서 Android `Key.VolumeUp`은 현재 선택 항목 실행으로 처리한다.
+- iOS `AVCaptureEventInteraction` 하드웨어 캡처 이벤트는 볼륨 업과 볼륨 다운을 구분하지 않으므로 단축키 오버레이가 표시된 상태에서는 현재 선택 항목 실행으로 처리한다.
+- 단축키 설정 오버레이들은 각각 선택된 index를 화면 상태로 관리한다.
+- 단축키 설정 오버레이들에서 horizontal drag amount가 양수이면 선택 index를 1 감소시키고, 음수이면 1 증가시킨다.
+- 단축키 설정 오버레이들에서 Android `Key.VolumeUp`은 현재 선택된 index 적용으로 처리한다.
+- iOS `AVCaptureEventInteraction` 하드웨어 캡처 이벤트는 볼륨 업과 볼륨 다운을 구분하지 않으므로 단축키 설정 오버레이가 표시된 상태에서는 현재 선택된 index 적용으로 처리한다.
 - 캡처 모드 설정 오버레이에서 캡처 모드 변경은 기존 캡처 모드 전환 버튼과 같은 캡처 모드 적용 함수를 사용한다.
+- 화각 설정 오버레이에서 렌즈 변경은 CameraManager가 제공하는 다음 렌즈 변경 함수를 선택된 index까지 반복 호출하는 방식으로 처리한다.
+- 화각 설정 오버레이의 렌즈 라벨은 플랫폼별 카메라 특성에서 얻은 35mm 환산 초점거리 mm를 우선 사용하고, 없으면 실제 초점거리 mm를 사용한다.
+- ISO 설정 오버레이와 셔터 스피드 설정 오버레이는 노출 설정 Dialog의 `Manual Mode` 상태 모델을 재사용한다.
+- EV 설정 오버레이는 노출 설정 Dialog의 `Auto Mode` EV 상태 모델을 재사용한다.
 
 ## 카메라 구성 요소 경계
 
