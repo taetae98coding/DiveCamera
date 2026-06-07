@@ -493,7 +493,7 @@ private fun Context.cameraLensCandidates(provider: ProcessCameraProvider): List<
                     val physicalCameraId = physicalCameraInfo.cameraId()
                         ?: return@mapNotNull null
                     AndroidCameraLensCandidate(
-                        cameraLens = CameraLens(
+                        cameraLens = physicalCameraInfo.toCameraLens(
                             cameraId = cameraId,
                             physicalCameraId = physicalCameraId,
                         ),
@@ -506,7 +506,7 @@ private fun Context.cameraLensCandidates(provider: ProcessCameraProvider): List<
             } else {
                 listOf(
                     AndroidCameraLensCandidate(
-                        cameraLens = CameraLens(cameraId = cameraId),
+                        cameraLens = cameraInfo.toCameraLens(cameraId = cameraId),
                         sortKey = cameraInfo.focalLengthSortKey(),
                     ),
                 )
@@ -517,8 +517,20 @@ private fun Context.cameraLensCandidates(provider: ProcessCameraProvider): List<
                 .thenBy { it.cameraLens.cameraId }
                 .thenBy { it.cameraLens.physicalCameraId.orEmpty() },
         )
-        .distinctBy(AndroidCameraLensCandidate::cameraLens)
+        .distinctBy { candidate ->
+            candidate.cameraLens.cameraId to candidate.cameraLens.physicalCameraId
+        }
 }
+
+private fun CameraInfo.toCameraLens(
+    cameraId: String,
+    physicalCameraId: String? = null,
+): CameraLens = CameraLens(
+    cameraId = cameraId,
+    physicalCameraId = physicalCameraId,
+    focalLengthMillimeters = focalLengthMillimeters(),
+    focalLengthIn35mmFilmMillimeters = focalLengthIn35mmFilmMillimeters(),
+)
 
 internal fun CameraLens.toCameraSelector(): CameraSelector = CameraSelector.Builder()
     .addCameraFilter { cameraInfos ->
@@ -573,25 +585,38 @@ internal fun isAndroidFaceAuthenticationCamera(
 }
 
 private fun CameraInfo.focalLengthSortKey(): Double {
+    return focalLengthIn35mmFilmMillimeters()?.toDouble()
+        ?: focalLengthMillimeters()?.toDouble()
+        ?: UNKNOWN_CAMERA_LENS_SORT_KEY
+}
+
+private fun CameraInfo.focalLengthMillimeters(): Float? {
     val camera2Info = runCatching {
         Camera2CameraInfo.from(this)
-    }.getOrNull() ?: return UNKNOWN_CAMERA_LENS_SORT_KEY
-    val focalLength = camera2Info
+    }.getOrNull() ?: return null
+    return camera2Info
         .getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
         ?.minOrNull()
-        ?: return UNKNOWN_CAMERA_LENS_SORT_KEY
+        ?.takeIf { it > 0F }
+}
+
+private fun CameraInfo.focalLengthIn35mmFilmMillimeters(): Int? {
+    val camera2Info = runCatching {
+        Camera2CameraInfo.from(this)
+    }.getOrNull() ?: return null
+    val focalLength = focalLengthMillimeters() ?: return null
     val sensorPhysicalSize = camera2Info
         .getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
     val sensorDiagonal = sensorPhysicalSize?.let { size ->
         hypot(size.width.toDouble(), size.height.toDouble())
+    } ?: return null
+
+    if (sensorDiagonal <= 0.0) {
+        return null
     }
 
-    return if (sensorDiagonal != null && sensorDiagonal > 0.0) {
-        val fullFrameDiagonal = hypot(FULL_FRAME_WIDTH_MM, FULL_FRAME_HEIGHT_MM)
-        focalLength * fullFrameDiagonal / sensorDiagonal
-    } else {
-        focalLength.toDouble()
-    }
+    val fullFrameDiagonal = hypot(FULL_FRAME_WIDTH_MM, FULL_FRAME_HEIGHT_MM)
+    return (focalLength * fullFrameDiagonal / sensorDiagonal).roundToInt().takeIf { it > 0 }
 }
 
 private const val CAMERA_SESSION_LOG_TAG = "DiveCameraSession"

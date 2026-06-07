@@ -221,7 +221,7 @@ internal class IosCameraSession(
     private fun configureInput(cameraLensCandidates: List<IosCameraLensCandidate>): AVCaptureDevice? {
         val device = selectedCameraLens
             ?.let { lens ->
-                cameraLensCandidates.firstOrNull { it.cameraLens == lens }?.device
+                cameraLensCandidates.firstOrNull { it.cameraLens.hasSameCameraIdentity(lens) }?.device
             }
             ?: cameraLensCandidates.firstOrNull()?.device
             ?: AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
@@ -580,7 +580,13 @@ private fun AVCaptureDevice.setManualExposure(
     }
 }
 
-private fun AVCaptureDevice.toCameraLens(): CameraLens = CameraLens(cameraId = uniqueID)
+private fun AVCaptureDevice.toCameraLens(): CameraLens = CameraLens(
+    cameraId = uniqueID,
+    focalLengthIn35mmFilmMillimeters = focalLengthIn35mmFilm(
+        horizontalFieldOfViewDegrees = activeFormat.videoFieldOfView.toDouble(),
+        zoomFactor = 1.0,
+    ),
+)
 
 @OptIn(ExperimentalForeignApi::class)
 private fun AVCaptureDevice.toCameraExposureInfo(): CameraExposureInfo {
