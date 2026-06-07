@@ -131,6 +131,24 @@
 127. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 HDR dynamic range로 생성하면 UseCase dynamic range는 HDR dynamic range이다.
 128. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 stabilization enabled로 생성하면 UseCase video stabilization은 enabled이다.
 129. Robolectric `androidHostTest`에서 Android 카메라 미리보기 UseCase를 생성하면 UseCase preview stabilization은 disabled이다.
+130. Robolectric `androidHostTest`에서 `CameraScreen`을 렌더링하면 단축키 오버레이는 표시되지 않는다.
+131. Robolectric `androidHostTest`에서 `CameraScreen`을 좌에서 우로 스와이프하면 단축키 오버레이가 표시된다.
+132. Robolectric `androidHostTest`에서 `CameraScreen`을 우에서 좌로 스와이프하면 단축키 오버레이가 표시된다.
+133. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 첫 번째 항목은 `Mode`이고 두 번째 항목은 `Close`이다.
+134. Robolectric `androidHostTest`에서 단축키 오버레이의 `Close` 항목을 클릭하면 단축키 오버레이가 닫힌다.
+135. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 `Mode` 항목은 선택 상태이다.
+136. Robolectric `androidHostTest`에서 단축키 오버레이가 표시되면 `Mode` 항목은 현재 캡처 모드 `JPG`를 표시한다.
+137. Robolectric `androidHostTest`에서 현재 캡처 모드가 `RAW+JPG`인 상태로 단축키 오버레이가 표시되면 `Mode` 항목은 `RAW+JPG`를 표시한다.
+138. Robolectric `androidHostTest`에서 단축키 오버레이가 표시된 상태로 좌에서 우로 스와이프하면 `Close` 항목은 선택 상태이다.
+139. Robolectric `androidHostTest`에서 단축키 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `Close` 항목은 선택 상태이다.
+140. Robolectric `androidHostTest`에서 단축키 오버레이의 `Close` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 단축키 오버레이가 닫힌다.
+141. Robolectric `androidHostTest`에서 단축키 오버레이의 `Mode` 항목이 선택된 상태로 볼륨 업 버튼을 누르면 캡처 모드 설정 오버레이가 표시된다.
+142. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시되면 `JPG`, `RAW`, `RAW+JPG`, `VIDEO` 항목이 표시된다.
+143. Robolectric `androidHostTest`에서 현재 캡처 모드가 `RAW+JPG`인 상태로 캡처 모드 설정 오버레이가 표시되면 `RAW+JPG` 항목은 선택 상태이다.
+144. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이의 `VIDEO` 항목을 클릭하면 단축키 오버레이의 `Mode` 항목은 `VIDEO`를 표시한다.
+145. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프하면 `RAW` 항목은 선택 상태이다.
+146. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 우에서 좌로 스와이프하면 `VIDEO` 항목은 선택 상태이다.
+147. Robolectric `androidHostTest`에서 캡처 모드 설정 오버레이가 표시된 상태로 좌에서 우로 스와이프한 뒤 볼륨 업 버튼을 누르면 단축키 오버레이의 `Mode` 항목은 `RAW`를 표시한다.
 
 ## unitTest
 
