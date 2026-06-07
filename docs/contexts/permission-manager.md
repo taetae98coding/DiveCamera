@@ -2,6 +2,8 @@
 
 ## Android 권한 처리
 
+- 공통 권한 매니저 구현은 권한별 매니저와 앱 설정 매니저를 조합해 `PermissionManager` 계약을 제공한다.
+- Android 플랫폼 계층은 카메라, 마이크, 위치, 사진 저장 권한 매니저와 앱 설정 매니저를 각각 생성한다.
 - Android 권한 상태는 `Context.checkSelfPermission` 결과를 `StateFlow`로 보관한다.
 - Android 카메라 권한 요청은 `ActivityResultContracts.RequestPermission`으로 `Manifest.permission.CAMERA`를 요청한다.
 - Android 마이크 권한 요청은 `ActivityResultContracts.RequestPermission`으로 `Manifest.permission.RECORD_AUDIO`를 요청한다.
@@ -14,6 +16,7 @@
 
 ## iOS 권한 처리
 
+- iOS 플랫폼 계층은 카메라, 마이크, 위치, 사진 저장 권한 매니저와 앱 설정 매니저를 각각 생성한다.
 - iOS 카메라 권한은 `AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo)`로 확인한다.
 - iOS 마이크 권한은 `AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeAudio)`로 확인한다.
 - iOS 카메라와 마이크 권한 요청은 `AVCaptureDevice.requestAccessForMediaType`를 사용한다.
