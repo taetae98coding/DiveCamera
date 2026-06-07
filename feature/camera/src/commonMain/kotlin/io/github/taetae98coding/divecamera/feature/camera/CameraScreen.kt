@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +60,9 @@ internal fun CameraScreen(
     var inputVersion by remember { mutableLongStateOf(0L) }
     var isCameraPreviewActive by remember { mutableStateOf(true) }
     var isExposureDialogVisible by remember { mutableStateOf(false) }
+    var activeShortcutOverlay by remember { mutableStateOf<CameraShortcutOverlayScreen?>(null) }
+    var selectedShortcutIndex by remember { mutableIntStateOf(CAMERA_SHORTCUT_MODE_INDEX) }
+    var selectedCaptureModeIndex by remember { mutableIntStateOf(CameraCaptureMode.Jpg.ordinal) }
     var exposureMode by remember { mutableStateOf(CameraExposureMode.Auto) }
     var captureMode by remember { mutableStateOf(CameraCaptureMode.Jpg) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -87,6 +92,7 @@ internal fun CameraScreen(
         delay(cameraResourceIdleTimeoutMillis)
         if (!videoRecordingState.isRecording) {
             isCameraPreviewActive = false
+            activeShortcutOverlay = null
         }
     }
 
@@ -117,14 +123,109 @@ internal fun CameraScreen(
         }
     }
 
+    fun selectCaptureMode(nextCaptureMode: CameraCaptureMode) {
+        if (videoRecordingState.isRecording) {
+            return
+        }
+
+        captureMode = nextCaptureMode
+        if (nextCaptureMode == CameraCaptureMode.Video) {
+            exposureMode = CameraExposureMode.Auto
+            cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
+        }
+    }
+
+    fun openShortcutOverlay() {
+        selectedShortcutIndex = CAMERA_SHORTCUT_MODE_INDEX
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun closeShortcutOverlay() {
+        activeShortcutOverlay = null
+        selectedShortcutIndex = CAMERA_SHORTCUT_MODE_INDEX
+    }
+
+    fun openCaptureModeSettingOverlay() {
+        selectedCaptureModeIndex = captureMode.ordinal
+        activeShortcutOverlay = CameraShortcutOverlayScreen.CaptureModeSetting
+    }
+
+    fun applySelectedCaptureMode() {
+        selectCaptureMode(CameraCaptureMode.entries[selectedCaptureModeIndex])
+        activeShortcutOverlay = CameraShortcutOverlayScreen.ShortcutList
+    }
+
+    fun selectNextCaptureModeIndex() {
+        selectedCaptureModeIndex = (selectedCaptureModeIndex + 1) % CameraCaptureMode.entries.size
+    }
+
+    fun selectPreviousCaptureModeIndex() {
+        selectedCaptureModeIndex = (selectedCaptureModeIndex + CameraCaptureMode.entries.lastIndex) %
+            CameraCaptureMode.entries.size
+    }
+
+    fun selectNextShortcutIndex() {
+        selectedShortcutIndex = (selectedShortcutIndex + 1) % CAMERA_SHORTCUT_ITEM_COUNT
+    }
+
+    fun selectPreviousShortcutIndex() {
+        selectedShortcutIndex = (selectedShortcutIndex + CAMERA_SHORTCUT_ITEM_COUNT - 1) % CAMERA_SHORTCUT_ITEM_COUNT
+    }
+
+    fun handleHorizontalSwipe(horizontalDragAmount: Float) {
+        when (activeShortcutOverlay) {
+            CameraShortcutOverlayScreen.CaptureModeSetting -> {
+                if (horizontalDragAmount > 0F) {
+                    selectNextCaptureModeIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectPreviousCaptureModeIndex()
+                }
+            }
+
+            CameraShortcutOverlayScreen.ShortcutList -> {
+                if (horizontalDragAmount > 0F) {
+                    selectNextShortcutIndex()
+                } else if (horizontalDragAmount < 0F) {
+                    selectPreviousShortcutIndex()
+                }
+            }
+
+            null -> openShortcutOverlay()
+        }
+    }
+
+    fun handleVolumeCaptureButton(key: Key) {
+        when (activeShortcutOverlay) {
+            CameraShortcutOverlayScreen.ShortcutList -> {
+                if (key == Key.VolumeUp) {
+                    when (selectedShortcutIndex) {
+                        CAMERA_SHORTCUT_MODE_INDEX -> openCaptureModeSettingOverlay()
+                        CAMERA_SHORTCUT_CLOSE_INDEX -> closeShortcutOverlay()
+                    }
+                }
+            }
+
+            CameraShortcutOverlayScreen.CaptureModeSetting -> {
+                if (key == Key.VolumeUp) {
+                    applySelectedCaptureMode()
+                }
+            }
+
+            null -> {
+                requestCapture()
+            }
+        }
+    }
+
     CameraHardwareCaptureButtonEffect(
         enabled = isCameraPreviewActive && (
-            captureReadinessState == CaptureReadinessState.Ready ||
+            activeShortcutOverlay != null ||
+                captureReadinessState == CaptureReadinessState.Ready ||
                 videoRecordingState.isRecording
             ),
         onCapture = {
             currentRegisterInput()
-            requestCapture()
+            handleVolumeCaptureButton(Key.VolumeUp)
         },
     )
 
@@ -140,12 +241,33 @@ internal fun CameraScreen(
                     }
                 }
             }
+            .pointerInput(Unit) {
+                var horizontalDragAmount = 0F
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        horizontalDragAmount = 0F
+                    },
+                    onDragEnd = {
+                        if (horizontalDragAmount != 0F) {
+                            currentRegisterInput()
+                            handleHorizontalSwipe(horizontalDragAmount)
+                        }
+                        horizontalDragAmount = 0F
+                    },
+                    onDragCancel = {
+                        horizontalDragAmount = 0F
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        horizontalDragAmount += dragAmount
+                    },
+                )
+            }
             .onPreviewKeyEvent { event ->
                 val wasCameraPreviewActive = isCameraPreviewActive
                 currentRegisterInput()
                 if (event.isVolumeCaptureKey()) {
                     if (wasCameraPreviewActive && event.type == KeyEventType.KeyDown) {
-                        requestCapture()
+                        handleVolumeCaptureButton(event.key)
                     }
                     true
                 } else {
@@ -198,14 +320,7 @@ internal fun CameraScreen(
                     enabled = !videoRecordingState.isRecording,
                     onClick = {
                         currentRegisterInput()
-                        if (!videoRecordingState.isRecording) {
-                            val nextCaptureMode = captureMode.next()
-                            captureMode = nextCaptureMode
-                            if (nextCaptureMode == CameraCaptureMode.Video) {
-                                exposureMode = CameraExposureMode.Auto
-                                cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
-                            }
-                        }
+                        selectCaptureMode(captureMode.next())
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -252,6 +367,36 @@ internal fun CameraScreen(
                         },
                     )
                 }
+
+                when (activeShortcutOverlay) {
+                    CameraShortcutOverlayScreen.ShortcutList -> {
+                        CameraShortcutOverlay(
+                            selectedIndex = selectedShortcutIndex,
+                            captureMode = captureMode,
+                            onModeClick = {
+                                currentRegisterInput()
+                                openCaptureModeSettingOverlay()
+                            },
+                            onCloseClick = {
+                                currentRegisterInput()
+                                closeShortcutOverlay()
+                            },
+                        )
+                    }
+
+                    CameraShortcutOverlayScreen.CaptureModeSetting -> {
+                        CameraCaptureModeSettingOverlay(
+                            selectedCaptureMode = CameraCaptureMode.entries[selectedCaptureModeIndex],
+                            onCaptureModeClick = { selectedCaptureMode ->
+                                currentRegisterInput()
+                                selectedCaptureModeIndex = selectedCaptureMode.ordinal
+                                applySelectedCaptureMode()
+                            },
+                        )
+                    }
+
+                    null -> Unit
+                }
             } else {
                 Text(
                     text = CAMERA_OFF_TEXT,
@@ -274,3 +419,8 @@ internal fun CameraScreen(
 }
 
 private fun KeyEvent.isVolumeCaptureKey(): Boolean = key == Key.VolumeUp || key == Key.VolumeDown
+
+private enum class CameraShortcutOverlayScreen {
+    ShortcutList,
+    CaptureModeSetting,
+}

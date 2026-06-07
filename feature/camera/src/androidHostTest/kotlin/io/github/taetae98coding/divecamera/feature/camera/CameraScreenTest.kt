@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -27,6 +28,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
@@ -411,6 +414,279 @@ class CameraScreenTest {
         composeRule
             .onNodeWithTag(CAMERA_EXPOSURE_INFO_LENS_VALUE_TEST_TAG)
             .assertTextEquals("13mm")
+    }
+
+    @Test
+    fun cameraScreenDoesNotDisplayShortcutOverlayByDefault() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun cameraScreenDisplaysShortcutOverlayWhenSwipedLeftToRight() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraScreenDisplaysShortcutOverlayWhenSwipedRightToLeft() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openShortcutOverlayBySwipeLeft()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysModeItemBeforeCloseItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithText("Mode")
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithText("Close")
+            .assertIsDisplayed()
+
+        val modeItemBounds = composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG)
+            .getUnclippedBoundsInRoot()
+        val closeItemBounds = composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .getUnclippedBoundsInRoot()
+
+        assertTrue(modeItemBounds.top < closeItemBounds.top)
+    }
+
+    @Test
+    fun shortcutOverlayClosesWhenCloseItemClicked() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .performClick()
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun shortcutOverlaySelectsModeItemByDefault() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_ITEM_TEST_TAG)
+            .assertIsSelected()
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysCurrentJpgCaptureModeOnModeItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG, useUnmergedTree = true)
+            .assertTextEquals("JPG")
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysCurrentRawJpgCaptureModeOnModeItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToRawJpgMode()
+        openShortcutOverlayBySwipeRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG, useUnmergedTree = true)
+            .assertTextEquals("RAW+JPG")
+    }
+
+    @Test
+    fun shortcutOverlaySelectsNextItemWhenSwipedLeftToRight() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+
+        swipeShortcutOverlayRight()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .assertIsSelected()
+    }
+
+    @Test
+    fun shortcutOverlaySelectsPreviousItemWhenSwipedRightToLeft() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+
+        swipeShortcutOverlayLeft()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_CLOSE_ITEM_TEST_TAG)
+            .assertIsSelected()
+    }
+
+    @Test
+    fun shortcutOverlayClosesWhenVolumeUpButtonPressedOnCloseItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+        swipeShortcutOverlayRight()
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun shortcutOverlayDisplaysCaptureModeSettingOverlayWhenVolumeUpButtonPressedOnModeItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+        openShortcutOverlayBySwipeRight()
+
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun captureModeSettingOverlayDisplaysCaptureModeItems() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openCaptureModeSettingOverlay()
+
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Jpg))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Raw))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.RawJpg))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Video))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun captureModeSettingOverlaySelectsCurrentCaptureModeItem() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        switchToRawJpgMode()
+        openCaptureModeSettingOverlay()
+
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.RawJpg))
+            .assertIsSelected()
+    }
+
+    @Test
+    fun captureModeSettingOverlayChangesCaptureModeWhenModeItemClicked() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openCaptureModeSettingOverlay()
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Video))
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG, useUnmergedTree = true)
+            .assertTextEquals("VIDEO")
+    }
+
+    @Test
+    fun captureModeSettingOverlaySelectsNextCaptureModeWhenSwipedLeftToRight() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openCaptureModeSettingOverlay()
+        swipeCaptureModeSettingOverlayRight()
+
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Raw))
+            .assertIsSelected()
+    }
+
+    @Test
+    fun captureModeSettingOverlaySelectsPreviousCaptureModeWhenSwipedRightToLeft() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openCaptureModeSettingOverlay()
+        swipeCaptureModeSettingOverlayLeft()
+
+        composeRule
+            .onNodeWithTag(cameraCaptureModeSettingItemTestTag(CameraCaptureMode.Video))
+            .assertIsSelected()
+    }
+
+    @Test
+    fun captureModeSettingOverlayAppliesSwipeSelectedCaptureModeWhenVolumeUpButtonPressed() {
+        composeRule.setContent {
+            CameraScreen()
+        }
+
+        openCaptureModeSettingOverlay()
+        swipeCaptureModeSettingOverlayRight()
+        pressVolumeCaptureButton(Key.VolumeUp)
+
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_MODE_VALUE_TEST_TAG, useUnmergedTree = true)
+            .assertTextEquals("RAW")
     }
 
     @Test
@@ -1708,11 +1984,72 @@ class CameraScreenTest {
         }
     }
 
+    private fun switchToRawJpgMode() {
+        repeat(2) {
+            composeRule
+                .onNodeWithTag(CAPTURE_MODE_SWITCH_BUTTON_TEST_TAG)
+                .performClick()
+        }
+    }
+
     private fun pressVolumeCaptureButton(key: Key = Key.VolumeUp) {
         composeRule
             .onNodeWithTag(CAMERA_SCREEN_TEST_TAG)
             .performKeyInput {
                 pressKey(key)
+            }
+    }
+
+    private fun openShortcutOverlayBySwipeRight() {
+        composeRule
+            .onNodeWithTag(CAMERA_SCREEN_TEST_TAG)
+            .performTouchInput {
+                swipeRight()
+            }
+    }
+
+    private fun openShortcutOverlayBySwipeLeft() {
+        composeRule
+            .onNodeWithTag(CAMERA_SCREEN_TEST_TAG)
+            .performTouchInput {
+                swipeLeft()
+            }
+    }
+
+    private fun swipeShortcutOverlayRight() {
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .performTouchInput {
+                swipeRight()
+            }
+    }
+
+    private fun swipeShortcutOverlayLeft() {
+        composeRule
+            .onNodeWithTag(CAMERA_SHORTCUT_OVERLAY_TEST_TAG)
+            .performTouchInput {
+                swipeLeft()
+            }
+    }
+
+    private fun openCaptureModeSettingOverlay() {
+        openShortcutOverlayBySwipeRight()
+        pressVolumeCaptureButton(Key.VolumeUp)
+    }
+
+    private fun swipeCaptureModeSettingOverlayRight() {
+        composeRule
+            .onNodeWithTag(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .performTouchInput {
+                swipeRight()
+            }
+    }
+
+    private fun swipeCaptureModeSettingOverlayLeft() {
+        composeRule
+            .onNodeWithTag(CAMERA_CAPTURE_MODE_SETTING_OVERLAY_TEST_TAG)
+            .performTouchInput {
+                swipeLeft()
             }
     }
 
