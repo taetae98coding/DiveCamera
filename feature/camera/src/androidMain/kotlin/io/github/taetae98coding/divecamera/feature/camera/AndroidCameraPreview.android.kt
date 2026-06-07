@@ -12,7 +12,7 @@ import androidx.compose.runtime.setValue
 
 internal class AndroidCameraPreview(
     targetRotation: Int,
-    onCaptureResult: (AndroidCaptureResultMetadata) -> Unit,
+    onCaptureResult: (TotalCaptureResult) -> Unit,
 ) {
     var surfaceRequest: SurfaceRequest? by mutableStateOf(null)
         private set
@@ -28,7 +28,7 @@ internal class AndroidCameraPreview(
                             request: CaptureRequest,
                             result: TotalCaptureResult,
                         ) {
-                            onCaptureResult(AndroidCaptureResultMetadata.from(result))
+                            onCaptureResult(result)
                         }
                     },
                 )

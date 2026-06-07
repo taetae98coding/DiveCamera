@@ -55,11 +55,12 @@ internal class AndroidImageCapture(
     override val captureMode: CameraCaptureMode = CameraCaptureMode.Jpg,
     targetRotation: Int,
     private val outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG,
-    private val cameraExifMetadata: AndroidCameraExifMetadata = AndroidCameraExifMetadata.Empty,
     private val cameraCharacteristics: CameraCharacteristics? = null,
     private val isFrontFacingCamera: Boolean = false,
+    private val configureImageCaptureBuilder: (ImageCapture.Builder) -> Unit = {},
+    private val captureResultProvider: (timestampNanoseconds: Long) -> CaptureResult? = { null },
+    private val onPhotoSaved: (AndroidSavedPhotoResult, Location?, (String) -> Unit) -> Unit = { _, _, _ -> },
 ) : AndroidPhotoCapture {
-    private val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
     private val locationProvider = AndroidPhotoLocationProvider(context).apply {
         start()
     }
@@ -70,7 +71,7 @@ internal class AndroidImageCapture(
         .setJpegQuality(MAX_JPEG_QUALITY)
         .setResolutionSelector(MAXIMUM_PHOTO_RESOLUTION_SELECTOR)
         .setOutputFormat(outputFormat)
-        .also(captureResultExifMetadata::attachTo)
+        .also(configureImageCaptureBuilder)
         .build()
 
     override suspend fun capturePhoto(onError: (String) -> Unit) {
@@ -150,7 +151,7 @@ internal class AndroidImageCapture(
                 IMAGE_CAPTURE_LOG_TAG,
                 "captureInMemoryRawPhoto saved uri=${result.savedUri} imageFormat=${result.imageFormat.toAndroidImageFormatName()} fileFormat=${result.photoFileFormat}",
             )
-            result.writeMetadata(
+            result.handleSavedPhoto(
                 location = location,
                 onError = onError,
             )
@@ -177,7 +178,7 @@ internal class AndroidImageCapture(
             IMAGE_CAPTURE_LOG_TAG,
             "captureSinglePhoto saved uri=${outputFileResults.savedUri} imageFormat=${outputFileResults.imageFormat.toAndroidImageFormatName()} fileFormat=$photoFileFormat",
         )
-        outputFileResults.toAndroidSavedPhotoResult(photoFileFormat).writeMetadata(
+        outputFileResults.toAndroidSavedPhotoResult(photoFileFormat).handleSavedPhoto(
             location = location,
             onError = onError,
         )
@@ -208,7 +209,7 @@ internal class AndroidImageCapture(
                 IMAGE_CAPTURE_LOG_TAG,
                 "captureRawJpegPhoto saved uri=${result.savedUri} imageFormat=${result.imageFormat.toAndroidImageFormatName()} fileFormat=$photoFileFormat",
             )
-            result.toAndroidSavedPhotoResult(photoFileFormat).writeMetadata(
+            result.toAndroidSavedPhotoResult(photoFileFormat).handleSavedPhoto(
                 location = location,
                 onError = onError,
             )
@@ -221,7 +222,7 @@ internal class AndroidImageCapture(
     ): AndroidSavedPhotoResult {
         val photoFileFormat = AndroidPhotoFileFormat.fromImageFormat(format)
         val captureResult = captureResult()
-            ?: captureResultExifMetadata.snapshotCaptureResult(imageInfo.timestamp)
+            ?: captureResultProvider(imageInfo.timestamp)
         return try {
             val savedUri = when (photoFileFormat) {
                 AndroidPhotoFileFormat.Dng -> context.saveDngImageToMediaStore(
@@ -242,7 +243,7 @@ internal class AndroidImageCapture(
                 savedUri = savedUri,
                 imageFormat = format,
                 photoFileFormat = photoFileFormat,
-                captureResultMetadata = captureResult?.let(AndroidCaptureResultMetadata::from),
+                captureResult = captureResult,
                 rotationDegrees = imageInfo.rotationDegrees,
             )
         } finally {
@@ -250,40 +251,17 @@ internal class AndroidImageCapture(
         }
     }
 
-    private fun AndroidSavedPhotoResult.writeMetadata(
+    private fun AndroidSavedPhotoResult.handleSavedPhoto(
         location: Location?,
         onError: (String) -> Unit,
     ) {
-        if (!photoFileFormat.supportsExifMetadataWrite) {
-            Log.i(
-                IMAGE_CAPTURE_LOG_TAG,
-                "metadata write skipped uri=$savedUri fileFormat=$photoFileFormat reason=unsupported_exif_save",
-            )
-            return
-        }
-
         savedUri?.let { uri ->
             normalizeFrontFacingJpegIfNeeded(uri)
-            cameraExifMetadata.writeTo(
-                context = context,
-                uri = uri,
-                captureResultMetadata = captureResultMetadata ?: captureResultExifMetadata.snapshot(),
-                gpsLocation = location,
-            )?.let { throwable ->
-                Log.e(
-                    IMAGE_CAPTURE_LOG_TAG,
-                    "metadata write failed uri=$uri fileFormat=$photoFileFormat",
-                    throwable,
-                )
-                onError(throwable.platformErrorMessage())
-            } ?: Log.d(
-                IMAGE_CAPTURE_LOG_TAG,
-                "metadata write complete uri=$uri fileFormat=$photoFileFormat",
-            )
         } ?: Log.w(
             IMAGE_CAPTURE_LOG_TAG,
-            "metadata write skipped fileFormat=$photoFileFormat reason=missing_saved_uri",
+            "photo postprocess skipped fileFormat=$photoFileFormat reason=missing_saved_uri",
         )
+        onPhotoSaved(this, location, onError)
     }
 
     private fun AndroidSavedPhotoResult.normalizeFrontFacingJpegIfNeeded(uri: Uri) {
@@ -297,14 +275,6 @@ internal class AndroidImageCapture(
         )
     }
 }
-
-private data class AndroidSavedPhotoResult(
-    val savedUri: Uri?,
-    val imageFormat: Int,
-    val photoFileFormat: AndroidPhotoFileFormat,
-    val captureResultMetadata: AndroidCaptureResultMetadata? = null,
-    val rotationDegrees: Int? = null,
-)
 
 private fun ImageCapture.OutputFileResults.toAndroidSavedPhotoResult(photoFileFormat: AndroidPhotoFileFormat): AndroidSavedPhotoResult = AndroidSavedPhotoResult(
     savedUri = savedUri,
@@ -779,36 +749,6 @@ private fun Int.flipHorizontalDngExifOrientation(): Int = when (this) {
     PlatformExifInterface.ORIENTATION_TRANSVERSE -> PlatformExifInterface.ORIENTATION_ROTATE_270
     PlatformExifInterface.ORIENTATION_ROTATE_270 -> PlatformExifInterface.ORIENTATION_TRANSVERSE
     else -> PlatformExifInterface.ORIENTATION_FLIP_HORIZONTAL
-}
-
-internal enum class AndroidPhotoFileFormat(
-    val extension: String,
-    val mimeType: String,
-    val supportsExifMetadataWrite: Boolean,
-) {
-    Jpeg(
-        extension = "jpg",
-        mimeType = "image/jpeg",
-        supportsExifMetadataWrite = true,
-    ),
-    Dng(
-        extension = "dng",
-        mimeType = "image/x-adobe-dng",
-        supportsExifMetadataWrite = false,
-    ),
-    ;
-
-    companion object {
-        fun fromOutputFormat(outputFormat: Int): AndroidPhotoFileFormat = when (outputFormat) {
-            ImageCapture.OUTPUT_FORMAT_RAW -> Dng
-            else -> Jpeg
-        }
-
-        fun fromImageFormat(imageFormat: Int): AndroidPhotoFileFormat = when (imageFormat) {
-            ImageFormat.RAW_SENSOR -> Dng
-            else -> Jpeg
-        }
-    }
 }
 
 private fun AndroidPhotoFileFormat.contentValues(

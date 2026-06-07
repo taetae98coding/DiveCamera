@@ -99,6 +99,19 @@ class AndroidImageCaptureTest {
     }
 
     @Test
+    fun androidImageCaptureCallsExternalBuilderConfigurer() {
+        var configureCount = 0
+
+        createAndroidImageCapture(
+            configureImageCaptureBuilder = {
+                configureCount += 1
+            },
+        )
+
+        assertEquals(1, configureCount)
+    }
+
+    @Test
     fun androidDngPhotoFileFormatDoesNotSupportExifMetadataWrite() {
         val photoFileFormat = AndroidPhotoFileFormat.fromImageFormat(ImageFormat.RAW_SENSOR)
 
@@ -359,10 +372,14 @@ class AndroidImageCaptureTest {
         assertEquals(GPS_LONGITUDE, latLong[1], GPS_COORDINATE_DELTA)
     }
 
-    private fun createAndroidImageCapture(outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG): AndroidImageCapture = AndroidImageCapture(
+    private fun createAndroidImageCapture(
+        outputFormat: Int = ImageCapture.OUTPUT_FORMAT_JPEG,
+        configureImageCaptureBuilder: (ImageCapture.Builder) -> Unit = {},
+    ): AndroidImageCapture = AndroidImageCapture(
         context = ApplicationProvider.getApplicationContext(),
         targetRotation = Surface.ROTATION_0,
         outputFormat = outputFormat,
+        configureImageCaptureBuilder = configureImageCaptureBuilder,
     )
 
     private fun createAndroidCameraExifMetadata(physicalCameraMetadata: Map<String, AndroidPhysicalCameraMetadata> = emptyMap()): AndroidCameraExifMetadata = AndroidCameraExifMetadata(

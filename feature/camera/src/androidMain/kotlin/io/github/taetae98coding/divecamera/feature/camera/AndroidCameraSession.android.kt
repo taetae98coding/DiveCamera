@@ -2,7 +2,7 @@ package io.github.taetae98coding.divecamera.feature.camera
 
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraManager as AndroidCamera2Manager
 import android.hardware.camera2.CaptureRequest
 import android.util.Log
 import android.util.Range
@@ -25,14 +25,14 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
-internal fun CameraController.createCameraSession(
+internal fun CameraManager.createCameraSession(
     context: Context,
     lifecycleOwner: LifecycleOwner,
     targetRotation: Int,
     captureMode: CameraCaptureMode,
     selectedCameraLens: CameraLens?,
 ): AndroidCameraSession = AndroidCameraSession(
-    cameraController = this,
+    cameraManager = this,
     context = context,
     lifecycleOwner = lifecycleOwner,
     targetRotation = targetRotation,
@@ -41,7 +41,7 @@ internal fun CameraController.createCameraSession(
 )
 
 internal class AndroidCameraSession(
-    private val cameraController: CameraController,
+    private val cameraManager: CameraManager,
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val targetRotation: Int,
@@ -53,7 +53,8 @@ internal class AndroidCameraSession(
 
     private val cameraPreview = AndroidCameraPreview(
         targetRotation = targetRotation,
-        onCaptureResult = { captureResultMetadata ->
+        onCaptureResult = { captureResult ->
+            val captureResultMetadata = AndroidCaptureResultMetadata.from(captureResult)
             val captureResultCameraExposureInfo = captureResultMetadata
                 .toCameraExposureInfo(
                     focalLengthIn35mmFilmMillimeters = cameraExifMetadata.focalLengthIn35mmFilm(
@@ -62,7 +63,7 @@ internal class AndroidCameraSession(
                     ),
                 )
             latestCaptureResultCameraExposureInfo = captureResultCameraExposureInfo
-            cameraController.updateCameraExposureInfo(
+            cameraManager.updateCameraExposureInfo(
                 captureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
             )
         },
@@ -82,10 +83,10 @@ internal class AndroidCameraSession(
                 CAMERA_SESSION_LOG_TAG,
                 "bind start captureMode=$captureMode targetRotation=$targetRotation",
             )
-            cameraController.updateImageCapture(null)
-            cameraController.updateVideoCapture(null)
-            cameraController.updateExposureControl(null)
-            cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
+            cameraManager.updateImageCapture(null)
+            cameraManager.updateVideoCapture(null)
+            cameraManager.updateExposureControl(null)
+            cameraManager.updateCameraExposureInfo(CameraExposureInfo.Unknown)
             val provider = ProcessCameraProvider.awaitInstance(context)
             val cameraLensCandidates = context.cameraLensCandidates(provider)
             val selectedLensForBind = selectedCameraLens
@@ -128,17 +129,37 @@ internal class AndroidCameraSession(
                     nextVideoCapture.useCase,
                 )
                 videoCapture = nextVideoCapture
-                cameraController.updateVideoCapture(nextVideoCapture)
+                cameraManager.updateVideoCapture(nextVideoCapture)
                 boundCamera
             } else {
+                val captureResultExifMetadata = AndroidCaptureResultExifMetadata()
                 val nextImageCapture = AndroidImageCapture(
                     context = context,
                     captureMode = captureMode,
                     targetRotation = targetRotation,
                     outputFormat = requireNotNull(selectedOutputFormat),
-                    cameraExifMetadata = cameraExifMetadata,
                     cameraCharacteristics = cameraCharacteristics,
                     isFrontFacingCamera = camera.cameraInfo.isFrontFacing(),
+                    configureImageCaptureBuilder = captureResultExifMetadata::attachTo,
+                    captureResultProvider = captureResultExifMetadata::snapshotCaptureResult,
+                    onPhotoSaved = { savedPhotoResult, location, onError ->
+                        cameraExifMetadata.writeTo(
+                            context = context,
+                            savedPhotoResult = savedPhotoResult,
+                            captureResultMetadata = captureResultExifMetadata.snapshot(),
+                            gpsLocation = location,
+                        )?.let { throwable ->
+                            Log.e(
+                                CAMERA_SESSION_LOG_TAG,
+                                "metadata write failed uri=${savedPhotoResult.savedUri} fileFormat=${savedPhotoResult.photoFileFormat}",
+                                throwable,
+                            )
+                            onError(throwable.platformErrorMessage())
+                        } ?: Log.d(
+                            CAMERA_SESSION_LOG_TAG,
+                            "metadata write complete uri=${savedPhotoResult.savedUri} fileFormat=${savedPhotoResult.photoFileFormat}",
+                        )
+                    },
                 )
                 val boundCamera = provider.bindToLifecycle(
                     lifecycleOwner,
@@ -147,21 +168,21 @@ internal class AndroidCameraSession(
                     nextImageCapture.useCase,
                 )
                 imageCapture = nextImageCapture
-                cameraController.updateImageCapture(nextImageCapture)
+                cameraManager.updateImageCapture(nextImageCapture)
                 boundCamera
             }
             cameraProvider = provider
-            cameraController.updateRawCaptureSupported(isRawCaptureSupported)
-            cameraController.updateCameraLenses(
+            cameraManager.updateRawCaptureSupported(isRawCaptureSupported)
+            cameraManager.updateCameraLenses(
                 availableLenses = cameraLensCandidates.map(AndroidCameraLensCandidate::cameraLens),
             )
-            cameraController.updateExposureControl(
+            cameraManager.updateExposureControl(
                 boundCamera.toAndroidExposureControl(
                     cameraCharacteristics = cameraCharacteristics,
                     onExposureInfoChanged = ::updateExposureInfoFallback,
                 ),
             )
-            cameraController.updateCameraExposureInfo(cameraExposureInfoFallback)
+            cameraManager.updateCameraExposureInfo(cameraExposureInfoFallback)
             Log.d(
                 CAMERA_SESSION_LOG_TAG,
                 "bind complete captureMode=$captureMode outputFormat=${selectedOutputFormat?.toImageCaptureOutputFormatName()}",
@@ -182,10 +203,10 @@ internal class AndroidCameraSession(
 
     fun release() {
         isReleased = true
-        cameraController.updateImageCapture(null)
-        cameraController.updateVideoCapture(null)
-        cameraController.updateExposureControl(null)
-        cameraController.updateCameraExposureInfo(CameraExposureInfo.Unknown)
+        cameraManager.updateImageCapture(null)
+        cameraManager.updateVideoCapture(null)
+        cameraManager.updateExposureControl(null)
+        cameraManager.updateCameraExposureInfo(CameraExposureInfo.Unknown)
         cameraProvider?.unbindCurrentSessionUseCases()
         imageCapture = null
         videoCapture = null
@@ -228,7 +249,7 @@ internal class AndroidCameraSession(
             focalLengthIn35mmFilmMillimeters = cameraExposureInfo.focalLengthIn35mmFilmMillimeters
                 ?: cameraExposureInfoFallback.focalLengthIn35mmFilmMillimeters,
         )
-        cameraController.updateCameraExposureInfo(
+        cameraManager.updateCameraExposureInfo(
             latestCaptureResultCameraExposureInfo.withFallback(cameraExposureInfoFallback),
         )
     }
@@ -446,7 +467,7 @@ private fun Context.cameraCharacteristics(cameraInfo: CameraInfo): CameraCharact
         Camera2CameraInfo.from(cameraInfo).cameraId
     }.getOrNull() ?: return null
     return runCatching {
-        getSystemService(CameraManager::class.java)?.getCameraCharacteristics(cameraId)
+        getSystemService(AndroidCamera2Manager::class.java)?.getCameraCharacteristics(cameraId)
     }.getOrNull()
 }
 
@@ -588,3 +609,5 @@ private fun Int.toImageCaptureOutputFormatName(): String = when (this) {
     ImageCapture.OUTPUT_FORMAT_RAW_JPEG -> "RAW_JPEG"
     else -> "unknown($this)"
 }
+
+private fun Throwable.platformErrorMessage(): String = message ?: toString()

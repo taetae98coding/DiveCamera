@@ -3,7 +3,7 @@ package io.github.taetae98coding.divecamera.feature.camera
 import android.content.Context
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraManager as AndroidCamera2Manager
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
@@ -53,6 +53,39 @@ internal data class AndroidCameraExifMetadata(
                 exif.saveAttributes()
             }
         }.exceptionOrNull()
+    }
+
+    fun writeTo(
+        context: Context,
+        savedPhotoResult: AndroidSavedPhotoResult,
+        captureResultMetadata: AndroidCaptureResultMetadata? = null,
+        gpsLocation: Location? = null,
+    ): Throwable? {
+        if (!savedPhotoResult.photoFileFormat.supportsExifMetadataWrite) {
+            Log.i(
+                ANDROID_CAMERA_EXIF_LOG_TAG,
+                "metadata write skipped uri=${savedPhotoResult.savedUri} fileFormat=${savedPhotoResult.photoFileFormat} reason=unsupported_exif_save",
+            )
+            return null
+        }
+
+        val uri = savedPhotoResult.savedUri
+            ?: run {
+                Log.w(
+                    ANDROID_CAMERA_EXIF_LOG_TAG,
+                    "metadata write skipped fileFormat=${savedPhotoResult.photoFileFormat} reason=missing_saved_uri",
+                )
+                return null
+            }
+        val effectiveCaptureResultMetadata = savedPhotoResult.captureResult
+            ?.let(AndroidCaptureResultMetadata::from)
+            ?: captureResultMetadata
+        return writeTo(
+            context = context,
+            uri = uri,
+            captureResultMetadata = effectiveCaptureResultMetadata,
+            gpsLocation = gpsLocation,
+        )
     }
 
     internal fun writeTo(
@@ -200,7 +233,7 @@ internal data class AndroidCameraExifMetadata(
             val camera2Info = runCatching { Camera2CameraInfo.from(cameraInfo) }.getOrNull()
             val cameraId = runCatching { camera2Info?.cameraId }.getOrNull()
             val physicalCameraMetadata = context
-                .getSystemService(CameraManager::class.java)
+                .getSystemService(AndroidCamera2Manager::class.java)
                 ?.physicalCameraMetadata(cameraId)
                 .orEmpty()
 
@@ -441,7 +474,7 @@ private fun Range<Int>.toAndroidIntRange(): AndroidIntRange = AndroidIntRange(
     upper = upper,
 )
 
-private fun CameraManager.physicalCameraMetadata(cameraId: String?): Map<String, AndroidPhysicalCameraMetadata> {
+private fun AndroidCamera2Manager.physicalCameraMetadata(cameraId: String?): Map<String, AndroidPhysicalCameraMetadata> {
     if (cameraId == null) {
         return emptyMap()
     }
@@ -553,4 +586,5 @@ private const val METADATA_DECIMAL_SCALE = 100.0
 private const val FULL_FRAME_WIDTH_MM = 36.0
 private const val FULL_FRAME_HEIGHT_MM = 24.0
 private const val MAX_CAPTURE_RESULT_CACHE_SIZE = 8
+private const val ANDROID_CAMERA_EXIF_LOG_TAG = "DiveCameraExif"
 private const val ANDROID_CAPTURE_RESULT_METADATA_LOG_TAG = "DiveCameraCapture"
