@@ -3,6 +3,8 @@
 ## ViewFinder
 
 - ViewFinder는 플랫폼 카메라 미리보기 API가 제공하는 프레임을 표시한다.
+- 공통 ViewFinder는 사진 캡처 모드에서 `3:4`, `VIDEO` 캡처 모드에서 `9:16` portrait 비율을 사용한다.
+- iOS ViewFinder는 영상 프리셋처럼 카메라 프레임 비율이 ViewFinder 비율과 다를 때 흰 여백이 노출되지 않도록 `AVCaptureVideoPreviewLayer.videoGravity`를 `AVLayerVideoGravityResizeAspectFill`로 설정한다.
 - Android 카메라 세션 bind 중 발생한 non-cancellation 예외는 현재 Snackbar로 전달하지 않고 카메라 준비 상태를 `Busy`에 머무르게 한다.
 - 렌즈 전환은 촬영 정보 오버레이의 `LENS` 항목 클릭 이벤트를 카메라 컨트롤러의 렌즈 index 증가로 전달하고, 선택 렌즈 index가 바뀌면 플랫폼 카메라 세션을 다시 생성하는 방식으로 처리한다.
 - 카메라 컨트롤러는 플랫폼이 최초로 제공한 non-empty 렌즈 목록을 보관하고, 이후 렌즈 전환으로 발생한 세션 재생성이 현재 렌즈 목록이나 선택 index를 덮어쓰지 않는다.
@@ -28,11 +30,13 @@
 - Android 활성 physical 카메라 센서 크기를 확인할 수 없으면 logical 카메라의 `CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE`를 사용한다.
 - Android 노출 보정 EV값은 현재 캡처 결과에서 직접 읽지 않고 CameraX `CameraInfo.exposureState`의 `exposureCompensationIndex`와 `exposureCompensationStep`을 곱한 값을 사용한다.
 - Android 노출 보정 EV 설정은 CameraX `CameraControl.setExposureCompensationIndex()`를 사용한다.
+- Android CameraX `CameraControl`은 현재 바인딩된 카메라 UseCase 출력에 영향을 주는 컨트롤 API이므로 `VideoCapture`가 바인딩된 비디오 모드에서도 노출 보정 EV를 같은 경로로 적용한다.
 - Android 노출 보정 EV 설정은 사용자가 선택한 1/3 EV 단위 값을 기기가 제공하는 `exposureCompensationStep`에 맞는 가장 가까운 exposure compensation index로 변환한다.
 - Android 노출 보정 EV 설정은 앱 정책 범위 `-2..+2`와 기기가 제공하는 `exposureCompensationRange`를 함께 적용한다.
 - Android 노출 보정 EV 설정 완료 후 화면 표시용 노출 보정 EV fallback은 적용된 exposure compensation index와 `exposureCompensationStep`을 곱한 값으로 갱신한다.
 - Android 자동 노출 모드 설정은 CameraX 노출 보정 index를 사용해 EV값을 적용하고, Camera2Interop `CaptureRequest.CONTROL_AE_MODE_ON`을 반복 요청 옵션에 설정한다.
 - Android 수동 노출 모드 설정은 Camera2Interop `CaptureRequest.CONTROL_AE_MODE_OFF`, `SENSOR_SENSITIVITY`, `SENSOR_EXPOSURE_TIME`을 반복 요청 옵션에 설정한다.
+- Android 비디오 모드는 수동 노출 반복 요청 옵션을 사용하지 않고 자동 노출 반복 요청 옵션만 사용한다.
 - Android 미리보기 캡처 결과가 일부 값을 제공하지 않으면 `CameraCharacteristics`와 `CameraInfo.exposureState`에서 만든 fallback 촬영 정보를 사용한다.
 - Android fallback 촬영 정보의 조리개와 물리 초점거리는 지원 값이 하나로 확정될 때만 사용한다.
 - Android 사진 저장 후처리는 CameraX `ImageCapture` UseCase에도 Camera2Interop 캡처 콜백을 연결해 최신 캡처 결과 메타데이터를 보관하고, 저장 완료 후 EXIF 표준 태그가 비어 있을 때 ISO, 조리개 F값, 셔터 스피드, 물리 초점거리, 35mm 환산 초점거리를 추가 기록한다.
@@ -58,6 +62,7 @@
 - iOS 노출 보정 EV 설정은 앱 정책 범위 `-2..+2`와 기기가 제공하는 `minExposureTargetBias..maxExposureTargetBias`를 함께 적용한다.
 - iOS 자동 노출 모드 설정은 `AVCaptureDevice.setExposureMode(AVCaptureExposureModeContinuousAutoExposure)`와 `setExposureTargetBias(_:completionHandler:)`를 사용한다.
 - iOS 수동 노출 모드 설정은 `AVCaptureDevice.setExposureModeCustomWithDuration(_:ISO:completionHandler:)`를 사용한다.
+- iOS 비디오 모드는 수동 노출 설정을 사용하지 않고 자동 노출 설정만 사용한다.
 - iOS 미리보기 기준 렌즈 mm 표시는 `AVCaptureDevice.activeFormat.videoFieldOfView`의 수평 화각과 `AVCaptureDevice.videoZoomFactor`를 사용해 35mm 환산 초점거리로 계산한다.
 - iOS 35mm 환산 초점거리는 full-frame 가로 폭 36mm 기준으로 `36 / (2 * tan(horizontalFieldOfView / 2)) * videoZoomFactor`를 계산한 뒤 정수 mm로 반올림한다.
 - iOS 미리보기 기준 렌즈 mm 값은 AVFoundation이 현재 구현에서 직접 제공하는 저장 사진의 갤러리 표시 초점거리 값이 아니라, 현재 수평 화각과 줌 배율 기반 추정값이다.
@@ -70,8 +75,11 @@
 ## 캡처 모드 구현 배경
 
 - 공통 UI의 `RAW+JPG` 모드 라벨은 원형 버튼 안에서 잘리거나 압축되지 않도록 `RAW`와 `JPG`를 줄바꿈한 문자열로 표시한다.
-- 공통 캡처 모드 모델은 현재 사진 캡처 모드만 포함한다.
-- `VIDEO` 캡처 모드는 이후 비디오 캡처가 추가될 때 같은 전환 순서에 붙일 확장 지점으로 스펙에 유지한다.
+- 공통 UI의 `VIDEO` 모드 라벨은 캡처 모드 전환 버튼 안에 `VIDEO`로 표시한다.
+- 공통 캡처 준비 상태는 현재 선택된 캡처 모드의 UseCase가 연결되었는지를 기준으로 갱신한다.
+- 공통 비디오 녹화 상태는 녹화 여부와 녹화 시간을 포함한다.
+- 공통 비디오 녹화 시간 표시는 `MM:SS` 형식을 기본으로 사용하고 1시간 이상이면 `H:MM:SS` 형식을 사용한다.
+- 공통 비디오 모드의 노출 Dialog는 기존 노출 설정 Dialog를 재사용하되 수동 노출 모드 선택을 숨긴다.
 
 ### Android JPG
 
@@ -98,6 +106,18 @@
 - Android `RAW+JPG` 모드는 기기가 CameraX RAW+JPEG 출력을 지원하지 않으면 Android `JPG` 모드 정책에 따라 Ultra HDR JPEG 또는 표준 JPEG로 저장한다.
 - Android RAW 지원 상태는 CameraX가 `OUTPUT_FORMAT_RAW` 또는 `OUTPUT_FORMAT_RAW_JPEG` 중 하나라도 제공하면 지원으로 표시한다.
 - Android `RAW+JPG` 모드에서 `OUTPUT_FORMAT_RAW`만 제공되고 `OUTPUT_FORMAT_RAW_JPEG`가 제공되지 않으면 RAW 미지원 주의 아이콘 없이 Android `JPG` 모드 정책으로 fallback될 수 있다.
+
+### Android VIDEO
+
+- Android `VIDEO` 모드는 CameraX `VideoCapture<Recorder>` UseCase를 사용한다.
+- Android `VIDEO` 모드는 `Preview`와 `VideoCapture`를 함께 바인딩한다.
+- Android `VIDEO` 모드는 `QualitySelector.fromOrderedList(listOf(Quality.UHD, Quality.FHD, Quality.HD, Quality.SD), FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))`를 사용해 4K UHD를 우선 요청하고 미지원 시 지원 품질로 fallback한다.
+- Android `VIDEO` 모드는 `VideoCapture.Builder.setTargetFrameRate(Range(60, 60))`으로 60fps를 target frame rate로 요청한다.
+- Android CameraX target frame rate는 동시 바인딩된 UseCase와 기기 제약을 반영한 선택 알고리즘의 입력이므로 실제 저장 fps와 다를 수 있다.
+- Android `VIDEO` 모드는 `Recorder.prepareRecording()`에 `MediaStoreOutputOptions`를 전달해 비디오 컬렉션에 저장한다.
+- Android `VIDEO` 모드는 `PendingRecording.withAudioEnabled()`를 사용해 오디오 녹음을 요청한다.
+- Android `VIDEO` 모드의 녹화 시간은 `VideoRecordEvent`가 제공하는 `RecordingStats.getRecordedDurationNanos()` 값을 사용한다.
+- Android `VIDEO` 모드의 전면 카메라 저장 결과는 `VideoCapture.MIRROR_MODE_ON_FRONT_ONLY`를 사용해 미리보기와 같은 좌우 방향을 요청한다.
 
 ### iOS JPG
 
@@ -128,6 +148,15 @@
 - iOS `RAW+JPG` 모드는 `AVCapturePhotoSettings.photoSettingsWithRawPixelFormatType`의 processed format으로 처리 사진을 함께 요청한다.
 - iOS Photos 등록은 `fileDataRepresentation()`이 전달되는 각 결과마다 `PHAssetCreationRequest`를 생성한다.
 - iOS `RAW+JPG` 결과가 Photos에서 하나의 페어 asset으로 묶여 보이는지는 Photos 프레임워크와 시스템 갤러리 정책을 따른다.
+
+### iOS VIDEO
+
+- iOS `VIDEO` 모드는 AVFoundation 동영상 출력 경로를 사용한다.
+- iOS `VIDEO` 모드는 `AVCaptureSessionPreset3840x2160`을 우선 요청하고, 사용할 수 없으면 `AVCaptureSessionPresetHigh`로 fallback한다.
+- iOS `VIDEO` 모드는 `AVCaptureDevice.formats`에서 3840x2160 해상도와 60fps frame rate range를 모두 지원하는 format을 찾으면 해당 format을 `activeFormat`으로 설정하고 `activeVideoMinFrameDuration`, `activeVideoMaxFrameDuration`을 1/60초로 설정한다.
+- iOS `VIDEO` 모드는 4K 60fps format을 찾을 수 없으면 session preset 기반 플랫폼 선택을 사용한다.
+- iOS `VIDEO` 모드는 Photos 라이브러리에 처리 비디오 파일을 등록한다.
+- iOS `VIDEO` 모드는 오디오 입력을 함께 구성한다.
 
 ## 메타데이터 구현 배경
 
@@ -162,6 +191,11 @@
 - [AndroidX ResolutionSelector](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)
 - [AndroidX ImageCapture.Metadata](https://developer.android.com/reference/androidx/camera/core/ImageCapture.Metadata)
 - [AndroidX CameraControl](https://developer.android.com/reference/androidx/camera/core/CameraControl)
+- [Android CameraX 비디오 캡처](https://developer.android.com/media/camera/camerax/video-capture)
+- [AndroidX VideoCapture](https://developer.android.com/reference/androidx/camera/video/VideoCapture)
+- [AndroidX Recorder](https://developer.android.com/reference/androidx/camera/video/Recorder)
+- [AndroidX MediaStoreOutputOptions](https://developer.android.com/reference/androidx/camera/video/MediaStoreOutputOptions)
+- [AndroidX RecordingStats](https://developer.android.com/reference/androidx/camera/video/RecordingStats)
 - [AndroidX ExifInterface](https://developer.android.com/reference/androidx/exifinterface/media/ExifInterface)
 - [AndroidX Camera2Interop](https://developer.android.com/reference/androidx/camera/camera2/interop/Camera2Interop)
 - [Android CaptureResult](https://developer.android.com/reference/android/hardware/camera2/CaptureResult)
