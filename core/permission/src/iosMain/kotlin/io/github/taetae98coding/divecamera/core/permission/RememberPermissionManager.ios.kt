@@ -3,31 +3,47 @@ package io.github.taetae98coding.divecamera.core.permission
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import platform.CoreLocation.CLLocationManager
 import platform.Foundation.NSNotificationCenter
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 
 @Composable
 actual fun rememberPermissionManager(): PermissionManager {
-    val permissionState = remember { IosPermissionState() }
-    val locationDelegate = remember(permissionState) {
-        LocationPermissionDelegate(
-            onAuthorizationChanged = permissionState::refreshLocationPermission,
+    val cameraPermissionManager = remember {
+        IosCameraPermissionManager()
+    }
+    val microphonePermissionManager = remember {
+        IosMicrophonePermissionManager()
+    }
+    val locationPermissionManager = remember {
+        IosLocationPermissionManager()
+    }
+    val photoSavePermissionManager = remember {
+        IosPhotoSavePermissionManager()
+    }
+    val appSettingsManager = remember {
+        IosAppSettingsManager()
+    }
+    val refreshablePermissionManagers = remember(
+        cameraPermissionManager,
+        microphonePermissionManager,
+        locationPermissionManager,
+        photoSavePermissionManager,
+    ) {
+        listOf(
+            cameraPermissionManager,
+            microphonePermissionManager,
+            locationPermissionManager,
+            photoSavePermissionManager,
         )
     }
-    val locationManager = remember(locationDelegate) {
-        CLLocationManager().apply {
-            delegate = locationDelegate
-        }
-    }
 
-    DisposableEffect(permissionState) {
+    DisposableEffect(refreshablePermissionManagers) {
         val observer = NSNotificationCenter.defaultCenter.addObserverForName(
             name = UIApplicationDidBecomeActiveNotification,
             `object` = null,
             queue = null,
         ) {
-            permissionState.refreshPermissions()
+            refreshablePermissionManagers.refreshPermissions()
         }
 
         onDispose {
@@ -35,10 +51,19 @@ actual fun rememberPermissionManager(): PermissionManager {
         }
     }
 
-    return remember(permissionState, locationManager) {
-        IosPermissionManager(
-            permissionState = permissionState,
-            locationManager = locationManager,
+    return remember(
+        cameraPermissionManager,
+        microphonePermissionManager,
+        locationPermissionManager,
+        photoSavePermissionManager,
+        appSettingsManager,
+    ) {
+        DelegatingPermissionManager(
+            cameraPermissionManager = cameraPermissionManager,
+            microphonePermissionManager = microphonePermissionManager,
+            locationPermissionManager = locationPermissionManager,
+            photoSavePermissionManager = photoSavePermissionManager,
+            appSettingsManager = appSettingsManager,
         )
     }
 }
