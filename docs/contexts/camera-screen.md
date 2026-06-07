@@ -90,6 +90,14 @@
 - 공통 비디오 녹화 상태는 녹화 여부와 녹화 시간을 포함한다.
 - 공통 비디오 녹화 시간 표시는 `MM:SS` 형식을 기본으로 사용하고 1시간 이상이면 `H:MM:SS` 형식을 사용한다.
 - 공통 비디오 모드의 노출 Dialog는 기존 노출 설정 Dialog를 재사용하되 수동 노출 모드 선택을 숨긴다.
+- 공통 UI의 볼륨 버튼 촬영은 화면 촬영 버튼과 같은 촬영 요청 함수를 사용한다.
+- Android 볼륨 버튼 촬영은 Compose `onPreviewKeyEvent`에서 `Key.VolumeUp`과 `Key.VolumeDown`을 처리한다.
+- Android 볼륨 버튼 촬영은 한 번 누른 동작이 `KeyDown`과 `KeyUp`으로 중복 처리되지 않도록 `KeyDown`에서만 촬영 요청을 실행한다.
+- iOS의 기기 볼륨 버튼은 Compose `onPreviewKeyEvent`의 하드웨어 키보드 이벤트로 전달되지 않는다.
+- iOS 17.2 이상 볼륨 버튼 촬영은 AVKit `AVCaptureEventInteraction`을 Compose window의 `UIViewController.view`에 등록해 처리한다.
+- iOS `AVCaptureEventInteraction`은 활성 카메라 캡처 앱에만 하드웨어 캡처 이벤트를 전달한다.
+- iOS `AVCaptureEventInteraction`은 카메라 미리보기 리소스가 비활성 상태이거나 촬영 준비 상태가 아니면 비활성화해 시스템 버튼 동작을 복원한다.
+- iOS 볼륨 버튼 촬영은 `AVCaptureEventPhaseEnded` 단계에서 촬영 요청을 실행한다.
 
 ### Android JPG
 

@@ -100,31 +100,37 @@
 96. Robolectric `androidHostTest`에서 `Ready` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 사진 촬영 버튼을 클릭하면 `CameraController.startVideoRecording()`이 호출된다.
 97. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 사진 촬영 버튼을 클릭하면 `CameraController.stopVideoRecording()`이 호출된다.
 98. Robolectric `androidHostTest`에서 `Busy` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 사진 촬영 버튼을 클릭해도 `CameraController.startVideoRecording()`이 호출되지 않는다.
-99. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이는 비디오 촬영 시간을 `00:00`으로 표시한다.
-100. Robolectric `androidHostTest`에서 비디오 녹화 시간이 있는 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이는 갱신된 비디오 촬영 시간을 표시한다.
-101. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이의 `ISO`, `F`, `S` 표시 영역은 제거된다.
-102. Robolectric `androidHostTest`에서 `Manual Mode`를 적용한 뒤 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이의 `EV` 표시 영역은 표시된다.
-103. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 촬영 정보 오버레이의 `EV` 표시 영역을 클릭했을 때 노출 설정 Dialog가 표시된다.
-104. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog는 `Auto Mode` 선택 버튼을 표시한다.
-105. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog는 `Manual Mode` 선택 버튼을 표시하지 않는다.
-106. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog에서 적용 버튼을 클릭할 때 `CameraController.setAutoExposure()`가 선택한 EV값으로 호출된다.
-107. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog에서 적용 버튼을 클릭해도 `CameraController.setManualExposure()`는 호출되지 않는다.
-108. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 캡처 모드 전환 버튼을 클릭해도 캡처 모드 전환 버튼은 `VIDEO`를 유지한다.
-109. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 `LENS` 표시 영역을 클릭해도 `CameraController.changeCameraLens()`는 호출되지 않는다.
-110. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 짧은 무입력 제한 시간을 둔 `CameraScreen`을 렌더링하면 제한 시간이 지나도 ViewFinder와 카메라 미리보기 호스트가 표시된다.
-111. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결하지 않은 상태이면 캡처 준비 상태는 `Busy`이다.
-112. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결하면 캡처 준비 상태는 `Ready`이다.
-113. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 녹화 시간 상태를 갱신하면 비디오 녹화 상태는 갱신한 값이다.
-114. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결한 상태에서 녹화 시작을 요청하면 비디오 촬영 객체의 녹화 시작을 호출한다.
-115. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결한 상태에서 녹화 중지를 요청하면 비디오 촬영 객체의 녹화 중지를 호출한다.
-116. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 생성하면 target frame rate는 `60..60`이다.
-117. Robolectric `androidHostTest`에서 Android 비디오 촬영 Recorder를 생성하면 품질 선택 우선순위는 `UHD`, `FHD`, `HD`, `SD` 순서이다.
-118. Robolectric `androidHostTest`에서 Android 사진 촬영 UseCase를 생성하면 외부 ImageCapture Builder 설정 callback이 호출된다.
-119. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 GPS 위치와 함께 생성하면 출력 옵션 위치는 GPS 위치와 같다.
-120. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 위치 없이 생성하면 출력 옵션 위치는 없다.
-121. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 HDR dynamic range로 생성하면 UseCase dynamic range는 HDR dynamic range이다.
-122. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 stabilization enabled로 생성하면 UseCase video stabilization은 enabled이다.
-123. Robolectric `androidHostTest`에서 Android 카메라 미리보기 UseCase를 생성하면 UseCase preview stabilization은 disabled이다.
+99. Robolectric `androidHostTest`에서 `Ready` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 볼륨 업 버튼을 누르면 `CameraController.capturePhoto(JPG)`가 호출된다.
+100. Robolectric `androidHostTest`에서 `Ready` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 볼륨 다운 버튼을 누르면 `CameraController.capturePhoto(JPG)`가 호출된다.
+101. Robolectric `androidHostTest`에서 `Busy` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 볼륨 업 버튼을 눌러도 `CameraController.capturePhoto()`가 호출되지 않는다.
+102. Robolectric `androidHostTest`에서 `Ready` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 볼륨 업 버튼을 누르면 `CameraController.startVideoRecording()`이 호출된다.
+103. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 볼륨 업 버튼을 누르면 `CameraController.stopVideoRecording()`이 호출된다.
+104. Robolectric `androidHostTest`에서 `Busy` 상태 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 볼륨 업 버튼을 눌러도 `CameraController.startVideoRecording()`이 호출되지 않는다.
+105. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이는 비디오 촬영 시간을 `00:00`으로 표시한다.
+106. Robolectric `androidHostTest`에서 비디오 녹화 시간이 있는 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이는 갱신된 비디오 촬영 시간을 표시한다.
+107. Robolectric `androidHostTest`에서 `CameraScreen`의 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이의 `ISO`, `F`, `S` 표시 영역은 제거된다.
+108. Robolectric `androidHostTest`에서 `Manual Mode`를 적용한 뒤 캡처 모드를 `VIDEO`로 변경하면 촬영 정보 오버레이의 `EV` 표시 영역은 표시된다.
+109. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 촬영 정보 오버레이의 `EV` 표시 영역을 클릭했을 때 노출 설정 Dialog가 표시된다.
+110. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog는 `Auto Mode` 선택 버튼을 표시한다.
+111. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog는 `Manual Mode` 선택 버튼을 표시하지 않는다.
+112. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog에서 적용 버튼을 클릭할 때 `CameraController.setAutoExposure()`가 선택한 EV값으로 호출된다.
+113. Robolectric `androidHostTest`에서 캡처 모드가 `VIDEO`이면 노출 설정 Dialog에서 적용 버튼을 클릭해도 `CameraController.setManualExposure()`는 호출되지 않는다.
+114. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 캡처 모드를 `VIDEO`로 변경한 뒤 캡처 모드 전환 버튼을 클릭해도 캡처 모드 전환 버튼은 `VIDEO`를 유지한다.
+115. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 `CameraScreen`을 렌더링하고 `LENS` 표시 영역을 클릭해도 `CameraController.changeCameraLens()`는 호출되지 않는다.
+116. Robolectric `androidHostTest`에서 비디오 녹화 중인 fake `CameraController`로 짧은 무입력 제한 시간을 둔 `CameraScreen`을 렌더링하면 제한 시간이 지나도 ViewFinder와 카메라 미리보기 호스트가 표시된다.
+117. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결하지 않은 상태이면 캡처 준비 상태는 `Busy`이다.
+118. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결하면 캡처 준비 상태는 `Ready`이다.
+119. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 녹화 시간 상태를 갱신하면 비디오 녹화 상태는 갱신한 값이다.
+120. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결한 상태에서 녹화 시작을 요청하면 비디오 촬영 객체의 녹화 시작을 호출한다.
+121. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결한 상태에서 녹화 중지를 요청하면 비디오 촬영 객체의 녹화 중지를 호출한다.
+122. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 생성하면 target frame rate는 `60..60`이다.
+123. Robolectric `androidHostTest`에서 Android 비디오 촬영 Recorder를 생성하면 품질 선택 우선순위는 `UHD`, `FHD`, `HD`, `SD` 순서이다.
+124. Robolectric `androidHostTest`에서 Android 사진 촬영 UseCase를 생성하면 외부 ImageCapture Builder 설정 callback이 호출된다.
+125. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 GPS 위치와 함께 생성하면 출력 옵션 위치는 GPS 위치와 같다.
+126. Robolectric `androidHostTest`에서 Android 비디오 출력 옵션을 위치 없이 생성하면 출력 옵션 위치는 없다.
+127. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 HDR dynamic range로 생성하면 UseCase dynamic range는 HDR dynamic range이다.
+128. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 stabilization enabled로 생성하면 UseCase video stabilization은 enabled이다.
+129. Robolectric `androidHostTest`에서 Android 카메라 미리보기 UseCase를 생성하면 UseCase preview stabilization은 disabled이다.
 
 ## unitTest
 
