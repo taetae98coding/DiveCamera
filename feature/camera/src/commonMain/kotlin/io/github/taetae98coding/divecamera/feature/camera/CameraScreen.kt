@@ -26,7 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.keepScreenOn
@@ -91,6 +96,38 @@ internal fun CameraScreen(
         }
     }
 
+    fun requestCapture() {
+        if (
+            captureReadinessState == CaptureReadinessState.Ready ||
+            videoRecordingState.isRecording
+        ) {
+            if (captureMode == CameraCaptureMode.Video) {
+                exposureMode = CameraExposureMode.Auto
+                if (videoRecordingState.isRecording) {
+                    cameraController.stopVideoRecording()
+                } else {
+                    cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
+                    cameraController.startVideoRecording()
+                }
+            } else {
+                coroutineScope.launch {
+                    cameraController.capturePhoto(captureMode)
+                }
+            }
+        }
+    }
+
+    CameraHardwareCaptureButtonEffect(
+        enabled = isCameraPreviewActive && (
+            captureReadinessState == CaptureReadinessState.Ready ||
+                videoRecordingState.isRecording
+            ),
+        onCapture = {
+            currentRegisterInput()
+            requestCapture()
+        },
+    )
+
     Surface(
         modifier = modifier
             .fillMaxSize()
@@ -103,9 +140,17 @@ internal fun CameraScreen(
                     }
                 }
             }
-            .onPreviewKeyEvent {
+            .onPreviewKeyEvent { event ->
+                val wasCameraPreviewActive = isCameraPreviewActive
                 currentRegisterInput()
-                false
+                if (event.isVolumeCaptureKey()) {
+                    if (wasCameraPreviewActive && event.type == KeyEventType.KeyDown) {
+                        requestCapture()
+                    }
+                    true
+                } else {
+                    false
+                }
             }
             .focusRequester(focusRequester)
             .focusable()
@@ -175,24 +220,7 @@ internal fun CameraScreen(
                     videoRecordingState = videoRecordingState,
                     onClick = {
                         currentRegisterInput()
-                        if (
-                            captureReadinessState == CaptureReadinessState.Ready ||
-                            videoRecordingState.isRecording
-                        ) {
-                            if (captureMode == CameraCaptureMode.Video) {
-                                exposureMode = CameraExposureMode.Auto
-                                if (videoRecordingState.isRecording) {
-                                    cameraController.stopVideoRecording()
-                                } else {
-                                    cameraController.setAutoExposure(cameraExposureInfo.exposureCompensationEv ?: 0.0)
-                                    cameraController.startVideoRecording()
-                                }
-                            } else {
-                                coroutineScope.launch {
-                                    cameraController.capturePhoto(captureMode)
-                                }
-                            }
-                        }
+                        requestCapture()
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -244,3 +272,5 @@ internal fun CameraScreen(
         }
     }
 }
+
+private fun KeyEvent.isVolumeCaptureKey(): Boolean = key == Key.VolumeUp || key == Key.VolumeDown
