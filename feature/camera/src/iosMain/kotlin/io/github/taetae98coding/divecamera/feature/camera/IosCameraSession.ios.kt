@@ -51,22 +51,22 @@ import platform.darwin.dispatch_source_set_timer
 import platform.darwin.dispatch_time
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun CameraController.createCameraSession(
+internal fun CameraManager.createCameraSession(
     captureMode: CameraCaptureMode,
     selectedCameraLens: CameraLens?,
 ): IosCameraSession = IosCameraSession(
-    cameraController = this,
+    cameraManager = this,
     captureMode = captureMode,
     selectedCameraLens = selectedCameraLens,
 )
 
 @OptIn(ExperimentalForeignApi::class)
 internal class IosCameraSession(
-    private val cameraController: CameraController,
+    private val cameraManager: CameraManager,
     private val captureMode: CameraCaptureMode,
     private val selectedCameraLens: CameraLens?,
 ) {
-    private val cameraSessionId = cameraController.registerCameraSession()
+    private val cameraSessionId = cameraManager.registerCameraSession()
     private val session = AVCaptureSession()
     private val sessionQueue = dispatch_queue_create(
         label = "io.github.taetae98coding.divecamera.camera.preview",
@@ -97,16 +97,16 @@ internal class IosCameraSession(
     }
 
     fun start() {
-        cameraController.updateImageCapture(
+        cameraManager.updateImageCapture(
             imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
             cameraSessionId = cameraSessionId,
         )
-        cameraController.updateVideoCapture(
+        cameraManager.updateVideoCapture(
             videoCapture = videoCapture.takeIf(IosVideoCapture::isCaptureConfigured),
             cameraSessionId = cameraSessionId,
         )
         cameraDevice?.let { device ->
-            cameraController.updateCameraExposureInfo(
+            cameraManager.updateCameraExposureInfo(
                 cameraExposureInfo = device.toCameraExposureInfo(),
                 cameraSessionId = cameraSessionId,
             )
@@ -124,19 +124,19 @@ internal class IosCameraSession(
     }
 
     fun release() {
-        cameraController.updateImageCapture(
+        cameraManager.updateImageCapture(
             imageCapture = null,
             cameraSessionId = cameraSessionId,
         )
-        cameraController.updateVideoCapture(
+        cameraManager.updateVideoCapture(
             videoCapture = null,
             cameraSessionId = cameraSessionId,
         )
-        cameraController.updateExposureControl(
+        cameraManager.updateExposureControl(
             exposureControl = null,
             cameraSessionId = cameraSessionId,
         )
-        cameraController.updateCameraExposureInfo(
+        cameraManager.updateCameraExposureInfo(
             cameraExposureInfo = CameraExposureInfo.Unknown,
             cameraSessionId = cameraSessionId,
         )
@@ -167,19 +167,24 @@ internal class IosCameraSession(
                 device.prefer4k60VideoFormat()
                 configureAudioInput()
                 videoCapture.configure(session, device)
-                cameraController.updateVideoCapture(
+                cameraManager.updateVideoCapture(
                     videoCapture = videoCapture.takeIf(IosVideoCapture::isCaptureConfigured),
                     cameraSessionId = cameraSessionId,
                 )
             } else {
-                imageCapture.configure(session, device)
-                cameraController.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
-                cameraController.updateImageCapture(
+                val cameraExifMetadata = IosCameraExifMetadata.from(device)
+                imageCapture.configure(
+                    session = session,
+                    device = device,
+                    photoSettingsMetadata = cameraExifMetadata::photoSettingsMetadata,
+                )
+                cameraManager.updateRawCaptureSupported(imageCapture.isRawCaptureSupported)
+                cameraManager.updateImageCapture(
                     imageCapture = imageCapture.takeIf(IosImageCapture::isCaptureConfigured),
                     cameraSessionId = cameraSessionId,
                 )
             }
-            cameraController.updateExposureControl(
+            cameraManager.updateExposureControl(
                 exposureControl = IosCameraDeviceExposureControl(
                     device = device,
                     dispatchOnSessionQueue = { block ->
@@ -190,10 +195,10 @@ internal class IosCameraSession(
                 ),
                 cameraSessionId = cameraSessionId,
             )
-            cameraController.updateCameraLenses(
+            cameraManager.updateCameraLenses(
                 availableLenses = cameraLensCandidates.map(IosCameraLensCandidate::cameraLens),
             )
-            cameraController.updateCameraExposureInfo(
+            cameraManager.updateCameraExposureInfo(
                 cameraExposureInfo = device.toCameraExposureInfo(),
                 cameraSessionId = cameraSessionId,
             )
@@ -275,7 +280,7 @@ internal class IosCameraSession(
 
     private fun updateExposureInfo() {
         cameraDevice?.let { device ->
-            cameraController.updateCameraExposureInfo(
+            cameraManager.updateCameraExposureInfo(
                 cameraExposureInfo = device.toCameraExposureInfo(),
                 cameraSessionId = cameraSessionId,
             )
