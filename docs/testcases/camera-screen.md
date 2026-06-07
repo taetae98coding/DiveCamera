@@ -119,6 +119,7 @@
 115. Robolectric `androidHostTest`에서 Android 카메라 컨트롤러가 비디오 촬영 객체를 연결한 상태에서 녹화 중지를 요청하면 비디오 촬영 객체의 녹화 중지를 호출한다.
 116. Robolectric `androidHostTest`에서 Android 비디오 촬영 UseCase를 생성하면 target frame rate는 `60..60`이다.
 117. Robolectric `androidHostTest`에서 Android 비디오 촬영 Recorder를 생성하면 품질 선택 우선순위는 `UHD`, `FHD`, `HD`, `SD` 순서이다.
+118. Robolectric `androidHostTest`에서 Android 사진 촬영 UseCase를 생성하면 외부 ImageCapture Builder 설정 callback이 호출된다.
 
 ## unitTest
 

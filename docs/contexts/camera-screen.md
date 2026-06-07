@@ -6,8 +6,18 @@
 - 공통 ViewFinder는 사진 캡처 모드에서 `3:4`, `VIDEO` 캡처 모드에서 `9:16` portrait 비율을 사용한다.
 - iOS ViewFinder는 영상 프리셋처럼 카메라 프레임 비율이 ViewFinder 비율과 다를 때 흰 여백이 노출되지 않도록 `AVCaptureVideoPreviewLayer.videoGravity`를 `AVLayerVideoGravityResizeAspectFill`로 설정한다.
 - Android 카메라 세션 bind 중 발생한 non-cancellation 예외는 현재 Snackbar로 전달하지 않고 카메라 준비 상태를 `Busy`에 머무르게 한다.
-- 렌즈 전환은 촬영 정보 오버레이의 `LENS` 항목 클릭 이벤트를 카메라 컨트롤러의 렌즈 index 증가로 전달하고, 선택 렌즈 index가 바뀌면 플랫폼 카메라 세션을 다시 생성하는 방식으로 처리한다.
-- 카메라 컨트롤러는 플랫폼이 최초로 제공한 non-empty 렌즈 목록을 보관하고, 이후 렌즈 전환으로 발생한 세션 재생성이 현재 렌즈 목록이나 선택 index를 덮어쓰지 않는다.
+- 렌즈 전환은 촬영 정보 오버레이의 `LENS` 항목 클릭 이벤트를 CameraManager의 렌즈 index 증가로 전달하고, 선택 렌즈 index가 바뀌면 플랫폼 카메라 세션을 다시 생성하는 방식으로 처리한다.
+- CameraManager는 플랫폼이 최초로 제공한 non-empty 렌즈 목록을 보관하고, 이후 렌즈 전환으로 발생한 세션 재생성이 현재 렌즈 목록이나 선택 index를 덮어쓰지 않는다.
+
+## 카메라 구성 요소 경계
+
+- 카메라 화면의 UI-facing 카메라 계약은 CameraManager가 제공하고, CameraManager는 촬영 준비 상태, RAW 지원 상태, 촬영 정보, 렌즈 상태, 비디오 녹화 상태, 저장 오류 메시지를 관리한다.
+- Preview, ImageCapture, VideoCapture, Exif 구성 요소는 서로의 concrete 구현을 직접 참조하지 않는다.
+- Preview 구성 요소는 미리보기 UseCase 또는 preview view를 제공하고, 캡처 결과 원천 이벤트는 CameraManager 오케스트레이션 계층으로 전달한다.
+- ImageCapture 구성 요소는 사진 촬영과 파일 저장을 담당하고, 저장 후 메타데이터 후처리는 CameraManager 오케스트레이션 계층이 연결한 callback으로 위임한다.
+- VideoCapture 구성 요소는 비디오 녹화 시작, 중지, 녹화 시간 갱신, 저장 오류 전달을 담당한다.
+- Exif 구성 요소는 플랫폼이 제공한 카메라 메타데이터와 캡처 결과 메타데이터를 저장 결과에 기록하는 책임만 가진다.
+- CameraManager 오케스트레이션 계층은 선택 렌즈, 캡처 모드, 플랫폼 세션, Preview, ImageCapture, VideoCapture, Exif, 노출 제어를 연결한다.
 
 ## 촬영 정보 수집 방식
 
