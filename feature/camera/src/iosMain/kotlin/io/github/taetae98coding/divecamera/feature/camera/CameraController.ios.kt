@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @Composable
-internal actual fun rememberCameraController(): CameraController = remember {
-    IosCameraController()
+internal actual fun rememberCameraManager(): CameraManager = remember {
+    IosCameraManager()
 }
 
-private class IosCameraController : CameraController {
+private class IosCameraManager : CameraManager {
     private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
@@ -197,15 +197,17 @@ internal interface IosExposureControl {
     )
 }
 
+private typealias IosCameraController = IosCameraManager
+
 internal fun CameraController.registerCameraSession(): Long {
-    return (this as? IosCameraController)?.registerCameraSession() ?: 0L
+    return (this as? IosCameraManager)?.registerCameraSession() ?: 0L
 }
 
 internal fun CameraController.updateImageCapture(
     imageCapture: IosImageCapture?,
     cameraSessionId: Long,
 ) {
-    (this as? IosCameraController)?.updateImageCapture(
+    (this as? IosCameraManager)?.updateImageCapture(
         imageCapture = imageCapture,
         cameraSessionId = cameraSessionId,
     )
@@ -215,35 +217,35 @@ internal fun CameraController.updateVideoCapture(
     videoCapture: IosVideoCapture?,
     cameraSessionId: Long,
 ) {
-    (this as? IosCameraController)?.updateVideoCapture(
+    (this as? IosCameraManager)?.updateVideoCapture(
         videoCapture = videoCapture,
         cameraSessionId = cameraSessionId,
     )
 }
 
 internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
-    (this as? IosCameraController)?.updateRawCaptureSupported(isSupported)
+    (this as? IosCameraManager)?.updateRawCaptureSupported(isSupported)
 }
 
 internal fun CameraController.updateCameraExposureInfo(
     cameraExposureInfo: CameraExposureInfo,
     cameraSessionId: Long,
 ) {
-    (this as? IosCameraController)?.updateCameraExposureInfo(
+    (this as? IosCameraManager)?.updateCameraExposureInfo(
         cameraExposureInfo = cameraExposureInfo,
         cameraSessionId = cameraSessionId,
     )
 }
 
 internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
-    (this as? IosCameraController)?.updateCameraLenses(availableLenses)
+    (this as? IosCameraManager)?.updateCameraLenses(availableLenses)
 }
 
 internal fun CameraController.updateExposureControl(
     exposureControl: IosExposureControl?,
     cameraSessionId: Long,
 ) {
-    (this as? IosCameraController)?.updateExposureControl(
+    (this as? IosCameraManager)?.updateExposureControl(
         exposureControl = exposureControl,
         cameraSessionId = cameraSessionId,
     )

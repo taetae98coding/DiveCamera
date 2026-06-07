@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @Composable
-internal actual fun rememberCameraController(): CameraController = remember {
-    AndroidCameraController()
+internal actual fun rememberCameraManager(): CameraManager = remember {
+    AndroidCameraManager()
 }
 
-internal class AndroidCameraController : CameraController {
+internal class AndroidCameraManager : CameraManager {
     private val mutableRawCaptureSupportState = MutableStateFlow(RawCaptureSupportState.Checking)
     private val mutableCaptureReadinessState = MutableStateFlow(CaptureReadinessState.Busy)
     private val mutableCameraExposureInfoState = MutableStateFlow(CameraExposureInfo.Unknown)
@@ -182,32 +182,34 @@ internal interface AndroidExposureControl {
     )
 }
 
+internal typealias AndroidCameraController = AndroidCameraManager
+
 internal fun CameraController.updateImageCapture(imageCapture: AndroidPhotoCapture?) {
-    (this as? AndroidCameraController)?.updateImageCapture(imageCapture)
+    (this as? AndroidCameraManager)?.updateImageCapture(imageCapture)
 }
 
 internal fun CameraController.updateRawCaptureSupported(isSupported: Boolean) {
-    (this as? AndroidCameraController)?.updateRawCaptureSupported(isSupported)
+    (this as? AndroidCameraManager)?.updateRawCaptureSupported(isSupported)
 }
 
 internal fun CameraController.updateVideoCapture(videoCapture: AndroidVideoCapture?) {
-    (this as? AndroidCameraController)?.updateVideoCapture(videoCapture)
+    (this as? AndroidCameraManager)?.updateVideoCapture(videoCapture)
 }
 
 internal fun CameraController.updateCameraExposureInfo(cameraExposureInfo: CameraExposureInfo) {
-    (this as? AndroidCameraController)?.updateCameraExposureInfo(cameraExposureInfo)
+    (this as? AndroidCameraManager)?.updateCameraExposureInfo(cameraExposureInfo)
 }
 
 internal fun CameraController.updateCameraLenses(availableLenses: List<CameraLens>) {
-    (this as? AndroidCameraController)?.updateCameraLenses(availableLenses)
+    (this as? AndroidCameraManager)?.updateCameraLenses(availableLenses)
 }
 
 internal fun CameraController.updateExposureControl(exposureControl: AndroidExposureControl?) {
-    (this as? AndroidCameraController)?.updateExposureControl(exposureControl)
+    (this as? AndroidCameraManager)?.updateExposureControl(exposureControl)
 }
 
 internal fun CameraController.updateVideoRecordingState(videoRecordingState: VideoRecordingState) {
-    (this as? AndroidCameraController)?.updateVideoRecordingState(videoRecordingState)
+    (this as? AndroidCameraManager)?.updateVideoRecordingState(videoRecordingState)
 }
 
 private const val PHOTO_SAVE_ERROR_BUFFER_CAPACITY = 8

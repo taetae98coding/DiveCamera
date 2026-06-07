@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-internal interface CameraController {
+internal interface CameraManager {
     val rawCaptureSupportState: StateFlow<RawCaptureSupportState>
     val captureReadinessState: StateFlow<CaptureReadinessState>
     val cameraExposureInfoState: StateFlow<CameraExposureInfo>
@@ -27,6 +27,8 @@ internal interface CameraController {
 
     fun changeCameraLens()
 }
+
+internal typealias CameraController = CameraManager
 
 internal enum class CaptureReadinessState {
     Busy,
@@ -61,4 +63,7 @@ internal enum class RawCaptureSupportState {
 }
 
 @Composable
-internal expect fun rememberCameraController(): CameraController
+internal fun rememberCameraController(): CameraController = rememberCameraManager()
+
+@Composable
+internal expect fun rememberCameraManager(): CameraManager

@@ -46,7 +46,7 @@ private val CAPTURE_MODE_SWITCH_BUTTON_CENTER_OFFSET = 92.dp
 internal fun CameraScreen(
     modifier: Modifier = Modifier,
     cameraResourceIdleTimeoutMillis: Long = CAMERA_RESOURCE_IDLE_TIMEOUT_MILLIS,
-    cameraController: CameraController = rememberCameraController(),
+    cameraController: CameraController = rememberCameraManager(),
 ) {
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
