@@ -13,4 +13,9 @@
     <string name="permission_request">Request Permission</string>
 
     <string name="home_title">DiveCamera</string>
+    <string name="home_housing_seafrogs_name">SF-PH-08</string>
+    <string name="home_housing_seafrogs_manufacturer">SeaFrogs</string>
+    <string name="home_housing_none_name">No Housing</string>
+
+    <string name="camera_title">Camera</string>
 </resources>

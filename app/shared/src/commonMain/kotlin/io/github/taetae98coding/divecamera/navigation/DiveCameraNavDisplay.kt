@@ -10,7 +10,8 @@ import io.github.taetae98coding.divecamera.core.permission.rememberAudioPermissi
 import io.github.taetae98coding.divecamera.core.permission.rememberCameraPermissionState
 import io.github.taetae98coding.divecamera.core.permission.rememberLocationPermissionState
 import io.github.taetae98coding.divecamera.core.permission.rememberPhotoPermissionState
-import io.github.taetae98coding.divecamera.feature.home.HomeScaffold
+import io.github.taetae98coding.divecamera.feature.camera.CameraScreen
+import io.github.taetae98coding.divecamera.feature.home.HomeScreen
 import io.github.taetae98coding.divecamera.feature.permission.PermissionScreen
 
 @Composable
@@ -45,7 +46,14 @@ internal fun DiveCameraNavDisplay(modifier: Modifier = Modifier) {
                     )
                 }
                 entry<HomeNavKey> {
-                    HomeScaffold()
+                    HomeScreen(
+                        navigateToCamera = { gesture ->
+                            backStack.add(CameraNavKey(gesture = gesture))
+                        },
+                    )
+                }
+                entry<CameraNavKey> { key ->
+                    CameraScreen(gesture = key.gesture)
                 }
             },
     )
