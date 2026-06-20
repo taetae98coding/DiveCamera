@@ -1,0 +1,26 @@
+[versions]
+kotlin = "2.4.0"
+
+jetbrainsMultiplatform = "1.11.1"
+jetbrainsComposeMaterial3 = "1.9.0"
+
+androidGradlePlugin = "9.2.1"
+
+androidxActivity = "1.13.0"
+androidxCore = "1.19.0"
+
+[libraries]
+jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
+jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsMultiplatform" }
+
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+jetbrains-multiplatform = { id = "org.jetbrains.compose", version.ref = "jetbrainsMultiplatform" }
+
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidGradlePlugin" }
