@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.permission
+package io.github.taetae98coding.divecamera.core.permission
 
 import android.Manifest
 import android.content.Context
@@ -14,31 +14,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 
+private val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
 @Composable
-internal actual fun rememberCameraPermissionState(): CameraPermissionState {
+internal actual fun rememberLocationPermissionState(): LocationPermissionState {
     val context = LocalContext.current
-    var isGranted by remember { mutableStateOf(context.isCameraPermissionGranted()) }
+    var isGranted by remember { mutableStateOf(context.isLocationPermissionGranted()) }
 
     val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-            isGranted = it
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            isGranted = result.values.any { it }
         }
 
     LifecycleResumeEffect(Unit) {
-        isGranted = context.isCameraPermissionGranted()
+        isGranted = context.isLocationPermissionGranted()
         onPauseOrDispose {}
     }
 
     return remember(launcher) {
-        object : CameraPermissionState {
+        object : LocationPermissionState {
             override val isGranted: Boolean
                 get() = isGranted
 
             override fun requestPermission() {
-                launcher.launch(Manifest.permission.CAMERA)
+                launcher.launch(LOCATION_PERMISSIONS)
             }
         }
     }
 }
 
-private fun Context.isCameraPermissionGranted(): Boolean = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+private fun Context.isLocationPermissionGranted(): Boolean = LOCATION_PERMISSIONS.any { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }

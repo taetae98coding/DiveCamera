@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.permission
+package io.github.taetae98coding.divecamera.core.permission
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue

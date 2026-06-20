@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.permission
+package io.github.taetae98coding.divecamera.core.permission
 
 import android.Manifest
 import android.content.Context
@@ -15,9 +15,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 
 @Composable
-internal actual fun rememberAudioPermissionState(): AudioPermissionState {
+internal actual fun rememberCameraPermissionState(): CameraPermissionState {
     val context = LocalContext.current
-    var isGranted by remember { mutableStateOf(context.isAudioPermissionGranted()) }
+    var isGranted by remember { mutableStateOf(context.isCameraPermissionGranted()) }
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -25,20 +25,20 @@ internal actual fun rememberAudioPermissionState(): AudioPermissionState {
         }
 
     LifecycleResumeEffect(Unit) {
-        isGranted = context.isAudioPermissionGranted()
+        isGranted = context.isCameraPermissionGranted()
         onPauseOrDispose {}
     }
 
     return remember(launcher) {
-        object : AudioPermissionState {
+        object : CameraPermissionState {
             override val isGranted: Boolean
                 get() = isGranted
 
             override fun requestPermission() {
-                launcher.launch(Manifest.permission.RECORD_AUDIO)
+                launcher.launch(Manifest.permission.CAMERA)
             }
         }
     }
 }
 
-private fun Context.isAudioPermissionGranted(): Boolean = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+private fun Context.isCameraPermissionGranted(): Boolean = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED

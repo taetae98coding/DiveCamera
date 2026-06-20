@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.permission
+package io.github.taetae98coding.divecamera.core.permission
 
 import android.content.Intent
 import android.net.Uri
