@@ -1,42 +1,38 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import io.github.taetae98coding.divecamera.core.model.CameraGesture
-import divecamera.app.shared.generated.resources.Res
-import divecamera.app.shared.generated.resources.camera_title
-import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CameraScaffold(
-    gesture: CameraGesture,
+    state: CameraScaffoldState,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
+    Surface(
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(Res.string.camera_title)) },
-            )
-        },
-    ) { padding ->
+        color = Color.Black,
+        contentColor = Color.White,
+    ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .pointerInput(Unit) {
+                        detectTapGestures { state.notifyInput() }
+                    },
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "Hello World")
+            ViewFinder(
+                state = state.viewFinder,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

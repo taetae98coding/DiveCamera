@@ -10,6 +10,7 @@ navigation3 = "1.1.1"
 androidGradlePlugin = "9.2.1"
 
 androidxActivity = "1.13.0"
+androidxCamera = "1.6.1"
 androidxCore = "1.19.0"
 
 spotless = "8.7.0"
@@ -23,6 +24,10 @@ jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", versio
 jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "androidxCamera" }
+androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "androidxCamera" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "androidxCamera" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "androidxCamera" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
 
 [plugins]
