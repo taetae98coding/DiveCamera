@@ -34,7 +34,6 @@ internal fun DiveCameraNavDisplay(modifier: Modifier = Modifier) {
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
-        onBack = { backStack.removeLastOrNull() },
         entryProvider =
             entryProvider {
                 entry<PermissionNavKey> {
