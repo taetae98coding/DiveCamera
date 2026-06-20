@@ -25,9 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import io.github.taetae98coding.divecamera.core.ui.plus
 import divecamera.app.shared.generated.resources.Res
 import divecamera.app.shared.generated.resources.home_title
+import io.github.taetae98coding.divecamera.core.ui.plus
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 

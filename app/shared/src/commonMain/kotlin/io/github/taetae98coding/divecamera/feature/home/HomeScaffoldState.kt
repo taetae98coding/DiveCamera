@@ -3,7 +3,6 @@ package io.github.taetae98coding.divecamera.feature.home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
-import io.github.taetae98coding.divecamera.core.model.CameraGesture
 import divecamera.app.shared.generated.resources.Res
 import divecamera.app.shared.generated.resources.diveroid
 import divecamera.app.shared.generated.resources.home_housing_diveroid_manufacturer
@@ -12,6 +11,7 @@ import divecamera.app.shared.generated.resources.home_housing_none_name
 import divecamera.app.shared.generated.resources.home_housing_seafrogs_manufacturer
 import divecamera.app.shared.generated.resources.home_housing_seafrogs_name
 import divecamera.app.shared.generated.resources.sf_ph_08
+import io.github.taetae98coding.divecamera.core.model.CameraGesture
 
 @Composable
 internal fun rememberHomeScaffoldState(): HomeScaffoldState = remember { HomeScaffoldState() }
