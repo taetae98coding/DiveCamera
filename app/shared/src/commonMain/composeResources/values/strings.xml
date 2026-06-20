@@ -8,7 +8,9 @@
     <string name="permission_photo_description">Permission is required to save captured photos and videos to your gallery.</string>
     <string name="permission_location_title">Location</string>
     <string name="permission_location_description">Permission is required to record the capture location (dive point).</string>
-    <string name="permission_launch_camera">Open Camera</string>
+    <string name="permission_start">Start</string>
     <string name="permission_open_settings">Open App Settings</string>
     <string name="permission_request">Request Permission</string>
+
+    <string name="home_title">DiveCamera</string>
 </resources>

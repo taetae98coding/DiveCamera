@@ -3,13 +3,24 @@ package io.github.taetae98coding.divecamera.feature.permission
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
+import io.github.taetae98coding.divecamera.core.permission.AppSettingsLauncher
+import io.github.taetae98coding.divecamera.core.permission.AudioPermissionState
+import io.github.taetae98coding.divecamera.core.permission.CameraPermissionState
+import io.github.taetae98coding.divecamera.core.permission.LocationPermissionState
+import io.github.taetae98coding.divecamera.core.permission.PermissionState
+import io.github.taetae98coding.divecamera.core.permission.PhotoPermissionState
+import io.github.taetae98coding.divecamera.core.permission.rememberAppSettingsLauncher
+import io.github.taetae98coding.divecamera.core.permission.rememberAudioPermissionState
+import io.github.taetae98coding.divecamera.core.permission.rememberCameraPermissionState
+import io.github.taetae98coding.divecamera.core.permission.rememberLocationPermissionState
+import io.github.taetae98coding.divecamera.core.permission.rememberPhotoPermissionState
 
 @Stable
 internal class PermissionScaffoldState(
     val camera: CameraPermissionState,
-    val audio: AudioPermissionState,
-    val photo: PhotoPermissionState,
-    val location: LocationPermissionState,
+    audio: AudioPermissionState,
+    photo: PhotoPermissionState,
+    location: LocationPermissionState,
     private val appSettingsLauncher: AppSettingsLauncher,
 ) {
     private val states: Map<Permission, PermissionState> =
@@ -26,11 +37,11 @@ internal class PermissionScaffoldState(
     val isCameraGranted: Boolean
         get() = camera.isGranted
 
+    val isAllGranted: Boolean
+        get() = states.values.all { it.isGranted }
+
     fun requestPermission(permission: Permission) {
         states[permission]?.requestPermission()
-    }
-
-    fun launchCamera() {
     }
 
     fun openAppSettings() {

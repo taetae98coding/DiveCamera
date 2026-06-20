@@ -19,14 +19,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import divecamera.app.shared.generated.resources.Res
-import divecamera.app.shared.generated.resources.permission_launch_camera
 import divecamera.app.shared.generated.resources.permission_open_settings
 import divecamera.app.shared.generated.resources.permission_request
+import divecamera.app.shared.generated.resources.permission_start
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun PermissionScaffold(
     state: PermissionScaffoldState,
+    onStart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -34,7 +35,7 @@ internal fun PermissionScaffold(
         bottomBar = {
             PermissionBottomBar(
                 isCameraGranted = state.isCameraGranted,
-                onLaunchCamera = state::launchCamera,
+                onStart = onStart,
                 onOpenSettings = state::openAppSettings,
             )
         },
@@ -98,7 +99,7 @@ private fun PermissionCard(
 @Composable
 private fun PermissionBottomBar(
     isCameraGranted: Boolean,
-    onLaunchCamera: () -> Unit,
+    onStart: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -110,11 +111,11 @@ private fun PermissionBottomBar(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Button(
-            onClick = onLaunchCamera,
+            onClick = onStart,
             enabled = isCameraGranted,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(text = stringResource(Res.string.permission_launch_camera))
+            Text(text = stringResource(Res.string.permission_start))
         }
         OutlinedButton(
             onClick = onOpenSettings,
