@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permission_camera_title">Camera</string>
+    <string name="permission_camera_description">Camera permission is required to record diving videos and take photos.</string>
+    <string name="permission_microphone_title">Microphone</string>
+    <string name="permission_microphone_description">Microphone permission is required to record audio along with your videos.</string>
+    <string name="permission_photo_title">Photo Library</string>
+    <string name="permission_photo_description">Permission is required to save captured photos and videos to your gallery.</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_description">Permission is required to record the capture location (dive point).</string>
+    <string name="permission_launch_camera">Open Camera</string>
+    <string name="permission_open_settings">Open App Settings</string>
+    <string name="permission_request">Request Permission</string>
+</resources>

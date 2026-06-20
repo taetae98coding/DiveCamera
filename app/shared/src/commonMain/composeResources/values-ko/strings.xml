@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permission_camera_title">카메라</string>
+    <string name="permission_camera_description">다이빙 영상과 사진을 촬영하기 위해 카메라 권한이 필요합니다.</string>
+    <string name="permission_microphone_title">마이크</string>
+    <string name="permission_microphone_description">영상에 소리를 함께 녹음하기 위해 마이크 권한이 필요합니다.</string>
+    <string name="permission_photo_title">사진 저장</string>
+    <string name="permission_photo_description">촬영한 사진과 영상을 갤러리에 저장하기 위해 권한이 필요합니다.</string>
+    <string name="permission_location_title">위치</string>
+    <string name="permission_location_description">촬영 위치(다이빙 포인트)를 기록하기 위해 권한이 필요합니다.</string>
+    <string name="permission_launch_camera">카메라 실행</string>
+    <string name="permission_open_settings">앱 설정으로 이동</string>
+    <string name="permission_request">권한 요청</string>
+</resources>
