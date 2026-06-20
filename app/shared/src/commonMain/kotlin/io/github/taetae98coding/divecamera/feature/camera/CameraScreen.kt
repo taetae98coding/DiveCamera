@@ -5,25 +5,33 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
 import io.github.taetae98coding.divecamera.core.model.CameraGesture
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun CameraScreen(
     gesture: CameraGesture,
     modifier: Modifier = Modifier,
 ) {
-    val state = rememberCameraScaffoldState(gesture)
-
-    ReleaseViewFinderWhenIdle(state)
+    val state = rememberCameraScaffoldState()
 
     CameraScaffold(
         state = state,
         modifier = modifier.keepScreenOn(),
     )
+
+    ActiveCameraEffect(state = state)
+
+    IdleEffect(state = state)
 }
 
 @Composable
-private fun ReleaseViewFinderWhenIdle(state: CameraScaffoldState) {
-    LaunchedEffect(state.idleResetToken) {
-        state.releaseViewFinderAfterIdleTimeout()
+internal expect fun ActiveCameraEffect(state: CameraScaffoldState)
+
+@Composable
+internal fun IdleEffect(state: CameraScaffoldState) {
+    LaunchedEffect(state.idleToken) {
+        delay(30.seconds)
+        state.isIdle = true
     }
 }

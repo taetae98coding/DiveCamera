@@ -24,15 +24,21 @@ internal fun CameraScaffold(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures { state.notifyInput() }
-                    },
+                    .pointerInput(Unit) { detectTapGestures { state.notifyInput() } },
             contentAlignment = Alignment.Center,
         ) {
-            ViewFinder(
-                state = state.viewFinder,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (state.camera.isActive) {
+                ViewFinder(
+                    state = state.camera.viewFinder,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                CameraTopBar(
+                    exposure = state.camera.exposure,
+                    lens = state.camera.lens,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
         }
     }
 }

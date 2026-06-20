@@ -5,9 +5,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.github.taetae98coding.divecamera.core.model.CameraExposure
 
 @Stable
-internal expect class CameraViewFinderState
+internal expect class CameraExposureState {
+    val exposure: CameraExposure
+}
 
 @Composable
-internal expect fun rememberCameraViewFinderState(): CameraViewFinderState
+internal expect fun rememberCameraExposureState(): CameraExposureState

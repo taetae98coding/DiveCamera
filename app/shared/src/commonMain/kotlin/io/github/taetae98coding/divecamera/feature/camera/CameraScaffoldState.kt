@@ -4,41 +4,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import io.github.taetae98coding.divecamera.core.model.CameraGesture
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.seconds
 
 @Composable
-internal fun rememberCameraScaffoldState(gesture: CameraGesture): CameraScaffoldState {
-    val viewFinder = rememberCameraViewFinderState()
+internal fun rememberCameraScaffoldState(): CameraScaffoldState {
+    val camera = rememberCameraState()
 
-    return remember(gesture, viewFinder) {
+    return remember(camera) {
         CameraScaffoldState(
-            gesture = gesture,
-            viewFinder = viewFinder,
+            camera = camera,
         )
     }
 }
 
 @Stable
 internal class CameraScaffoldState(
-    val gesture: CameraGesture,
-    val viewFinder: CameraViewFinderState,
+    val camera: CameraState,
 ) {
-    var idleResetToken by mutableIntStateOf(0)
+    var idleToken by mutableIntStateOf(0)
         private set
 
-    fun notifyInput() {
-        idleResetToken++
-        viewFinder.activate()
-    }
+    var isIdle by mutableStateOf(false)
 
-    suspend fun releaseViewFinderAfterIdleTimeout() {
-        delay(IDLE_TIMEOUT)
-        viewFinder.release()
+    fun notifyInput() {
+        idleToken++
+        isIdle = false
     }
 }
-
-private val IDLE_TIMEOUT = 30.seconds
