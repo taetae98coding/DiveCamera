@@ -1,8 +1,11 @@
 [versions]
 kotlin = "2.4.0"
 
+kotlinxSerialization = "1.11.0"
+
 jetbrainsCompose = "1.11.1"
 jetbrainsComposeMaterial3 = "1.9.0"
+navigation3 = "1.1.1"
 
 androidGradlePlugin = "9.2.1"
 
@@ -12,9 +15,12 @@ androidxCore = "1.19.0"
 spotless = "8.7.0"
 
 [libraries]
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+
 jetbrains-compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "jetbrainsCompose" }
 jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
 jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsCompose" }
+jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
@@ -22,6 +28,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
 jetbrains-multiplatform = { id = "org.jetbrains.compose", version.ref = "jetbrainsCompose" }
 
