@@ -5,6 +5,9 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import io.github.taetae98coding.divecamera.core.model.CameraGesture
 import divecamera.app.shared.generated.resources.Res
+import divecamera.app.shared.generated.resources.diveroid
+import divecamera.app.shared.generated.resources.home_housing_diveroid_manufacturer
+import divecamera.app.shared.generated.resources.home_housing_diveroid_name
 import divecamera.app.shared.generated.resources.home_housing_none_name
 import divecamera.app.shared.generated.resources.home_housing_seafrogs_manufacturer
 import divecamera.app.shared.generated.resources.home_housing_seafrogs_name
@@ -27,6 +30,20 @@ internal class HomeScaffoldState {
                         isTouchEnable = false,
                         isUpKeyEnable = true,
                         isSwipeEnable = true,
+                        isThreePaneEnabled = false,
+                    ),
+            ),
+            DiveHousing(
+                id = "diveroid",
+                nameRes = Res.string.home_housing_diveroid_name,
+                manufacturerRes = Res.string.home_housing_diveroid_manufacturer,
+                image = Res.drawable.diveroid,
+                gesture =
+                    CameraGesture(
+                        isTouchEnable = false,
+                        isUpKeyEnable = false,
+                        isSwipeEnable = false,
+                        isThreePaneEnabled = true,
                     ),
             ),
             DiveHousing(
@@ -39,6 +56,7 @@ internal class HomeScaffoldState {
                         isTouchEnable = true,
                         isUpKeyEnable = true,
                         isSwipeEnable = false,
+                        isThreePaneEnabled = false,
                     ),
             ),
         )

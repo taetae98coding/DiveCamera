@@ -7,4 +7,5 @@ internal data class CameraGesture(
     val isTouchEnable: Boolean,
     val isUpKeyEnable: Boolean,
     val isSwipeEnable: Boolean,
+    val isThreePaneEnabled: Boolean,
 )
