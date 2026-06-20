@@ -27,10 +27,8 @@ internal class HomeScaffoldState {
                 image = Res.drawable.sf_ph_08,
                 gesture =
                     CameraGesture(
-                        isTouchEnable = false,
                         isUpKeyEnable = true,
                         isSwipeEnable = true,
-                        isThreePaneEnabled = false,
                     ),
             ),
             DiveHousing(
@@ -40,9 +38,6 @@ internal class HomeScaffoldState {
                 image = Res.drawable.diveroid,
                 gesture =
                     CameraGesture(
-                        isTouchEnable = false,
-                        isUpKeyEnable = false,
-                        isSwipeEnable = false,
                         isThreePaneEnabled = true,
                     ),
             ),
@@ -55,8 +50,6 @@ internal class HomeScaffoldState {
                     CameraGesture(
                         isTouchEnable = true,
                         isUpKeyEnable = true,
-                        isSwipeEnable = false,
-                        isThreePaneEnabled = false,
                     ),
             ),
         )
