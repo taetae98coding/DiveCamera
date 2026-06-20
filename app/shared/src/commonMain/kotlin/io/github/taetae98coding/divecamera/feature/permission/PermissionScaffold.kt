@@ -26,20 +26,16 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun PermissionScaffold(
-    permissions: List<Permission>,
-    isCameraGranted: Boolean,
-    onRequestPermission: (Permission) -> Unit,
-    onLaunchCamera: () -> Unit,
-    onOpenSettings: () -> Unit,
+    state: PermissionScaffoldState,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         bottomBar = {
             PermissionBottomBar(
-                isCameraGranted = isCameraGranted,
-                onLaunchCamera = onLaunchCamera,
-                onOpenSettings = onOpenSettings,
+                isCameraGranted = state.isCameraGranted,
+                onLaunchCamera = state::launchCamera,
+                onOpenSettings = state::openAppSettings,
             )
         },
     ) { padding ->
@@ -52,13 +48,14 @@ internal fun PermissionScaffold(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(
-                items = permissions,
+                items = state.permissions,
                 key = { it.name },
             ) { permission ->
                 PermissionCard(
                     title = stringResource(permission.titleRes),
                     description = stringResource(permission.descriptionRes),
-                    onRequestPermission = { onRequestPermission(permission) },
+                    onRequestPermission = { state.requestPermission(permission) },
+                    modifier = Modifier.animateItem(),
                 )
             }
         }

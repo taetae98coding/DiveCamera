@@ -5,12 +5,10 @@ import androidx.compose.ui.Modifier
 
 @Composable
 internal fun PermissionScreen(modifier: Modifier = Modifier) {
+    val state = rememberPermissionScaffoldState()
+
     PermissionScaffold(
-        permissions = Permission.entries,
-        isCameraGranted = false,
-        onRequestPermission = {},
-        onLaunchCamera = {},
-        onOpenSettings = {},
+        state = state,
         modifier = modifier,
     )
 }
