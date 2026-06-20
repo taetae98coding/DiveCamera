@@ -9,6 +9,8 @@ androidGradlePlugin = "9.2.1"
 androidxActivity = "1.13.0"
 androidxCore = "1.19.0"
 
+spotless = "8.7.0"
+
 [libraries]
 jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
 jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsMultiplatform" }
@@ -24,3 +26,5 @@ jetbrains-multiplatform = { id = "org.jetbrains.compose", version.ref = "jetbrai
 
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidGradlePlugin" }
+
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

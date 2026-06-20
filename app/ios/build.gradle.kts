@@ -16,7 +16,7 @@ kotlin {
     }
 
     sourceSets {
-        iosMain{
+        iosMain {
             dependencies {
                 implementation(projects.app.shared)
                 implementation(libs.jetbrains.compose.ui)
