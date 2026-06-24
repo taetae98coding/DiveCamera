@@ -34,9 +34,10 @@
 | 플랫폼 | 구현 가능 여부 | 내용 |
 | --- | --- | --- |
 | Android | 가능 (조합 필요) | 현재 보정 **인덱스**는 프레임 콜백의 `CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION`(정수)로 읽는다. 다만 이 값은 그 자체가 EV 가 아니라 **스텝 단위의 정수 인덱스**이며, 실제 EV = `인덱스 × 스텝`이다. 스텝은 기기 고정값이라 프레임마다 오지 않고 `CameraCharacteristics.CONTROL_AE_COMPENSATION_STEP`(Rational, 예: 1/3·1/2)에 있다. CameraX 에서는 `CameraInfo.exposureState.exposureCompensationStep`(Rational)으로 같은 값을 얻을 수 있어, 바인딩 시 스텝을 한 번 확보해 인덱스와 곱한다. |
-| iOS | 가능 | 프레임 콜백에서 `AVCaptureDevice.exposureTargetBias`(Float, **EV 단위**)를 그대로 읽는다. 읽기는 언제든 가능하고(쓰기는 `setExposureTargetBias:completionHandler:` 로만 가능) 기본값은 `0.0`. 앱이 보정을 설정하지 않으므로 사실상 `0.0` 이 표시된다. |
+| iOS | 가능 | 프레임 콜백에서 `AVCaptureDevice.exposureTargetBias`(Float, **EV 단위**)를 그대로 읽는다. 읽기는 언제든 가능하고 기본값은 `0.0`. 쓰기(`setExposureTargetBias:completionHandler:`)는 [수동 노출 제어](camera-exposure-control.md)에서 다룬다. |
 
 - 두 플랫폼 모두 최종적으로 **EV 단위(Float)** 로 통일되므로, 표시 UI·표기 형식은 공통이고 **취득 경로만** 다르다.
+- iOS 의 프레임 콜백은 같은 자리에서 **M 모드 노출 측광계 값(`exposureTargetOffset`)** 도 함께 읽어 표시 데이터에 싣는다. 측광계의 의미·플랫폼별 취득 가능 여부는 [수동 노출 제어 컨텍스트](camera-exposure-control.md)에서 다룬다.
 
 ## 5. 렌즈 초점거리(풀프레임 35mm 환산) 취득
 
@@ -55,7 +56,7 @@
 
 | 플랫폼 | 내용 |
 | --- | --- |
-| Android | 기기의 카메라 하드웨어 지원 레벨이 `LEGACY` 이거나 특정 메타데이터를 제공하지 않으면 `CaptureResult.get(...)` 이 `null` 을 반환할 수 있다. 따라서 세 값 모두 **nullable** 로 다뤄야 한다. (요구사항의 `--` 표기로 대응) |
+| Android | 기기의 카메라 하드웨어 지원 레벨이 `LEGACY` 이거나 특정 메타데이터를 제공하지 않으면 `CaptureResult.get(...)` 이 `null` 을 반환할 수 있다. 따라서 ISO·셔터·조리개와 노출 보정값(보정 인덱스·스텝이 없으면 null), 초점거리(환산 입력이 없으면 null)까지 표시 값은 모두 **nullable** 로 다뤄야 한다. (요구사항의 `--` 표기로 대응) |
 | iOS | `ISO`/`exposureDuration`/`lensAperture` 는 기본적으로 값이 제공되지만, 세션이 아직 시작되지 않은 순간 등에는 표시할 값이 없을 수 있다. |
 
 - 참고
