@@ -1,10 +1,29 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
+import io.github.taetae98coding.divecamera.core.model.CameraExposure
+import io.github.taetae98coding.divecamera.core.model.CameraExposureMode
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 // 측정 불가/미제공 값 표기.
 internal const val PLACEHOLDER = "--"
+
+// 촬영 모드 표기. 예: P, Manual
+internal fun formatExposureMode(mode: CameraExposureMode): String =
+    when (mode) {
+        CameraExposureMode.PROGRAM -> "Program"
+        CameraExposureMode.MANUAL -> "Manual"
+    }
+
+// 상단에 표시할 EV. P 모드는 노출 보정값, M 모드는 노출 측광계(측광 오프셋)를 보여 준다.
+internal fun formatExposureEv(
+    mode: CameraExposureMode,
+    exposure: CameraExposure,
+): String =
+    when (mode) {
+        CameraExposureMode.PROGRAM -> formatExposureCompensation(exposure.exposureCompensation)
+        CameraExposureMode.MANUAL -> formatExposureCompensation(exposure.exposureTargetOffset)
+    }
 
 // 0.3초 미만은 분수(1/x), 그 이상은 초 단위(") 표기로 가르는 경계.
 private const val SHUTTER_FRACTION_THRESHOLD_SECONDS = 0.3

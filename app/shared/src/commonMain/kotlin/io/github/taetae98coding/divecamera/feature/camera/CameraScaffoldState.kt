@@ -28,8 +28,19 @@ internal class CameraScaffoldState(
 
     var isIdle by mutableStateOf(false)
 
+    var isSettingsOpen by mutableStateOf(false)
+        private set
+
     fun notifyInput() {
         idleToken++
         isIdle = false
+    }
+
+    fun openSettings() {
+        isSettingsOpen = true
+    }
+
+    fun closeSettings() {
+        isSettingsOpen = false
     }
 }

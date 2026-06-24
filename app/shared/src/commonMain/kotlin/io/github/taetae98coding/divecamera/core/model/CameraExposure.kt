@@ -5,4 +5,5 @@ internal data class CameraExposure(
     val shutterSpeedNanos: Long? = null,
     val aperture: Float? = null,
     val exposureCompensation: Float? = null,
+    val exposureTargetOffset: Float? = null,
 )

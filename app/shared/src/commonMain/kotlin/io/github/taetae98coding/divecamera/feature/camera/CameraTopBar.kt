@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 internal fun CameraTopBar(
     exposure: CameraExposureState,
     lens: CameraLensState,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -27,6 +29,7 @@ internal fun CameraTopBar(
                 .statusBarsPadding()
                 .padding(8.dp)
                 .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
                 .background(Color.Black.copy(alpha = 0.4f))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -34,7 +37,7 @@ internal fun CameraTopBar(
         InfoText(formatIso(exposure.exposure.iso))
         InfoText(formatAperture(exposure.exposure.aperture))
         InfoText(formatShutterSpeed(exposure.exposure.shutterSpeedNanos))
-        InfoText(formatExposureCompensation(exposure.exposure.exposureCompensation))
+        InfoText(formatExposureEv(exposure.mode, exposure.exposure))
         InfoText(formatFocalLength(lens.lens.focalLengthMillimeters))
     }
 }

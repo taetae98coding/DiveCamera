@@ -23,6 +23,7 @@ kotlin {
                 implementation(libs.jetbrains.compose.components.resources)
                 implementation(libs.jetbrains.compose.material3)
                 implementation(libs.jetbrains.navigation3.ui)
+                implementation(libs.jetbrains.compose.material.icons.extended)
             }
         }
 

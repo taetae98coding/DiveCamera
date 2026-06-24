@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.feature.camera
 
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -24,7 +25,12 @@ internal fun CameraScaffold(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) { detectTapGestures { state.notifyInput() } },
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            state.notifyInput()
+                        }
+                    },
             contentAlignment = Alignment.Center,
         ) {
             if (state.camera.isActive) {
@@ -36,8 +42,16 @@ internal fun CameraScaffold(
                 CameraTopBar(
                     exposure = state.camera.exposure,
                     lens = state.camera.lens,
+                    onClick = state::openSettings,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
+
+                if (state.isSettingsOpen) {
+                    CameraSettingsOverlay(
+                        state = state.camera,
+                        onDismiss = state::closeSettings,
+                    )
+                }
             }
         }
     }

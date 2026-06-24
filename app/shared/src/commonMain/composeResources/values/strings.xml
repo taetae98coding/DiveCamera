@@ -20,4 +20,6 @@
     <string name="home_housing_none_name">No Housing</string>
 
     <string name="camera_title">Camera</string>
+
+    <string name="overlay_close">Close</string>
 </resources>

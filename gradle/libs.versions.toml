@@ -6,6 +6,7 @@ kotlinxSerialization = "1.11.0"
 jetbrainsCompose = "1.11.1"
 jetbrainsComposeMaterial3 = "1.9.0"
 jetbrainsNavigation3 = "1.1.1"
+jetbrainsComposeMaterialIcons = "1.7.3"
 
 androidGradlePlugin = "9.2.1"
 
@@ -22,6 +23,7 @@ jetbrains-compose-components-resources = { group = "org.jetbrains.compose.compon
 jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
 jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsCompose" }
 jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name = "navigation3-ui", version.ref = "jetbrainsNavigation3" }
+jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "jetbrainsComposeMaterialIcons" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "androidxCamera" }

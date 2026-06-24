@@ -9,6 +9,7 @@ import platform.AVFoundation.AVCaptureVideoDataOutputSampleBufferDelegateProtoco
 import platform.AVFoundation.ISO
 import platform.AVFoundation.exposureDuration
 import platform.AVFoundation.exposureTargetBias
+import platform.AVFoundation.exposureTargetOffset
 import platform.AVFoundation.lensAperture
 import platform.CoreMedia.CMSampleBufferRef
 import platform.CoreMedia.CMTimeGetSeconds
@@ -40,6 +41,7 @@ internal class ExposureSampleBufferDelegate(
                 shutterSpeedNanos = shutterSpeedNanos,
                 aperture = device.lensAperture,
                 exposureCompensation = device.exposureTargetBias,
+                exposureTargetOffset = device.exposureTargetOffset,
             ),
         )
     }

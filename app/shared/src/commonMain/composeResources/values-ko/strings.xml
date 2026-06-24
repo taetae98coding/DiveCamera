@@ -20,4 +20,6 @@
     <string name="home_housing_none_name">하우징 없음</string>
 
     <string name="camera_title">카메라</string>
+
+    <string name="overlay_close">닫기</string>
 </resources>
