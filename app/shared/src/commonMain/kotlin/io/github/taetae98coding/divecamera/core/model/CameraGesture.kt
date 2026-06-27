@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class CameraGesture(
     val isTouchEnable: Boolean = false,
-    val isUpKeyEnable: Boolean = false,
+    val isVolumeEnable: Boolean = false,
     val isSwipeEnable: Boolean = false,
     val isThreePaneEnabled: Boolean = false,
 )

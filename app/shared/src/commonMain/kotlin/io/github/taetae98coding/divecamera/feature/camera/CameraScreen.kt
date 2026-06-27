@@ -17,6 +17,7 @@ internal fun CameraScreen(
 
     CameraScaffold(
         state = state,
+        gesture = gesture,
         modifier = modifier.keepScreenOn(),
     )
 

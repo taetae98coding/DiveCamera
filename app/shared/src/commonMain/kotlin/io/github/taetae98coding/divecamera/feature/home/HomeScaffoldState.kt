@@ -27,7 +27,7 @@ internal class HomeScaffoldState {
                 image = Res.drawable.sf_ph_08,
                 gesture =
                     CameraGesture(
-                        isUpKeyEnable = true,
+                        isVolumeEnable = true,
                         isSwipeEnable = true,
                     ),
             ),
@@ -49,7 +49,7 @@ internal class HomeScaffoldState {
                 gesture =
                     CameraGesture(
                         isTouchEnable = true,
-                        isUpKeyEnable = true,
+                        isVolumeEnable = true,
                     ),
             ),
         )
