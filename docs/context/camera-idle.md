@@ -21,24 +21,23 @@
 - 참고
   - https://developer.android.com/develop/ui/compose/touch-input/pointer-input
 
-## 3. 볼륨(업) 버튼으로 재개 — ⚠️ 플랫폼 차이 커서 현재 범위 밖
+## 3. 볼륨 키로 재개·연장 (볼륨 지원 하우징) — 구현됨, iOS 는 재개 제약
 
-> 아래는 가능성 검토 기록이다. 플랫폼 차이가 커서(특히 iOS) **현재 단계 스펙에서는 볼륨 키 재개를 다루지 않기로 결정**했다. (스펙 문서의 "범위 밖 — 볼륨 키 재개" 참조) 추후 하우징별 조작 방식을 다룰 때 이 검토를 다시 활용한다.
+볼륨 키 입력은 [수동 노출 제어](camera-exposure-control.md)의 `VolumeSelectEffect`(expect/actual)로 받아 사용자 활동으로 처리한다(타이머 연장·재개). 핵심은 **"볼륨 입력이 그 플랫폼에서 앱에 전달되는 경로"** 이고, 그게 달라 절전 재개 가능 여부가 갈린다.
 
-핵심은 **"볼륨 버튼이 그 플랫폼에서 키 이벤트로 앱에 전달되는가"** 다. 그래서 동일한 Compose `onPreviewKeyEvent` + `FocusRequester` 코드를 써도 결과가 다르다.
-
-| 플랫폼 | 구현 가능 여부 | 내용 |
+| 플랫폼 | 동작 | 내용 |
 | --- | --- | --- |
-| Android | 가능 (안정적, 공통 Compose) | 볼륨 키는 정식 `KeyEvent`(`KEYCODE_VOLUME_UP`)다. **commonMain Compose** 에서 포커스를 가진 노드(`FocusRequester` + `focusable`)에 `onPreviewKeyEvent` 를 달고 `Key.VolumeUp` 을 감지해 소비(`true` 반환)하면 시스템 볼륨 변경 없이 가로챈다. 구글의 Jetpack Camera App 이 카메라 화면에 한정해 쓰는 패턴과 동일하다. 즉 **별도 `Activity` 경유 코드 없이 공통 코드로 처리된다.** |
-| iOS | **제약 있음 (키 이벤트로는 불가)** | iOS 는 볼륨 버튼을 **앱에 키/`UIPress` 이벤트로 전달하지 않는다.** 따라서 같은 `onPreviewKeyEvent` 를 달아도 볼륨 버튼에 대해선 **호출 자체가 일어나지 않는다**(Compose 한계가 아니라 iOS 플랫폼 특성). 공개 API로 가능한 유일한 우회는 `AVAudioSession.outputVolume` 값을 KVO 로 관찰해 **볼륨 변화를 간접 감지**하는 방식이며(App Store 허용) 한계가 크다: ① 이미 최대 볼륨이면 값이 안 변해 감지 불가, ② 시스템 볼륨 HUD 노출, ③ 오디오 세션 활성화 필요, ④ iOS 버전별 동작 불안정 보고. 사설 API(`AVSystemController_SystemVolumeDidChangeNotification`)는 심사 리스크로 사용하지 않는다. |
+| Android | 연장·재개 모두 가능 | 볼륨 키는 정식 `KeyEvent`(`KEYCODE_VOLUME_UP`)다. commonMain Compose 에서 포커스 노드(`FocusRequester` + `focusable`)에 `onPreviewKeyEvent` 로 `Key.VolumeUp`/`Key.VolumeDown` 을 감지·소비(`true`)한다. **카메라 세션과 무관**하므로 활성 중 연장은 물론 절전(검은 화면) 상태에서도 받아 **재개**된다. |
+| iOS | 연장만 가능 (재개 불가) | iOS 는 볼륨 버튼을 키/`UIPress` 이벤트로 주지 않아, 카메라용 하드웨어 버튼 API `AVCaptureEventInteraction`(iOS 17.2+)으로 받는다. 이 API 는 **활성 캡처 세션이 있을 때만** 이벤트를 주므로, 활성 중에는 연장되지만 절전 시 세션이 멈춰(`stopRunning`) **볼륨이 오지 않아 깨울 수 없다.** iOS 절전 재개는 터치로 한다. |
 
+- 과거에는 iOS 볼륨을 `AVAudioSession.outputVolume` KVO 로 보려 했으나(① 최대 볼륨이면 값이 안 변해 감지 불가, ② 시스템 볼륨 HUD, ③ 오디오 세션 활성화 필요, ④ 버전별 불안정 + Kotlin/Native 의 `observeValueForKeyPath` 오버라이드 불가) 한계가 커서, 캡처 컨텍스트의 `AVCaptureEventInteraction` 으로 구현했다. (상세는 [수동 노출 제어 컨텍스트](camera-exposure-control.md)) 사설 API(`AVSystemController_SystemVolumeDidChangeNotification`)는 심사 리스크로 쓰지 않는다.
 - 참고
-  - https://developer.android.com/develop/ui/compose/touch-input/keyboard-input/commands
-  - https://github.com/google/jetpack-camera-app
+  - https://developer.android.com/develop/ui/compose/touch-input/pointer-input
   - https://developer.android.com/reference/android/view/KeyEvent
-  - https://developer.apple.com/documentation/avfaudio/avaudiosession/outputvolume
+  - https://developer.apple.com/documentation/avkit/avcaptureeventinteraction
+  - https://github.com/google/jetpack-camera-app
 
 ## 종합 — 스펙에서 분기/결정이 필요한 지점
 
 1. **카메라 반납 / 타이머 / 터치 재개**: 모두 commonMain 공통 구현 가능. 플랫폼 분기 불필요.
-2. **볼륨 업 재개**: **현재 범위 밖.** iOS 는 볼륨 버튼이 키 이벤트로 전달되지 않아 공통 구현이 불가능하고, 우회(`outputVolume` KVO)는 한계가 커서 현재 단계에서는 다루지 않는다. → 재개 수단은 **터치만**. 추후 하우징별 조작 방식 단계에서 재검토한다.
+2. **볼륨 키 재개·연장**: 볼륨 지원 하우징에서 볼륨 키를 사용자 활동으로 받는다. Android 는 세션 무관 키 이벤트라 연장·재개 모두 되고, iOS 는 `AVCaptureEventInteraction` 이 활성 세션을 요구해 **연장만 되고 절전 재개는 안 된다(재개는 터치).** 입력 취득 방식은 [수동 노출 제어 컨텍스트](camera-exposure-control.md) 참조.
