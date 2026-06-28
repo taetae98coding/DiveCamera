@@ -2,6 +2,7 @@ package io.github.taetae98coding.divecamera.feature.camera
 
 import io.github.taetae98coding.divecamera.core.model.CameraExposure
 import io.github.taetae98coding.divecamera.core.model.CameraExposureMode
+import io.github.taetae98coding.divecamera.core.model.CameraLensFacing
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -76,3 +77,11 @@ internal fun formatFocalLength(focalLengthMillimeters: Float?): String {
     if (focalLengthMillimeters == null || focalLengthMillimeters <= 0f) return PLACEHOLDER
     return "${focalLengthMillimeters.roundToInt()}mm"
 }
+
+// 렌즈가 향하는 면 표기. 예: Back, Front. 알 수 없으면 빈 문자열.
+internal fun formatLensFacing(facing: CameraLensFacing?): String =
+    when (facing) {
+        CameraLensFacing.BACK -> "Back"
+        CameraLensFacing.FRONT -> "Front"
+        null -> ""
+    }
