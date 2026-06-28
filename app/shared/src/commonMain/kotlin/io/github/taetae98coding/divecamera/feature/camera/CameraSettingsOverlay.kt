@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +45,7 @@ import divecamera.app.shared.generated.resources.overlay_close
 import io.github.taetae98coding.divecamera.core.model.CameraExposureMode
 import io.github.taetae98coding.divecamera.core.model.CameraGesture
 import io.github.taetae98coding.divecamera.ext.nonRippleClickable
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 // 스와이프 한 번을 커서 한 칸 이동으로 인정하는 최소 가로 이동 거리.
@@ -61,6 +63,8 @@ private sealed interface SettingsOverlay {
     data object Shutter : SettingsOverlay
 
     data object Aperture : SettingsOverlay
+
+    data object Lens : SettingsOverlay
 }
 
 // 오버레이 리스트의 한 행.
@@ -69,6 +73,8 @@ private class OverlayItem(
     val description: String? = null,
     val isChecked: Boolean = false,
     val enabled: Boolean = true,
+    // 이 항목이 진입하는 하위 화면. (홈 항목에서 복귀 시 커서를 이 항목으로 되돌리는 데 쓴다)
+    val navigatesTo: SettingsOverlay? = null,
     val onClick: () -> Unit,
 )
 
@@ -116,16 +122,11 @@ private class OverlayCursor(
 private fun rememberOverlayCursor(
     screenKey: Any,
     items: List<OverlayItem>,
+    initialIndex: Int,
 ): OverlayCursor {
     val latestItems = rememberUpdatedState(items)
 
-    // 화면(screenKey)이 바뀌면 커서/스크롤을 현재 값(또는 첫 선택 가능 항목)으로 초기화한다.
-    val initialIndex =
-        remember(screenKey) {
-            items.indexOfFirst { it.isChecked }.takeIf { it >= 0 }
-                ?: items.indexOfFirst { it.enabled }.takeIf { it >= 0 }
-                ?: 0
-        }
+    // 화면(screenKey)이 바뀌면 커서/스크롤을 주어진 시작 인덱스로 초기화한다.
     val listState = remember(screenKey) { LazyListState(firstVisibleItemIndex = initialIndex) }
     val cursor = remember(screenKey) { OverlayCursor(latestItems, listState, initialIndex) }
 
@@ -149,19 +150,40 @@ internal fun CameraSettingsOverlay(
     modifier: Modifier = Modifier,
 ) {
     var overlay by remember { mutableStateOf<SettingsOverlay>(SettingsOverlay.Home) }
+    // 홈에서 마지막으로 진입한 하위 화면. 홈으로 돌아왔을 때 그 항목에 커서를 되돌리는 데 쓴다.
+    var lastSubScreen by remember { mutableStateOf<SettingsOverlay?>(null) }
 
     val items =
         overlayItems(
             state = state,
             overlay = overlay,
-            onNavigate = { overlay = it },
+            onNavigate = { target ->
+                if (target != SettingsOverlay.Home) lastSubScreen = target
+                overlay = target
+            },
             onDismiss = onDismiss,
         )
+
+    // 화면이 바뀔 때 커서 시작 위치를 정한다.
+    // 홈으로 돌아온 경우엔 직전에 들어갔던 항목, 그 외엔 현재 값(체크)·첫 활성 항목 순.
+    val initialIndex =
+        remember(overlay) {
+            val restored =
+                if (overlay == SettingsOverlay.Home && lastSubScreen != null) {
+                    items.indexOfFirst { it.navigatesTo == lastSubScreen && it.enabled }.takeIf { it >= 0 }
+                } else {
+                    null
+                }
+            restored
+                ?: items.indexOfFirst { it.isChecked }.takeIf { it >= 0 }
+                ?: items.indexOfFirst { it.enabled }.takeIf { it >= 0 }
+                ?: 0
+        }
 
     // 커서(흰 배경 하이라이트)는 스와이프로 이동하는 제스처 하우징에서만 보여 준다.
     // 터치 하우징(예: 하우징 없음)은 커서 없이 탭으로 조작한다.
     val showCursor = gesture.isSwipeEnable
-    val cursor = rememberOverlayCursor(screenKey = overlay, items = items)
+    val cursor = rememberOverlayCursor(screenKey = overlay, items = items, initialIndex = initialIndex)
 
     Box(
         modifier =
@@ -240,15 +262,18 @@ private fun overlayItems(
     onDismiss: () -> Unit,
 ): List<OverlayItem> {
     val exposure = state.exposure
+    val lens = state.lens
+    val scope = rememberCoroutineScope()
 
     return when (overlay) {
-        SettingsOverlay.Home ->
+        SettingsOverlay.Home -> {
             buildList {
                 add(
                     OverlayItem(
                         title = "Mode",
                         description = formatExposureMode(exposure.mode),
                         enabled = exposure.isManualModeSupported,
+                        navigatesTo = SettingsOverlay.Mode,
                         onClick = { onNavigate(SettingsOverlay.Mode) },
                     ),
                 )
@@ -259,6 +284,7 @@ private fun overlayItems(
                             title = "EV",
                             description = formatExposureCompensation(exposure.exposure.exposureCompensation),
                             enabled = exposure.exposureCompensationOptions.count() >= 2,
+                            navigatesTo = SettingsOverlay.Ev,
                             onClick = { onNavigate(SettingsOverlay.Ev) },
                         ),
                     )
@@ -268,6 +294,7 @@ private fun overlayItems(
                             title = "ISO",
                             description = formatIso(exposure.exposure.iso),
                             enabled = exposure.isoOptions.count() >= 2,
+                            navigatesTo = SettingsOverlay.Iso,
                             onClick = { onNavigate(SettingsOverlay.Iso) },
                         ),
                     )
@@ -276,6 +303,7 @@ private fun overlayItems(
                             title = "Shutter",
                             description = formatShutterSpeed(exposure.exposure.shutterSpeedNanos),
                             enabled = exposure.shutterSpeedNanosOptions.count() >= 2,
+                            navigatesTo = SettingsOverlay.Shutter,
                             onClick = { onNavigate(SettingsOverlay.Shutter) },
                         ),
                     )
@@ -284,10 +312,21 @@ private fun overlayItems(
                             title = "Aperture",
                             description = formatAperture(exposure.exposure.aperture),
                             enabled = exposure.apertureOptions.count() >= 2,
+                            navigatesTo = SettingsOverlay.Aperture,
                             onClick = { onNavigate(SettingsOverlay.Aperture) },
                         ),
                     )
                 }
+
+                add(
+                    OverlayItem(
+                        title = "Lens",
+                        description = formatFocalLength(lens.lens.focalLengthMillimeters),
+                        enabled = lens.lenses.count() >= 2,
+                        navigatesTo = SettingsOverlay.Lens,
+                        onClick = { onNavigate(SettingsOverlay.Lens) },
+                    ),
+                )
 
                 add(
                     OverlayItem(
@@ -296,8 +335,9 @@ private fun overlayItems(
                     ),
                 )
             }
+        }
 
-        SettingsOverlay.Mode ->
+        SettingsOverlay.Mode -> {
             CameraExposureMode.entries.map { mode ->
                 OverlayItem(
                     title = formatExposureMode(mode),
@@ -308,8 +348,9 @@ private fun overlayItems(
                     },
                 )
             }
+        }
 
-        SettingsOverlay.Ev ->
+        SettingsOverlay.Ev -> {
             exposure.exposureCompensationOptions.map { value ->
                 OverlayItem(
                     title = formatExposureCompensation(value),
@@ -320,8 +361,9 @@ private fun overlayItems(
                     },
                 )
             }
+        }
 
-        SettingsOverlay.Iso ->
+        SettingsOverlay.Iso -> {
             exposure.isoOptions.map { value ->
                 OverlayItem(
                     title = formatIso(value),
@@ -332,8 +374,9 @@ private fun overlayItems(
                     },
                 )
             }
+        }
 
-        SettingsOverlay.Shutter ->
+        SettingsOverlay.Shutter -> {
             exposure.shutterSpeedNanosOptions.map { value ->
                 OverlayItem(
                     title = formatShutterSpeed(value),
@@ -344,8 +387,9 @@ private fun overlayItems(
                     },
                 )
             }
+        }
 
-        SettingsOverlay.Aperture ->
+        SettingsOverlay.Aperture -> {
             exposure.apertureOptions.map { value ->
                 OverlayItem(
                     title = formatAperture(value),
@@ -356,6 +400,25 @@ private fun overlayItems(
                     },
                 )
             }
+        }
+
+        SettingsOverlay.Lens -> {
+            lens.lenses.map { value ->
+                val facingLabel = formatLensFacing(value.facing)
+                val focalLabel = formatFocalLength(value.focalLengthMillimeters)
+
+                OverlayItem(
+                    // 면(Back/Front)을 제목으로, 초점거리를 값으로 보여 준다. 면을 모르면 초점거리를 제목으로.
+                    title = facingLabel.ifEmpty { focalLabel },
+                    description = focalLabel.takeIf { facingLabel.isNotEmpty() },
+                    isChecked = lens.lens.id == value.id,
+                    onClick = {
+                        scope.launch { state.selectLens(value) }
+                        onNavigate(SettingsOverlay.Home)
+                    },
+                )
+            }
+        }
     }
 }
 

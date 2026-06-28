@@ -41,14 +41,17 @@
 
 ## 5. 렌즈 초점거리(풀프레임 35mm 환산) 취득
 
-표시 값은 **풀프레임(가로 36mm) 기준으로 환산한 초점거리(mm)** 로 양 플랫폼 공통이다. 다만 환산에 필요한 입력값을 얻는 경로가 플랫폼마다 다르다.
+표시 값은 **풀프레임(35mm) 환산 초점거리(mm)** 로 양 플랫폼 공통이다. "35mm 환산"의 표준 정의(CIPA DCG-001, EXIF `FocalLengthIn35mmFilm`)는 **대각선 화각 기준**이다: `환산 = 실제초점 × (풀프레임 대각선 43.27mm / 센서 대각선)`. 다만 환산에 필요한 입력값을 얻는 경로가 플랫폼마다 다르다.
+
+- **수평 기준이 아니라 대각선 기준을 쓴다.** 풀프레임은 3:2 인데 폰 사진 센서는 4:3 이라, 수평 화각만으로 가로 환산하면 같은 렌즈가 약 4% 더 크게 나온다(예: 24 대신 25). 제조사가 표기하는 값(예: iPhone 16 Pro Max 13/24/120mm)은 대각선 기준이므로, 대각선으로 맞춰야 일치한다.
 
 | 플랫폼 | 구현 가능 여부 | 내용 |
 | --- | --- | --- |
-| iOS | 가능 (화각에서 환산) | iOS 는 라이브 프리뷰에서 **mm 초점거리를 직접 주지 않는다**(아래 근거). 대신 `AVCaptureDevice.activeFormat.videoFieldOfView`(수평 화각, 도)를 제공하므로, 이 화각으로 풀프레임 환산 초점거리를 구한다: `f = 18 / tan(화각/2)` (풀프레임 가로 36mm 의 절반 18). 화각이 고정이라 바인딩 시 한 번 계산하면 된다. |
-| Android | 가능 (초점거리·센서폭에서 환산) | 실제 초점거리 `LENS_INFO_AVAILABLE_FOCAL_LENGTHS`(mm)와 센서 물리 가로 `SENSOR_INFO_PHYSICAL_SIZE.width`(mm)로 환산한다: `f = 실제초점거리 × 36 / 센서가로`. 두 값 모두 `CameraCharacteristics`(CameraX `Camera2CameraInfo`)에서 정적으로 얻는다. |
+| iOS | 가능 (화각+종횡비에서 환산) | iOS 는 라이브 프리뷰에서 **mm 초점거리를 직접 주지 않는다**(아래 근거). 대신 `AVCaptureDevice.activeFormat.videoFieldOfView`(수평 화각, 도)와 활성 포맷의 픽셀 크기(`CMVideoFormatDescriptionGetDimensions`)를 제공하므로, 수평 화각을 프레임 종횡비로 대각선 환산한다: `환산 = (43.27/2) / (tan(화각/2) × √(1+(짧은변/긴변)²))`. 화각·포맷이 고정이라 바인딩 시 한 번 계산하면 된다. |
+| Android | 가능 (초점거리·센서크기에서 환산) | 실제 초점거리 `LENS_INFO_AVAILABLE_FOCAL_LENGTHS`(mm)와 센서 물리 크기 `SENSOR_INFO_PHYSICAL_SIZE`(mm, 가로·세로)로 환산한다: `환산 = 실제초점 × 43.27 / √(센서가로² + 센서세로²)`. 두 값 모두 `CameraCharacteristics`(CameraX `Camera2CameraInfo`)에서 정적으로 얻는다. |
 
-- **두 경로의 환산 기준은 동일하다(수평·풀프레임 36mm).** iOS 의 `18/tan(화각/2)` 와 Android 의 `실제초점거리×36/센서가로` 는 같은 수평 화각을 풀프레임으로 환산하므로 결과가 일치한다. 따라서 표시 값(mm)은 플랫폼 공통이고 **입력값을 얻는 경로만** 다르다.
+- **두 경로의 환산 기준은 동일하다(대각선·풀프레임 43.27mm).** iOS 는 화각+종횡비를, Android 는 실제초점+센서대각선을 써서 같은 대각선 기준으로 환산하므로 결과가 일치한다. 따라서 표시 값(mm)은 플랫폼 공통이고 **입력값을 얻는 경로만** 다르다.
+- **Android 주의** — `SENSOR_INFO_PHYSICAL_SIZE` 는 **전체 픽셀 배열** 크기라 실제 촬영에 쓰는 활성 영역(`SENSOR_INFO_ACTIVE_ARRAY_SIZE`)보다 약간 클 수 있다. 엄밀히는 활성 영역 대각선을 써야 하나 차이가 작아(보통 1~2% 미만) 물리 크기 대각선을 그대로 쓴다. 수평→대각선 차이(약 4%)가 주된 오차였고 이를 바로잡는 것이 핵심이다.
 - **iOS 가 mm 초점거리를 직접 못 주는 근거** — `AVCaptureDevice`/`AVCaptureDeviceFormat` 에 초점거리(mm) 프로퍼티가 없다. 초점거리(mm)는 **사진 EXIF**(`FocalLength`/`FocalLenIn35mmFilm`)로만 얻을 수 있는데 `AVCapturePhotoOutput` 촬영 시에만 나오고 프리뷰 스트림에는 없다. 카메라 내부 행렬(`cameraIntrinsics`)의 초점거리는 **mm 가 아니라 픽셀 단위**라 mm 환산에 센서 물리 크기가 필요한데 iOS 는 이를 공개 API 로 제공하지 않는다. 그래서 **화각으로부터 풀프레임 환산값을 계산**한다.
 - **갱신 빈도** — 초점거리는 노출 값과 달리 렌즈(활성 포맷)가 바뀌지 않는 한 변하지 않으므로, 노출처럼 프레임마다 갱신하지 않고 **바인딩 시 한 번** 계산해 둔다. 이 때문에 노출 정보와 **별도 상태로 분리**해 관리한다.
 
@@ -77,8 +80,10 @@
   - https://developer.apple.com/documentation/avfoundation/avcapturedevice/lensaperture
   - https://developer.apple.com/documentation/avfoundation/avcapturedevice/exposuretargetbias
   - https://developer.apple.com/documentation/avfoundation/avcapturedevice/format/videofieldofview
+  - https://developer.apple.com/documentation/coremedia/cmvideoformatdescriptiongetdimensions(_:) (활성 포맷 픽셀 크기 → 종횡비)
   - https://developer.apple.com/documentation/avfoundation/avcameracalibrationdata/intrinsicmatrix (내부 행렬 초점거리는 픽셀 단위)
   - https://developer.apple.com/documentation/avfoundation/avcapturephoto/metadata (초점거리 mm 는 촬영 EXIF 에서만)
+  - https://en.wikipedia.org/wiki/35_mm_equivalent_focal_length (대각선 화각 기준 — CIPA DCG-001)
 
 ## 7. 스레드 / 갱신 빈도
 
@@ -96,5 +101,5 @@
 1. **값 취득 방식**: Android 는 CameraX 의 Camera2 interop 으로 `CaptureResult`(ISO/노출시간/조리개/보정 인덱스)를 읽고, iOS 는 `AVCaptureVideoDataOutput` 프레임 콜백에서 `AVCaptureDevice` 의 `ISO`/`exposureDuration`/`lensAperture`/`exposureTargetBias` 를 읽는다(KVO 는 Kotlin/Native 에서 오버라이드 불가). 공통 구현 불가의 근거는 미리보기 카메라 연동이 플랫폼마다 다르기 때문이다.
 2. **조리개**: Android 는 기기에 따라 **가변 실시간** 가능, iOS 는 하드웨어 한계로 **고정값**. 데이터 모델은 양쪽을 모두 담도록 조리개도 실시간 값으로 둔다(iOS 에선 값이 안 변할 뿐).
 3. **노출 보정값(EV)**: 두 플랫폼 모두 EV 단위 Float 로 통일된다. Android 는 `인덱스 × 스텝`으로 계산하고(스텝은 바인딩 시 CameraX `ExposureState` 에서 확보), iOS 는 `exposureTargetBias` 를 그대로 쓴다. 표기는 공통.
-4. **렌즈 초점거리**: 표시 값은 **풀프레임(36mm) 환산 초점거리(mm)** 로 공통이다. iOS 는 `videoFieldOfView`(화각)에서, Android 는 `LENS_INFO_AVAILABLE_FOCAL_LENGTHS`·`SENSOR_INFO_PHYSICAL_SIZE` 에서 같은 기준으로 환산하므로 결과가 일치한다(입력 경로만 분기). 또한 렌즈가 바뀌지 않는 한 변하지 않으므로 **노출과 분리된 별도 상태**에서 바인딩 시 한 번 계산한다.
+4. **렌즈 초점거리**: 표시 값은 **풀프레임(35mm) 대각선 환산 초점거리(mm)** 로 공통이다(CIPA 표준). iOS 는 `videoFieldOfView`(화각)+활성 포맷 종횡비에서, Android 는 `LENS_INFO_AVAILABLE_FOCAL_LENGTHS`·`SENSOR_INFO_PHYSICAL_SIZE`(대각선)에서 같은 대각선 기준으로 환산하므로 결과가 일치한다(입력 경로만 분기). 수평 기준으로 환산하면 4:3 센서에서 ~4% 커져 제조사 표기(13/24/120mm)와 어긋나므로 대각선 기준을 쓴다. 또한 렌즈가 바뀌지 않는 한 변하지 않으므로 **노출과 분리된 별도 상태**에서 바인딩 시 한 번 계산한다.
 5. **null 처리**: 모든 값은 nullable. 없으면 `--` 로 표시한다.
