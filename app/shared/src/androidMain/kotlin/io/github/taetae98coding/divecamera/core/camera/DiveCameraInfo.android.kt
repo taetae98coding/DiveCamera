@@ -1,6 +1,7 @@
 package io.github.taetae98coding.divecamera.core.camera
 
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.DynamicRange
 import kotlin.time.Duration
 
 internal actual class DiveCameraInfo(
@@ -12,6 +13,12 @@ internal actual class DiveCameraInfo(
     actual val sensorExposureTimeOptions: List<Duration>,
     actual val apertureOptions: List<Float>,
     actual val isoOptions: List<Int>,
+    val isRawSupported: Boolean,
+    val isUltraHdrSupported: Boolean,
+    val videoDynamicRange: DynamicRange,
+    val isOpticalStabilizationSupported: Boolean,
+    val isPreviewStabilizationSupported: Boolean,
+    val isVideoStabilizationSupported: Boolean,
     val videoQualityOptions: List<DiveCameraVideoQuality>,
     val videoFrameRateOptions: Map<DiveCameraVideoQuality, List<Int>>,
 ) {

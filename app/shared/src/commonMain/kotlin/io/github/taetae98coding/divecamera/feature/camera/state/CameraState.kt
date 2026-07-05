@@ -12,6 +12,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposure
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoFormat
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
 import kotlin.time.Duration
@@ -36,6 +37,8 @@ internal interface CameraState {
     val exposureCompensation: Float?
     val exposure: DiveCameraExposure
 
+    val photoFormats: Set<DiveCameraPhotoFormat>
+
     val videoQuality: DiveCameraVideoQuality?
     val videoQualityOptions: List<DiveCameraVideoQuality>
     val videoFrameRate: Int?
@@ -57,6 +60,8 @@ internal interface CameraState {
     suspend fun setAspect(aspect: DiveCameraAspect)
 
     suspend fun setCaptureMode(captureMode: DiveCameraCaptureMode)
+
+    suspend fun togglePhotoFormat(photoFormat: DiveCameraPhotoFormat)
 
     suspend fun setVideoQuality(videoQuality: DiveCameraVideoQuality)
 
@@ -116,6 +121,9 @@ internal abstract class DefaultCameraState : CameraState {
             }
         }
 
+    final override var photoFormats by mutableStateOf(setOf(DiveCameraPhotoFormat.JPEG, DiveCameraPhotoFormat.RAW))
+        private set
+
     protected var isInProgress by mutableStateOf(false)
     protected var isRecording by mutableStateOf(false)
 
@@ -140,6 +148,20 @@ internal abstract class DefaultCameraState : CameraState {
 
     final override suspend fun setProgramExposure(exposureCompensation: Float) {
         diveCamera?.setProgramExposure(exposureCompensation)
+    }
+
+    // 최소 한 개 형식은 유지한다. 반환값은 변경 여부.
+    protected fun updatePhotoFormats(photoFormat: DiveCameraPhotoFormat): Boolean {
+        val formats =
+            if (photoFormat in photoFormats) {
+                photoFormats - photoFormat
+            } else {
+                photoFormats + photoFormat
+            }
+        if (formats.isEmpty()) return false
+
+        photoFormats = formats
+        return true
     }
 
     final override suspend fun setManualExposure(exposure: DiveCameraExposure) {

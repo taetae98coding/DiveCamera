@@ -39,15 +39,18 @@ import divecamera.app.shared.generated.resources.lens_facing_back
 import divecamera.app.shared.generated.resources.lens_facing_front
 import divecamera.app.shared.generated.resources.overlay_aperture
 import divecamera.app.shared.generated.resources.overlay_aspect
+import divecamera.app.shared.generated.resources.overlay_back
 import divecamera.app.shared.generated.resources.overlay_capture_mode
 import divecamera.app.shared.generated.resources.overlay_close
 import divecamera.app.shared.generated.resources.overlay_exposure_mode
 import divecamera.app.shared.generated.resources.overlay_lens
+import divecamera.app.shared.generated.resources.overlay_photo_format
 import divecamera.app.shared.generated.resources.overlay_shutture_speed
 import divecamera.app.shared.generated.resources.overlay_video_quality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoFormat
 import io.github.taetae98coding.divecamera.core.model.CameraGesture
 import io.github.taetae98coding.divecamera.ext.formatAperture
 import io.github.taetae98coding.divecamera.ext.formatAspect
@@ -57,6 +60,8 @@ import io.github.taetae98coding.divecamera.ext.formatExposureCompensation
 import io.github.taetae98coding.divecamera.ext.formatExposureMode
 import io.github.taetae98coding.divecamera.ext.formatExposureValue
 import io.github.taetae98coding.divecamera.ext.formatIso
+import io.github.taetae98coding.divecamera.ext.formatPhotoFormat
+import io.github.taetae98coding.divecamera.ext.formatPhotoFormats
 import io.github.taetae98coding.divecamera.ext.formatSensorExposureTime
 import io.github.taetae98coding.divecamera.ext.formatVideoFrameRate
 import io.github.taetae98coding.divecamera.ext.formatVideoQuality
@@ -91,6 +96,8 @@ private sealed interface CameraSettingOverlay : NavKey {
     data object Iso : CameraSettingOverlay
 
     data object Aspect : CameraSettingOverlay
+
+    data object PhotoFormat : CameraSettingOverlay
 }
 
 @Composable
@@ -206,6 +213,15 @@ internal fun CameraSettingOverlay(
                         backStack = backStack,
                     )
                 }
+
+                entry<CameraSettingOverlay.PhotoFormat> {
+                    PhotoFormatOverlay(
+                        gesture = gesture,
+                        scaffoldState = scaffoldState,
+                        cameraState = cameraState,
+                        backStack = backStack,
+                    )
+                }
             },
     )
 }
@@ -231,6 +247,7 @@ private fun HomeOverlay(
     val captureModeVideo = stringResource(Res.string.capture_mode_video)
     val overlayLens = stringResource(Res.string.overlay_lens)
     val overlayAspect = stringResource(Res.string.overlay_aspect)
+    val overlayPhotoFormat = stringResource(Res.string.overlay_photo_format)
     val overlayExposureMode = stringResource(Res.string.overlay_exposure_mode)
     val overlayShutterSpeed = stringResource(Res.string.overlay_shutture_speed)
     val overlayAperture = stringResource(Res.string.overlay_aperture)
@@ -294,6 +311,14 @@ private fun HomeOverlay(
                         isEnable = true,
                         trailingValue = formatAspect(value = cameraState.aspect),
                         action = { backStack.add(CameraSettingOverlay.Aspect) },
+                    ).also {
+                        add(it)
+                    }
+
+                    OverlayItem(
+                        title = overlayPhotoFormat,
+                        trailingValue = formatPhotoFormats(cameraState.photoFormats),
+                        action = { backStack.add(CameraSettingOverlay.PhotoFormat) },
                     ).also {
                         add(it)
                     }
@@ -693,6 +718,40 @@ private fun AspectOverlay(
 }
 
 @Composable
+private fun PhotoFormatOverlay(
+    gesture: CameraGesture,
+    scaffoldState: CameraScaffoldState,
+    cameraState: CameraState,
+    backStack: NavBackStack<CameraSettingOverlay>,
+    modifier: Modifier = Modifier,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val overlayBack = stringResource(Res.string.overlay_back)
+
+    LazyColumnOverlay(
+        gesture = gesture,
+        scaffoldState = scaffoldState,
+        items =
+            DiveCameraPhotoFormat.entries.map { format ->
+                OverlayItem(
+                    title = formatPhotoFormat(format),
+                    trailingValue = if (format in cameraState.photoFormats) "✓" else null,
+                    action = {
+                        coroutineScope.launch {
+                            cameraState.togglePhotoFormat(format)
+                        }
+                    },
+                )
+            } +
+                OverlayItem(
+                    title = overlayBack,
+                    action = { backStack.removeLastOrNull() },
+                ),
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun LazyColumnOverlay(
     gesture: CameraGesture,
     scaffoldState: CameraScaffoldState,
@@ -769,6 +828,7 @@ private fun LazyColumnOverlay(
                     .fillMaxWidth(0.8F)
                     .heightIn(max = 500.dp),
             state = lazyListState,
+            userScrollEnabled = gesture.isTouchEnable,
         ) {
             itemsIndexed(
                 items = items,

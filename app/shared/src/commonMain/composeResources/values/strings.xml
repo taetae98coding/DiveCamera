@@ -25,6 +25,8 @@
     <string name="overlay_video_quality">Quality</string>
     <string name="overlay_lens">Lens</string>
     <string name="overlay_aspect">Aspect</string>
+    <string name="overlay_photo_format">Format</string>
+    <string name="overlay_back">Back</string>
     <string name="overlay_exposure_mode">Exposure Mode</string>
     <string name="overlay_shutture_speed">Shutter Speed</string>
     <string name="overlay_aperture">Aperture</string>

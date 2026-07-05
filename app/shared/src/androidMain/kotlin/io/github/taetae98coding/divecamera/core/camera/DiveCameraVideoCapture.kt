@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.provider.MediaStore
 import android.util.Range
+import androidx.camera.core.DynamicRange
 import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -20,6 +21,8 @@ internal class DiveCameraVideoCapture(
     aspect: DiveCameraAspect,
     diveCameraVideoQuality: DiveCameraVideoQuality?,
     frameRate: Int?,
+    isVideoStabilizationEnabled: Boolean,
+    dynamicRange: DynamicRange,
 ) {
     val quality = diveCameraVideoQuality?.toQuality()
     val useCase =
@@ -30,7 +33,9 @@ internal class DiveCameraVideoCapture(
                     .apply { if (quality != null) setQualitySelector(QualitySelector.from(quality)) }
                     .setAspectRatio(aspect.toAspectRatio())
                     .build(),
-            ).apply { frameRate?.let { setTargetFrameRate(Range(it, it)) } }
+            ).setVideoStabilizationEnabled(isVideoStabilizationEnabled)
+            .setDynamicRange(dynamicRange)
+            .apply { frameRate?.let { setTargetFrameRate(Range(it, it)) } }
             .build()
 
     fun startRecording(

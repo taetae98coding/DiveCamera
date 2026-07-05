@@ -7,8 +7,14 @@ import apertureOptions
 import exposureCompensationOptions
 import io.github.taetae98coding.divecamera.ext.cameraLensComparator
 import isManualModeAvailable
+import isOpticalStabilizationSupported
+import isPreviewStabilizationSupported
+import isRawSupported
+import isUltraHdrSupported
+import isVideoStabilizationSupported
 import isoOptions
 import sensorExposureTimeOptions
+import videoDynamicRange
 import videoFrameRateOptions
 import videoQualityOptions
 
@@ -38,6 +44,12 @@ internal fun CameraInfo.toDiveCameraOption(): DiveCameraInfo =
         sensorExposureTimeOptions = sensorExposureTimeOptions(),
         apertureOptions = apertureOptions(),
         isoOptions = isoOptions(),
+        isRawSupported = isRawSupported(),
+        isUltraHdrSupported = isUltraHdrSupported(),
+        videoDynamicRange = videoDynamicRange(),
+        isOpticalStabilizationSupported = isOpticalStabilizationSupported(),
+        isPreviewStabilizationSupported = isPreviewStabilizationSupported(),
+        isVideoStabilizationSupported = isVideoStabilizationSupported(),
         videoQualityOptions = videoQualityOptions(),
         videoFrameRateOptions = videoFrameRateOptions(),
     )

@@ -3,9 +3,13 @@
 package io.github.taetae98coding.divecamera.feature.camera.state
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.SessionConfig
+import androidx.camera.extensions.ExtensionMode
+import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.camera.video.Recording
@@ -16,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.taetae98coding.divecamera.core.camera.DiveCamera
@@ -28,6 +33,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraImageCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraLocationProvider
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoFormat
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraPreview
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
@@ -35,17 +41,22 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
 import io.github.taetae98coding.divecamera.core.camera.getAvailableCameraLensList
 import io.github.taetae98coding.divecamera.core.camera.toDiveCameraOption
 import io.github.taetae98coding.divecamera.core.camera.toViewPort
+import io.github.taetae98coding.divecamera.ext.resumeSafe
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
+
+private const val TAG = "DiveCamera"
 
 internal class LifecycleCameraState(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
 ) : DefaultCameraState() {
     private val cameraLocationProvider: DiveCameraLocationProvider = DiveCameraLocationProvider(context)
+    private var extensionsManager: ExtensionsManager? = null
     private var cameraPreview: DiveCameraPreview? = null
     private var cameraImageCapture: DiveCameraImageCapture? = null
     private var cameraVideoCapture: DiveCameraVideoCapture? = null
@@ -70,6 +81,7 @@ internal class LifecycleCameraState(
         val provider = ProcessCameraProvider.awaitInstance(context)
 
         try {
+            extensionsManager = awaitExtensionsManager(provider)
             diveCameraInfoOptions = provider.getAvailableCameraLensList()
             changeSession(provider, lastCameraInfo ?: diveCameraInfoOptions.firstOrNull())
             coroutineScope {
@@ -106,16 +118,54 @@ internal class LifecycleCameraState(
                 videoFrameRate = videoFrameRateOptions.lastOrNull()
             }
 
-            val preview = DiveCameraPreview(aspect)
+            // 영상은 EIS(프리뷰/비디오 스태빌라이제이션)를 우선 사용하고,
+            // EIS와 OIS를 동시에 명시하면 상호 간섭이 생길 수 있어 EIS 사용 시 OIS는 HAL에 맡긴다.
+            val isEisEnabled =
+                captureMode == DiveCameraCaptureMode.VIDEO &&
+                    (cameraInfo.isPreviewStabilizationSupported || cameraInfo.isVideoStabilizationSupported)
+            val isOisEnabled = cameraInfo.isOpticalStabilizationSupported && !isEisEnabled
+            val nightSelector = nightCameraSelector(cameraInfo)
+
+            val preview =
+                DiveCameraPreview(
+                    aspect = aspect,
+                    isPreviewStabilizationEnabled = captureMode == DiveCameraCaptureMode.VIDEO && cameraInfo.isPreviewStabilizationSupported,
+                    isOpticalStabilizationEnabled = isOisEnabled,
+                )
             val imageCapture =
                 when (captureMode) {
-                    DiveCameraCaptureMode.PHOTO -> DiveCameraImageCapture(context, aspect)
-                    DiveCameraCaptureMode.VIDEO -> null
+                    DiveCameraCaptureMode.PHOTO -> {
+                        DiveCameraImageCapture(
+                            context = context,
+                            aspect = aspect,
+                            photoFormats = photoFormats,
+                            isRawSupported = cameraInfo.isRawSupported,
+                            // Night extension은 Ultra HDR 출력을 지원하지 않으므로 Night 미사용 시에만 적용한다.
+                            isUltraHdrEnabled = nightSelector == null && cameraInfo.isUltraHdrSupported,
+                            isOpticalStabilizationEnabled = isOisEnabled,
+                        )
+                    }
+
+                    DiveCameraCaptureMode.VIDEO -> {
+                        null
+                    }
                 }
             val videoCapture =
                 when (captureMode) {
-                    DiveCameraCaptureMode.PHOTO -> null
-                    DiveCameraCaptureMode.VIDEO -> DiveCameraVideoCapture(context, aspect, videoQuality, videoFrameRate)
+                    DiveCameraCaptureMode.PHOTO -> {
+                        null
+                    }
+
+                    DiveCameraCaptureMode.VIDEO -> {
+                        DiveCameraVideoCapture(
+                            context = context,
+                            aspect = aspect,
+                            diveCameraVideoQuality = videoQuality,
+                            frameRate = videoFrameRate,
+                            isVideoStabilizationEnabled = cameraInfo.isVideoStabilizationSupported,
+                            dynamicRange = cameraInfo.videoDynamicRange,
+                        )
+                    }
                 }
             val useCases = listOfNotNull(preview.useCase, imageCapture?.useCase, videoCapture?.useCase)
             val sessionConfig =
@@ -124,10 +174,16 @@ internal class LifecycleCameraState(
                     viewPort = aspect.toViewPort(preview.useCase.targetRotation),
                 )
 
-            val camera = provider.bindToLifecycle(lifecycleOwner = lifecycleOwner, cameraSelector = cameraInfo.selector, sessionConfig = sessionConfig)
-            val diveCameraInfo = camera.cameraInfo.toDiveCameraOption()
+            val camera =
+                provider.bindToLifecycle(
+                    lifecycleOwner = lifecycleOwner,
+                    cameraSelector = nightSelector ?: cameraInfo.selector,
+                    sessionConfig = sessionConfig,
+                )
+            // Night extension 카메라의 CameraInfo는 일반 기능 조회가 제한되므로 원본 정보를 유지한다.
+            val diveCameraInfo = if (nightSelector == null) camera.cameraInfo.toDiveCameraOption() else cameraInfo
             val diveCamera =
-                DiveCamera(camera = camera, info = camera.cameraInfo.toDiveCameraOption())
+                DiveCamera(camera = camera, info = diveCameraInfo)
                     .also { diveCamera = it }
 
             cameraPreview =
@@ -146,6 +202,53 @@ internal class LifecycleCameraState(
             cameraImageCapture = null
             cameraVideoCapture = null
             recording = null
+        }
+    }
+
+    // 저조도 JPEG 품질을 위해 RAW가 필요 없는 조합에서만 제조사 Night 확장(멀티프레임 합성)을 사용한다.
+    private fun nightCameraSelector(cameraInfo: DiveCameraInfo): CameraSelector? {
+        if (captureMode != DiveCameraCaptureMode.PHOTO) {
+            Log.d(TAG, "night extension skipped: captureMode=$captureMode")
+            return null
+        }
+        if (DiveCameraPhotoFormat.RAW in photoFormats && cameraInfo.isRawSupported) {
+            Log.d(TAG, "night extension skipped: RAW output requested")
+            return null
+        }
+
+        val extensionsManager = extensionsManager
+        if (extensionsManager == null) {
+            Log.d(TAG, "night extension skipped: ExtensionsManager unavailable")
+            return null
+        }
+        if (!extensionsManager.isExtensionAvailable(cameraInfo.selector, ExtensionMode.NIGHT)) {
+            Log.d(TAG, "night extension not available: facing=${cameraInfo.facing}, type=${cameraInfo.type}")
+            return null
+        }
+
+        Log.d(
+            TAG,
+            "night extension enabled: facing=${cameraInfo.facing}, type=${cameraInfo.type}, " +
+                "estimatedCaptureLatency=${extensionsManager.getEstimatedCaptureLatencyRange(cameraInfo.selector, ExtensionMode.NIGHT)}",
+        )
+        return extensionsManager.getExtensionEnabledCameraSelector(cameraInfo.selector, ExtensionMode.NIGHT)
+    }
+
+    private suspend fun awaitExtensionsManager(provider: ProcessCameraProvider): ExtensionsManager? =
+        suspendCancellableCoroutine { continuation ->
+            val future = ExtensionsManager.getInstanceAsync(context, provider)
+
+            future.addListener(
+                { continuation.resumeSafe(runCatching { future.get() }.getOrNull()) },
+                ContextCompat.getMainExecutor(context),
+            )
+        }
+
+    override suspend fun togglePhotoFormat(photoFormat: DiveCameraPhotoFormat) {
+        if (!updatePhotoFormats(photoFormat)) return
+
+        if (captureMode == DiveCameraCaptureMode.PHOTO) {
+            changeSession(ProcessCameraProvider.awaitInstance(context))
         }
     }
 

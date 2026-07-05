@@ -29,6 +29,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "androidxCamera" }
 androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "androidxCamera" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "androidxCamera" }
+androidx-camera-extensions = { group = "androidx.camera", name = "camera-extensions", version.ref = "androidxCamera" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "androidxCamera" }
 androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "androidxCamera" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }

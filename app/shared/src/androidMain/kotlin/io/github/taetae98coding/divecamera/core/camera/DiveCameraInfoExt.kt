@@ -8,6 +8,8 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.DynamicRange
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.Preview
 import androidx.camera.video.Recorder
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.generateExposureCompensation
@@ -25,6 +27,47 @@ internal fun CameraInfo.isManualModeAvailable(): Boolean =
         .from(this)
         .getCameraCharacteristic(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
         ?.contains(CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR) == true
+
+internal fun CameraInfo.isRawSupported(): Boolean =
+    ImageCapture
+        .getImageCaptureCapabilities(this)
+        .supportedOutputFormats
+        .contains(ImageCapture.OUTPUT_FORMAT_RAW)
+
+internal fun CameraInfo.isUltraHdrSupported(): Boolean =
+    ImageCapture
+        .getImageCaptureCapabilities(this)
+        .supportedOutputFormats
+        .contains(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
+
+// 지원 시 10비트 HLG로 HDR 영상을 녹화한다.
+internal fun CameraInfo.videoDynamicRange(): DynamicRange =
+    if (
+        DynamicRange.HLG_10_BIT in
+        Recorder
+            .getVideoCapabilities(this)
+            .supportedDynamicRanges
+    ) {
+        DynamicRange.HLG_10_BIT
+    } else {
+        DynamicRange.SDR
+    }
+
+internal fun CameraInfo.isOpticalStabilizationSupported(): Boolean =
+    Camera2CameraInfo
+        .from(this)
+        .getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION)
+        ?.contains(CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_ON) == true
+
+internal fun CameraInfo.isPreviewStabilizationSupported(): Boolean =
+    Preview
+        .getPreviewCapabilities(this)
+        .isStabilizationSupported
+
+internal fun CameraInfo.isVideoStabilizationSupported(): Boolean =
+    Recorder
+        .getVideoCapabilities(this)
+        .isStabilizationSupported
 
 internal fun CameraInfo.exposureCompensationOptions(): List<Float> =
     if (exposureState.isExposureCompensationSupported) {
@@ -63,7 +106,7 @@ internal fun CameraInfo.sensorExposureTimeOptions(): List<Duration> {
 internal fun CameraInfo.videoQualityOptions(): List<DiveCameraVideoQuality> =
     Recorder
         .getVideoCapabilities(this)
-        .getSupportedQualities(DynamicRange.SDR)
+        .getSupportedQualities(videoDynamicRange())
         .mapNotNull { it.toDiveCameraVideoQuality() }
         .sorted()
 

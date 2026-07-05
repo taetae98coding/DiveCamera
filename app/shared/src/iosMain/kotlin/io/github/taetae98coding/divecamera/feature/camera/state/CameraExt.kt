@@ -9,6 +9,8 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraType
 import io.github.taetae98coding.divecamera.core.camera.generateExposureCompensation
 import io.github.taetae98coding.divecamera.core.camera.generateIsoOptions
 import io.github.taetae98coding.divecamera.core.camera.generateSensorExposureTimeOptions
+import io.github.taetae98coding.divecamera.core.camera.videoFrameRateOptions
+import io.github.taetae98coding.divecamera.core.camera.videoQualityOptions
 import io.github.taetae98coding.divecamera.ext.cameraLensComparator
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
@@ -78,6 +80,8 @@ internal fun getAvailableCameraLensList(): List<DiveCameraInfo> {
                 isoOptions = device.isoOptions(),
                 apertureOptions = device.apertureOptions(),
                 sensorExposureTimeOptions = device.sensorExposureTimeOptions(),
+                videoQualityOptions = device.videoQualityOptions(),
+                videoFrameRateOptions = device.videoFrameRateOptions(),
             )
         }.sortedWith(cameraLensComparator)
 }

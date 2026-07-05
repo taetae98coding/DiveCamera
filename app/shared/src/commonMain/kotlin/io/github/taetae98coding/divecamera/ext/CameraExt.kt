@@ -5,6 +5,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoFormat
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraType
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import kotlin.math.roundToInt
@@ -80,6 +81,19 @@ internal fun formatCaptureMode(
         DiveCameraCaptureMode.PHOTO -> photoText
         DiveCameraCaptureMode.VIDEO -> videoText
     }
+
+internal fun formatPhotoFormat(value: DiveCameraPhotoFormat): String =
+    when (value) {
+        DiveCameraPhotoFormat.JPEG -> "JPEG"
+        DiveCameraPhotoFormat.RAW -> "RAW"
+    }
+
+internal fun formatPhotoFormats(value: Set<DiveCameraPhotoFormat>): String =
+    DiveCameraPhotoFormat.entries
+        .filter { it in value }
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString(separator = " + ", transform = ::formatPhotoFormat)
+        ?: "--"
 
 internal fun formatVideoQuality(value: DiveCameraVideoQuality?): String =
     when (value) {

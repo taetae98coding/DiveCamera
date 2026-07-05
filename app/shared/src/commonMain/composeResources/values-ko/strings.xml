@@ -20,6 +20,8 @@
     <string name="overlay_video_quality">화질</string>
     <string name="overlay_lens">렌즈</string>
     <string name="overlay_aspect">비율</string>
+    <string name="overlay_photo_format">저장 형식</string>
+    <string name="overlay_back">뒤로</string>
     <string name="overlay_exposure_mode">노출 모드</string>
     <string name="overlay_shutture_speed">셔터 스피드</string>
     <string name="overlay_aperture">조리개</string>

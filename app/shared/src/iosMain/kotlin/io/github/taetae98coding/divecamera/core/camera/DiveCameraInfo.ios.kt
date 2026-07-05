@@ -12,4 +12,6 @@ internal actual data class DiveCameraInfo(
     actual val sensorExposureTimeOptions: List<Duration>,
     actual val apertureOptions: List<Float>,
     actual val isoOptions: List<Int>,
+    val videoQualityOptions: List<DiveCameraVideoQuality>,
+    val videoFrameRateOptions: Map<DiveCameraVideoQuality, List<Int>>,
 )
