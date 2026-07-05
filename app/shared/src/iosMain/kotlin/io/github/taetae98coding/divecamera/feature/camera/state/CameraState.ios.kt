@@ -17,6 +17,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraLocationProvider
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
@@ -25,6 +26,8 @@ import io.github.taetae98coding.divecamera.ext.minAbs
 import io.github.taetae98coding.divecamera.ext.resumeSafe
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureSession
@@ -38,6 +41,7 @@ import kotlin.time.Duration
 internal class SessionCameraState : DefaultCameraState() {
     private val sessionQueue = dispatch_queue_create("camera.session.serial", null)
     private val session = AVCaptureSession()
+    private val cameraLocationProvider = DiveCameraLocationProvider()
 
     private var sampleBufferDelegate: SampleBufferDelegate? = null
     private var deviceInput: AVCaptureDeviceInput? = null
@@ -69,6 +73,9 @@ internal class SessionCameraState : DefaultCameraState() {
             }
 
             changeSession(lastCameraInfo ?: diveCameraInfoOptions.firstOrNull())
+            coroutineScope {
+                launch { cameraLocationProvider.bind() }
+            }
             awaitCancellation()
         } finally {
             dispatch_async(sessionQueue) {
@@ -162,7 +169,10 @@ internal class SessionCameraState : DefaultCameraState() {
         val photoCapture = photoCapture ?: return
 
         isInProgress = true
-        photoCapture.takePhoto(facing = diveCamera?.info?.facing ?: DiveCameraFacing.UNKNOWN)
+        photoCapture.takePhoto(
+            location = cameraLocationProvider.location,
+            facing = diveCamera?.info?.facing ?: DiveCameraFacing.UNKNOWN,
+        )
         isInProgress = false
     }
 
