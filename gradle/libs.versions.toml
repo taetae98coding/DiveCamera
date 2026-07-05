@@ -1,26 +1,46 @@
 [versions]
 kotlin = "2.4.0"
 
-jetbrainsMultiplatform = "1.11.1"
-jetbrainsComposeMaterial3 = "1.9.0"
+kotlinxSerialization = "1.11.0"
+
+jetbrainsCompose = "1.11.1"
+jetbrainsComposeMaterial3 = "1.11.0-alpha07"
+jetbrainsNavigation3 = "1.1.1"
+jetbrainsComposeMaterialIcons = "1.7.3"
 
 androidGradlePlugin = "9.2.1"
 
 androidxActivity = "1.13.0"
+androidxCamera = "1.7.0-alpha02"
 androidxCore = "1.19.0"
 
+spotless = "8.8.0"
+
 [libraries]
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+
+jetbrains-compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "jetbrainsCompose" }
 jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
-jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsMultiplatform" }
+jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsCompose" }
+jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name = "navigation3-ui", version.ref = "jetbrainsNavigation3" }
+jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "jetbrainsComposeMaterialIcons" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "androidxCamera" }
+androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "androidxCamera" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "androidxCamera" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "androidxCamera" }
+androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "androidxCamera" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
-jetbrains-multiplatform = { id = "org.jetbrains.compose", version.ref = "jetbrainsMultiplatform" }
+jetbrains-multiplatform = { id = "org.jetbrains.compose", version.ref = "jetbrainsCompose" }
 
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidGradlePlugin" }
+
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
