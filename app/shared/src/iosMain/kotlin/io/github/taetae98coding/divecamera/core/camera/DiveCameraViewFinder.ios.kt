@@ -4,4 +4,5 @@ import platform.AVFoundation.AVCaptureSession
 
 internal actual class DiveCameraViewFinder(
     val session: AVCaptureSession,
+    val diveEffectPreview: DiveCameraDiveEffectPreview,
 )

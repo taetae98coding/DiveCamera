@@ -15,6 +15,7 @@ import io.github.taetae98coding.divecamera.core.camera.CameraModeSampleBufferDel
 import io.github.taetae98coding.divecamera.core.camera.DiveCamera
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraDiveEffectPreview
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraLocationProvider
@@ -41,11 +42,14 @@ import platform.AVFoundation.AVCaptureSessionPresetHigh
 import platform.AVFoundation.AVCaptureSessionPresetPhoto
 import platform.AVFoundation.AVCaptureVideoDataOutput
 import platform.AVFoundation.AVMediaTypeAudio
+import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.authorizationStatusForMediaType
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_queue_create
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+
+private const val PORTRAIT_ROTATION_ANGLE = 90.0
 
 @Stable
 internal class SessionCameraState : DefaultCameraState() {
@@ -61,7 +65,10 @@ internal class SessionCameraState : DefaultCameraState() {
     private var videoCapture: DiveCameraVideoCapture? = null
     private var lastCameraInfo: DiveCameraInfo? = null
 
-    override var viewFinder by mutableStateOf(DiveCameraViewFinder(session))
+    private val diveEffectPreview =
+        DiveCameraDiveEffectPreview { isDiveEffectEnabled }
+
+    override var viewFinder by mutableStateOf(DiveCameraViewFinder(session, diveEffectPreview))
         private set
 
     override val videoQualityOptions: List<DiveCameraVideoQuality>
@@ -177,6 +184,16 @@ internal class SessionCameraState : DefaultCameraState() {
                     }
                     photoCapture?.output?.let { if (session.canAddOutput(it)) session.addOutput(it) }
                     videoCapture?.output?.let { if (session.canAddOutput(it)) session.addOutput(it) }
+                    // 다이빙 효과 프리뷰가 세로 방향 프레임을 받도록 데이터 아웃풋 연결을 회전/미러링한다.
+                    videoDataOutput.connectionWithMediaType(AVMediaTypeVideo)?.also { connection ->
+                        if (connection.isVideoRotationAngleSupported(PORTRAIT_ROTATION_ANGLE)) {
+                            connection.videoRotationAngle = PORTRAIT_ROTATION_ANGLE
+                        }
+                        if (connection.supportsVideoMirroring) {
+                            connection.automaticallyAdjustsVideoMirroring = false
+                            connection.videoMirrored = cameraInfo.facing == DiveCameraFacing.FRONT
+                        }
+                    }
                     when (captureMode) {
                         DiveCameraCaptureMode.PHOTO -> {
                             session.setSessionPreset(AVCaptureSessionPresetPhoto)
@@ -197,6 +214,7 @@ internal class SessionCameraState : DefaultCameraState() {
                         videoCapture?.configure(cameraInfo.device)
                     }
 
+                    sampleBufferDelegate.add(diveEffectPreview)
                     sampleBufferDelegate.add(CameraModeSampleBufferDelegate(cameraInfo.device) { exposureMode = it })
                     sampleBufferDelegate.add(CameraExposureLevelSampleBufferDelegate(cameraInfo.device) { exposureLevel = it })
                     sampleBufferDelegate.add(CameraExposureCompensationSampleBufferDelegate(cameraInfo.device) { exposureCompensation = exposureCompensationOptions.minAbs(it) })
@@ -244,6 +262,7 @@ internal class SessionCameraState : DefaultCameraState() {
             facing = diveCamera?.info?.facing ?: DiveCameraFacing.UNKNOWN,
             photoFormats = photoFormats,
             aspect = aspect,
+            isDiveEffectEnabled = isDiveEffectEnabled,
         )
         isInProgress = false
     }
@@ -255,6 +274,7 @@ internal class SessionCameraState : DefaultCameraState() {
         isInProgress = false
         videoCapture.startRecording(
             location = cameraLocationProvider.location,
+            isDiveEffectEnabled = isDiveEffectEnabled,
             onFinish = {
                 isRecording = false
                 isInProgress = false

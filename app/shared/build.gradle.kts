@@ -37,6 +37,7 @@ kotlin {
                 implementation(libs.androidx.camera.lifecycle)
                 implementation(libs.androidx.camera.video)
                 implementation(libs.androidx.core.ktx)
+                implementation(libs.androidx.exifinterface)
             }
         }
     }

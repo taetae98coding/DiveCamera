@@ -71,6 +71,7 @@ internal class DiveCameraVideoCapture(
 
     fun startRecording(
         location: CLLocation?,
+        isDiveEffectEnabled: Boolean,
         onFinish: () -> Unit,
     ) {
         dispatch_async(queue) {
@@ -93,7 +94,7 @@ internal class DiveCameraVideoCapture(
             }
 
             val delegate =
-                VideoCaptureDelegate(location) { delegate ->
+                VideoCaptureDelegate(location, isDiveEffectEnabled) { delegate ->
                     inProgressDelegates = inProgressDelegates - delegate
                     onFinish()
                 }
@@ -113,6 +114,7 @@ internal class DiveCameraVideoCapture(
 
 private class VideoCaptureDelegate(
     private val location: CLLocation?,
+    private val isDiveEffectEnabled: Boolean,
     private val onFinish: (VideoCaptureDelegate) -> Unit,
 ) : NSObject(),
     AVCaptureFileOutputRecordingDelegateProtocol {
@@ -127,19 +129,36 @@ private class VideoCaptureDelegate(
             NSLog("[DiveCamera] video recording error: %@", error)
         }
 
+        // 다이빙 효과가 켜져 있으면 녹화본을 색보정해 새 파일로 내보낸 뒤 저장한다. 실패 시 원본을 저장한다.
+        if (isDiveEffectEnabled) {
+            exportDiveEffectVideo(didFinishRecordingToOutputFileAtURL) { exportedURL ->
+                if (exportedURL != null) {
+                    // 원본 녹화 파일은 필요 없으므로 제거하고 효과가 적용된 파일을 저장한다.
+                    NSFileManager.defaultManager.removeItemAtURL(didFinishRecordingToOutputFileAtURL, null)
+                    save(exportedURL)
+                } else {
+                    save(didFinishRecordingToOutputFileAtURL)
+                }
+            }
+        } else {
+            save(didFinishRecordingToOutputFileAtURL)
+        }
+    }
+
+    private fun save(fileURL: NSURL) {
         PHPhotoLibrary.sharedPhotoLibrary().performChanges(
             changeBlock = {
                 val request = PHAssetCreationRequest.creationRequestForAsset()
                 request.location = location
                 request.addResourceWithType(
                     PHAssetResourceTypeVideo,
-                    fileURL = didFinishRecordingToOutputFileAtURL,
+                    fileURL = fileURL,
                     options = PHAssetResourceCreationOptions().apply { shouldMoveFile = true },
                 )
             },
             completionHandler = { success, saveError ->
                 NSLog("[DiveCamera] video save success: %d, error: %@", success, saveError ?: "none")
-                NSFileManager.defaultManager.removeItemAtURL(didFinishRecordingToOutputFileAtURL, null)
+                NSFileManager.defaultManager.removeItemAtURL(fileURL, null)
                 onFinish(this)
             },
         )

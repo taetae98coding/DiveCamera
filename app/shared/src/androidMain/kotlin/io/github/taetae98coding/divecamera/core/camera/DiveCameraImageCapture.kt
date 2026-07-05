@@ -7,6 +7,7 @@ import android.content.Context
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
 import android.location.Location
+import android.net.Uri
 import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2Interop
@@ -15,7 +16,9 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.core.content.ContextCompat
 import io.github.taetae98coding.divecamera.ext.resumeSafe
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 internal class DiveCameraImageCapture(
     private val context: Context,
@@ -63,6 +66,7 @@ internal class DiveCameraImageCapture(
     suspend fun takePhoto(
         location: Location?,
         facing: DiveCameraFacing,
+        isDiveEffectEnabled: Boolean,
     ) {
         val metadata =
             ImageCapture
@@ -98,12 +102,17 @@ internal class DiveCameraImageCapture(
                 ).setMetadata(metadata)
                 .build()
 
+        var jpegUri: Uri? = null
+
         suspendCancellableCoroutine { continuation ->
             var count = 0
             val expectedCount = formats.size
             val callback =
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(results: ImageCapture.OutputFileResults) {
+                        results.savedUri
+                            ?.takeIf { context.contentResolver.getType(it) == "image/jpeg" }
+                            ?.let { jpegUri = it }
                         checkIsInProgress()
                     }
 
@@ -135,6 +144,15 @@ internal class DiveCameraImageCapture(
 
                 else -> {
                     useCase.takePicture(jpegOptions, ContextCompat.getMainExecutor(context), callback)
+                }
+            }
+        }
+
+        // RAW는 수중 후보정 원본으로 남기고, 다이빙 효과는 JPEG에만 적용한다.
+        if (isDiveEffectEnabled) {
+            jpegUri?.let { uri ->
+                withContext(Dispatchers.Default) {
+                    DiveEffectImageProcessor.apply(context, uri)
                 }
             }
         }

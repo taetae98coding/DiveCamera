@@ -78,6 +78,7 @@ internal class DiveCameraPhotoCapture(
         facing: DiveCameraFacing,
         photoFormats: Set<DiveCameraPhotoFormat>,
         aspect: DiveCameraAspect,
+        isDiveEffectEnabled: Boolean,
     ) {
         suspendCancellableCoroutine { continuation ->
             dispatch_async(queue) {
@@ -92,7 +93,7 @@ internal class DiveCameraPhotoCapture(
                 }
 
                 val delegate =
-                    PhotoCaptureDelegate(location, aspect) { delegate ->
+                    PhotoCaptureDelegate(location, aspect, isDiveEffectEnabled) { delegate ->
                         inProgressDelegates = inProgressDelegates - delegate
                         continuation.resumeSafe(Unit)
                     }
@@ -263,6 +264,7 @@ private fun CIImage.cropRect(ratio: Double): CValue<CGRect>? =
 private class PhotoCaptureDelegate(
     private val location: CLLocation?,
     private val aspect: DiveCameraAspect,
+    private val isDiveEffectEnabled: Boolean,
     private val onFinish: (PhotoCaptureDelegate) -> Unit,
 ) : NSObject(),
     AVCapturePhotoCaptureDelegateProtocol {
@@ -281,10 +283,14 @@ private class PhotoCaptureDelegate(
         val data = didFinishProcessingPhoto.fileDataRepresentation() ?: return
 
         if (didFinishProcessingPhoto.rawPhoto) {
-            // RAW는 후보정 여지를 위해 센서 원본 크기 그대로 저장한다.
+            // RAW는 후보정 여지를 위해 센서 원본 크기 그대로 저장한다. (다이빙 효과도 적용하지 않는다)
             rawData = data
         } else {
-            processedData = data.croppedJpeg(aspect)
+            // 다이빙 효과 재인코딩은 게인맵을 유지하지 못하므로 효과 사용 시에는 게인맵 없이 저장된다.
+            processedData =
+                data
+                    .croppedJpeg(aspect)
+                    .let { if (isDiveEffectEnabled) it.applyingDiveEffectJpeg() else it }
         }
     }
 

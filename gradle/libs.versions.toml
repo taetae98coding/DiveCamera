@@ -13,6 +13,7 @@ androidGradlePlugin = "9.2.1"
 androidxActivity = "1.13.0"
 androidxCamera = "1.7.0-alpha02"
 androidxCore = "1.19.0"
+androidxExifinterface = "1.4.1"
 
 spotless = "8.8.0"
 
@@ -33,6 +34,7 @@ androidx-camera-extensions = { group = "androidx.camera", name = "camera-extensi
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "androidxCamera" }
 androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "androidxCamera" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "androidxExifinterface" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

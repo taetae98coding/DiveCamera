@@ -31,6 +31,10 @@
     <string name="overlay_shutture_speed">Shutter Speed</string>
     <string name="overlay_aperture">Aperture</string>
     <string name="overlay_close">Close</string>
+    <string name="overlay_dive_effect">Dive Effect</string>
+
+    <string name="dive_effect_on">On</string>
+    <string name="dive_effect_off">Off</string>
 
     <string name="lens_facing_front">Front</string>
     <string name="lens_facing_back">Back</string>

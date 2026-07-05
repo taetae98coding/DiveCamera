@@ -21,11 +21,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.util.Consumer
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.taetae98coding.divecamera.core.camera.DiveCamera
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraDiveEffectAnalysis
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraEffect
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraEffectSurfaceProcessor
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureCaptureCallback
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureCompensationCaptureCallback
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureModeCaptureCallback
@@ -60,6 +64,7 @@ internal class LifecycleCameraState(
     private var cameraPreview: DiveCameraPreview? = null
     private var cameraImageCapture: DiveCameraImageCapture? = null
     private var cameraVideoCapture: DiveCameraVideoCapture? = null
+    private var cameraEffectProcessor: DiveCameraEffectSurfaceProcessor? = null
     private var recording: Recording? = null
     private var lastCameraInfo: DiveCameraInfo? = null
 
@@ -91,6 +96,8 @@ internal class LifecycleCameraState(
         } finally {
             stopVideo()
             provider.unbindAll()
+            cameraEffectProcessor?.close()
+            cameraEffectProcessor = null
             diveCamera = null
             cameraPreview = null
             cameraImageCapture = null
@@ -108,6 +115,8 @@ internal class LifecycleCameraState(
         cameraInfo: DiveCameraInfo? = lastCameraInfo,
     ) {
         provider.unbindAll()
+        cameraEffectProcessor?.close()
+        cameraEffectProcessor = null
         if (cameraInfo != null) {
             if (videoQuality !in cameraInfo.videoQualityOptions) {
                 videoQuality = cameraInfo.videoQualityOptions.lastOrNull()
@@ -167,19 +176,65 @@ internal class LifecycleCameraState(
                         )
                     }
                 }
-            val useCases = listOfNotNull(preview.useCase, imageCapture?.useCase, videoCapture?.useCase)
-            val sessionConfig =
-                SessionConfig(
-                    useCases = useCases,
-                    viewPort = aspect.toViewPort(preview.useCase.targetRotation),
-                )
+            // 영상은 프레임을 셰이더로 보정해 프리뷰/녹화에 함께 굽고, 사진은 프리뷰 RenderEffect + 저장 시 보정한다.
+            val isPhotoEffect = captureMode == DiveCameraCaptureMode.PHOTO && isDiveEffectEnabled
+            var effectProcessor =
+                if (captureMode == DiveCameraCaptureMode.VIDEO && isDiveEffectEnabled) {
+                    DiveCameraEffectSurfaceProcessor()
+                } else {
+                    null
+                }
+            val processorForAnalysis = effectProcessor
+            val diveEffectAnalysis =
+                if (isPhotoEffect || processorForAnalysis != null) {
+                    DiveCameraDiveEffectAnalysis { matrix ->
+                        if (processorForAnalysis != null) {
+                            processorForAnalysis.setColorMatrix(matrix)
+                        } else {
+                            diveEffectColorMatrix = matrix
+                        }
+                    }
+                } else {
+                    null
+                }
+            val cameraEffect =
+                effectProcessor?.let { processor ->
+                    DiveCameraEffect(
+                        processor = processor,
+                        executor = ContextCompat.getMainExecutor(context),
+                        errorListener = Consumer { throwable -> Log.w(TAG, "dive effect processor error", throwable) },
+                    )
+                }
+            val useCases = listOfNotNull(preview.useCase, imageCapture?.useCase, videoCapture?.useCase, diveEffectAnalysis?.useCase)
+            val effects = listOfNotNull(cameraEffect)
+            val viewPort = aspect.toViewPort(preview.useCase.targetRotation)
 
             val camera =
-                provider.bindToLifecycle(
-                    lifecycleOwner = lifecycleOwner,
-                    cameraSelector = nightSelector ?: cameraInfo.selector,
-                    sessionConfig = sessionConfig,
-                )
+                try {
+                    provider.bindToLifecycle(
+                        lifecycleOwner = lifecycleOwner,
+                        cameraSelector = nightSelector ?: cameraInfo.selector,
+                        sessionConfig = SessionConfig(useCases = useCases, viewPort = viewPort, effects = effects),
+                    )
+                } catch (exception: IllegalArgumentException) {
+                    // RAW + JPEG + 분석/효과 스트림 조합은 LEVEL_3 미만 기기에서 거부될 수 있어 효과 없이 재시도한다.
+                    if (diveEffectAnalysis == null && cameraEffect == null) throw exception
+
+                    Log.w(TAG, "dive effect unsupported, rebinding without it", exception)
+                    effectProcessor?.close()
+                    effectProcessor = null
+                    val fallbackUseCases = diveEffectAnalysis?.let { useCases - it.useCase } ?: useCases
+                    provider.bindToLifecycle(
+                        lifecycleOwner = lifecycleOwner,
+                        cameraSelector = nightSelector ?: cameraInfo.selector,
+                        sessionConfig = SessionConfig(useCases = fallbackUseCases, viewPort = viewPort),
+                    )
+                }
+
+            cameraEffectProcessor = effectProcessor
+            if (!isPhotoEffect) {
+                diveEffectColorMatrix = null
+            }
             // Night extension 카메라의 CameraInfo는 일반 기능 조회가 제한되므로 원본 정보를 유지한다.
             val diveCameraInfo = if (nightSelector == null) camera.cameraInfo.toDiveCameraOption() else cameraInfo
             val diveCamera =
@@ -201,6 +256,7 @@ internal class LifecycleCameraState(
             cameraPreview = null
             cameraImageCapture = null
             cameraVideoCapture = null
+            cameraEffectProcessor = null
             recording = null
         }
     }
@@ -252,6 +308,14 @@ internal class LifecycleCameraState(
         }
     }
 
+    override suspend fun setDiveEffect(isEnabled: Boolean) {
+        if (isDiveEffectEnabled == isEnabled) return
+
+        super.setDiveEffect(isEnabled)
+        // 사진은 분석 스트림, 영상은 GL 효과를 붙이거나 떼기 위해 세션을 다시 구성한다.
+        changeSession(ProcessCameraProvider.awaitInstance(context))
+    }
+
     override suspend fun setAspect(aspect: DiveCameraAspect) {
         if (preferAspect == aspect) return
 
@@ -299,6 +363,7 @@ internal class LifecycleCameraState(
         imageCapture.takePhoto(
             location = cameraLocationProvider.location,
             facing = diveCamera?.info?.facing ?: DiveCameraFacing.UNKNOWN,
+            isDiveEffectEnabled = isDiveEffectEnabled,
         )
         isInProgress = false
     }

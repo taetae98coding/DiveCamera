@@ -35,6 +35,8 @@ import androidx.navigation3.ui.NavDisplay
 import divecamera.app.shared.generated.resources.Res
 import divecamera.app.shared.generated.resources.capture_mode_photo
 import divecamera.app.shared.generated.resources.capture_mode_video
+import divecamera.app.shared.generated.resources.dive_effect_off
+import divecamera.app.shared.generated.resources.dive_effect_on
 import divecamera.app.shared.generated.resources.lens_facing_back
 import divecamera.app.shared.generated.resources.lens_facing_front
 import divecamera.app.shared.generated.resources.overlay_aperture
@@ -42,6 +44,7 @@ import divecamera.app.shared.generated.resources.overlay_aspect
 import divecamera.app.shared.generated.resources.overlay_back
 import divecamera.app.shared.generated.resources.overlay_capture_mode
 import divecamera.app.shared.generated.resources.overlay_close
+import divecamera.app.shared.generated.resources.overlay_dive_effect
 import divecamera.app.shared.generated.resources.overlay_exposure_mode
 import divecamera.app.shared.generated.resources.overlay_lens
 import divecamera.app.shared.generated.resources.overlay_photo_format
@@ -56,6 +59,7 @@ import io.github.taetae98coding.divecamera.ext.formatAperture
 import io.github.taetae98coding.divecamera.ext.formatAspect
 import io.github.taetae98coding.divecamera.ext.formatCaptureMode
 import io.github.taetae98coding.divecamera.ext.formatDiveCameraInfo
+import io.github.taetae98coding.divecamera.ext.formatDiveEffect
 import io.github.taetae98coding.divecamera.ext.formatExposureCompensation
 import io.github.taetae98coding.divecamera.ext.formatExposureMode
 import io.github.taetae98coding.divecamera.ext.formatExposureValue
@@ -98,6 +102,8 @@ private sealed interface CameraSettingOverlay : NavKey {
     data object Aspect : CameraSettingOverlay
 
     data object PhotoFormat : CameraSettingOverlay
+
+    data object DiveEffect : CameraSettingOverlay
 }
 
 @Composable
@@ -222,6 +228,15 @@ internal fun CameraSettingOverlay(
                         backStack = backStack,
                     )
                 }
+
+                entry<CameraSettingOverlay.DiveEffect> {
+                    DiveEffectOverlay(
+                        gesture = gesture,
+                        scaffoldState = scaffoldState,
+                        cameraState = cameraState,
+                        backStack = backStack,
+                    )
+                }
             },
     )
 }
@@ -252,6 +267,9 @@ private fun HomeOverlay(
     val overlayShutterSpeed = stringResource(Res.string.overlay_shutture_speed)
     val overlayAperture = stringResource(Res.string.overlay_aperture)
     val overlayClose = stringResource(Res.string.overlay_close)
+    val overlayDiveEffect = stringResource(Res.string.overlay_dive_effect)
+    val diveEffectOn = stringResource(Res.string.dive_effect_on)
+    val diveEffectOff = stringResource(Res.string.dive_effect_off)
     val lensFacingFront = stringResource(Res.string.lens_facing_front)
     val lensFacingBack = stringResource(Res.string.lens_facing_back)
 
@@ -322,6 +340,20 @@ private fun HomeOverlay(
                     ).also {
                         add(it)
                     }
+                }
+
+                // 다이빙 효과는 사진/영상 모두 지원하므로 캡처 모드와 무관하게 노출한다.
+                OverlayItem(
+                    title = overlayDiveEffect,
+                    trailingValue =
+                        formatDiveEffect(
+                            isEnabled = cameraState.isDiveEffectEnabled,
+                            onText = diveEffectOn,
+                            offText = diveEffectOff,
+                        ),
+                    action = { backStack.add(CameraSettingOverlay.DiveEffect) },
+                ).also {
+                    add(it)
                 }
 
                 if (cameraState.captureMode == DiveCameraCaptureMode.PHOTO) {
@@ -748,6 +780,44 @@ private fun PhotoFormatOverlay(
                     action = { backStack.removeLastOrNull() },
                 ),
         modifier = modifier,
+    )
+}
+
+@Composable
+private fun DiveEffectOverlay(
+    gesture: CameraGesture,
+    scaffoldState: CameraScaffoldState,
+    cameraState: CameraState,
+    backStack: NavBackStack<CameraSettingOverlay>,
+    modifier: Modifier = Modifier,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val list = listOf(true, false)
+    val diveEffectOn = stringResource(Res.string.dive_effect_on)
+    val diveEffectOff = stringResource(Res.string.dive_effect_off)
+
+    LazyColumnOverlay(
+        gesture = gesture,
+        scaffoldState = scaffoldState,
+        items =
+            list.map {
+                OverlayItem(
+                    title =
+                        formatDiveEffect(
+                            isEnabled = it,
+                            onText = diveEffectOn,
+                            offText = diveEffectOff,
+                        ),
+                    action = {
+                        coroutineScope.launch {
+                            cameraState.setDiveEffect(it)
+                            backStack.removeLastOrNull()
+                        }
+                    },
+                )
+            },
+        modifier = modifier,
+        initialCursor = list.indexOf(cameraState.isDiveEffectEnabled).coerceAtLeast(0),
     )
 }
 

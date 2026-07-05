@@ -26,6 +26,10 @@
     <string name="overlay_shutture_speed">셔터 스피드</string>
     <string name="overlay_aperture">조리개</string>
     <string name="overlay_close">닫기</string>
+    <string name="overlay_dive_effect">다이빙 효과</string>
+
+    <string name="dive_effect_on">켜기</string>
+    <string name="dive_effect_off">끄기</string>
 
     <string name="lens_facing_front">전면</string>
     <string name="lens_facing_back">후면</string>

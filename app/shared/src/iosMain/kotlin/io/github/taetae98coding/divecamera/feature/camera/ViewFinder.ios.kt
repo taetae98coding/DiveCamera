@@ -13,12 +13,24 @@ internal actual fun ViewFinder(
     modifier: Modifier,
 ) {
     UIKitView(
-        factory = { CameraPreviewView().apply { previewLayer.setSession(state.viewFinder.session) } },
+        factory = {
+            CameraPreviewView().apply {
+                previewLayer.setSession(state.viewFinder.session)
+                state.viewFinder.diveEffectPreview.attach(effectImageView)
+            }
+        },
         modifier = modifier.fillMaxSize(),
         update = { view ->
             val session = state.viewFinder.session
             if (view.previewLayer.session != session) {
                 view.previewLayer.setSession(session)
+            }
+            state.viewFinder.diveEffectPreview.attach(view.effectImageView)
+
+            // 효과가 꺼지면 렌더러가 다음 프레임을 기다리지 않고 즉시 원본 프리뷰를 드러낸다.
+            if (!state.isDiveEffectEnabled) {
+                view.effectImageView.image = null
+                view.effectImageView.hidden = true
             }
         },
         properties =

@@ -39,6 +39,9 @@ internal interface CameraState {
 
     val photoFormats: Set<DiveCameraPhotoFormat>
 
+    val isDiveEffectEnabled: Boolean
+    val diveEffectColorMatrix: FloatArray?
+
     val videoQuality: DiveCameraVideoQuality?
     val videoQualityOptions: List<DiveCameraVideoQuality>
     val videoFrameRate: Int?
@@ -62,6 +65,8 @@ internal interface CameraState {
     suspend fun setCaptureMode(captureMode: DiveCameraCaptureMode)
 
     suspend fun togglePhotoFormat(photoFormat: DiveCameraPhotoFormat)
+
+    suspend fun setDiveEffect(isEnabled: Boolean)
 
     suspend fun setVideoQuality(videoQuality: DiveCameraVideoQuality)
 
@@ -123,6 +128,15 @@ internal abstract class DefaultCameraState : CameraState {
 
     final override var photoFormats by mutableStateOf(setOf(DiveCameraPhotoFormat.JPEG, DiveCameraPhotoFormat.RAW))
         private set
+
+    final override var isDiveEffectEnabled by mutableStateOf(false)
+        protected set
+    final override var diveEffectColorMatrix by mutableStateOf<FloatArray?>(null)
+        protected set
+
+    override suspend fun setDiveEffect(isEnabled: Boolean) {
+        isDiveEffectEnabled = isEnabled
+    }
 
     protected var isInProgress by mutableStateOf(false)
     protected var isRecording by mutableStateOf(false)

@@ -82,6 +82,12 @@ internal fun formatCaptureMode(
         DiveCameraCaptureMode.VIDEO -> videoText
     }
 
+internal fun formatDiveEffect(
+    isEnabled: Boolean,
+    onText: String,
+    offText: String,
+): String = if (isEnabled) onText else offText
+
 internal fun formatPhotoFormat(value: DiveCameraPhotoFormat): String =
     when (value) {
         DiveCameraPhotoFormat.JPEG -> "JPEG"
