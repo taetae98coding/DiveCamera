@@ -15,7 +15,9 @@ import io.github.taetae98coding.divecamera.core.camera.CameraModeSampleBufferDel
 import io.github.taetae98coding.divecamera.core.camera.DiveCamera
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPhotoCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
 import io.github.taetae98coding.divecamera.core.camera.SampleBufferDelegate
@@ -32,123 +34,6 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_queue_create
 import kotlin.time.Duration
 
-// @Stable
-// internal actual class CameraState {
-//    private val sessionQueue = dispatch_queue_create("camera.session.serial", null)
-//    private val session = AVCaptureSession()
-//
-//    actual val viewFinder: DiveCameraViewFinderOwner
-//        get() = DiveCameraViewFinderOwner(session)
-//
-//    private var _isManualModeAvailable by mutableStateOf(false)
-//    actual val isManualModeAvailable: Boolean
-//        get() = _isManualModeAvailable
-//
-//    private var _exposureMode by mutableStateOf(CameraExposureMode.PROGRAM)
-//    actual val exposureMode: CameraExposureMode
-//        get() = _exposureMode
-//
-//    private var _exposureLevel by mutableStateOf<Float?>(null)
-//    actual val exposureLevel: Float?
-//        get() = _exposureLevel
-//    private var _exposureCompensation by mutableStateOf<Float?>(null)
-//    actual val exposureCompensation: Float?
-//        get() = _exposureCompensation
-//    private var _exposureCompensationOptions by mutableStateOf(emptyList<Float>())
-//    actual val exposureCompensationOptions: List<Float>
-//        get() = _exposureCompensationOptions
-//    private var _sensorExposureTimeOptions by mutableStateOf(emptyList<Duration>())
-//    actual val sensorExposureTimeOptions: List<Duration>
-//        get() = _sensorExposureTimeOptions
-//    private var _apertureOptions by mutableStateOf(emptyList<Float>())
-//    actual val apertureOptions: List<Float>
-//        get() = _apertureOptions
-//
-//    private var _isoOptions by mutableStateOf(emptyList<Int>())
-//    actual val isoOptions: List<Int>
-//        get() = _isoOptions
-//    private var _exposure by mutableStateOf(DiveCameraExposure())
-//    actual val exposure: DiveCameraExposure
-//        get() = _exposure
-//    private var _lens: CameraLens? = null
-//    actual val lens: CameraLens?
-//        get() = _lens
-//    private var _lensOptions by mutableStateOf(emptyList<CameraLens>())
-//    actual val lensOptions: List<CameraLens>
-//        get() = _lensOptions
-//
-//    private var deviceInput: AVCaptureDeviceInput? = null
-//    private var sampleBufferDelegate: SampleBufferDelegate? = null
-//    private var videoDataOutput: AVCaptureVideoDataOutput? = null
-//
-//    actual suspend fun setProgramExposure(exposureCompensation: Float?) {
-//        suspendCancellableCoroutine { continuation ->
-//            dispatch_async(sessionQueue) {
-//                lens?.device?.withLock { device -> device.setProgramExposure(exposureCompensationOptions.minAbs(exposureCompensation)) }
-//                continuation.resumeSafe(Unit)
-//            }
-//        }
-//    }
-//
-//    actual suspend fun setManualExposure(exposure: DiveCameraExposure) {
-//        suspendCancellableCoroutine { continuation ->
-//            dispatch_async(sessionQueue) {
-//                lens?.device?.withLock { device -> device.setManualExposure(device.minAbs(exposure)) }
-//                continuation.resumeSafe(Unit)
-//            }
-//        }
-//    }
-//
-//    actual suspend fun select(lens: CameraLens) {
-//        suspendCancellableCoroutine { continuation ->
-//            dispatch_async(sessionQueue) {
-//
-//                _isManualModeAvailable = lens.device.isManualModeAvailable()
-//                _exposureCompensationOptions = lens.device.exposureCompensationOptions()
-//                _sensorExposureTimeOptions = lens.device.sensorExposureTimeOptions()
-//                _apertureOptions = lens.device.apertureOptions()
-//                _isoOptions = lens.device.isoOptions()
-//                _lens = lens
-//
-//                this.deviceInput = deviceInput
-//                this.sampleBufferDelegate = sampleBufferDelegate
-//                this.videoDataOutput = videoDataOutput
-//                continuation.resumeSafe(Unit)
-//            }
-//        }
-//    }
-//
-//    actual suspend fun bind() {
-//        try {
-//            suspendCancellableCoroutine { continuation ->
-//                dispatch_async(sessionQueue) {
-//                    _lensOptions = getAvailableCameraLensList()
-//                    continuation.resumeSafe(Unit)
-//                }
-//            }
-//
-//            val lens = lens
-//            if (lens == null) {
-//                select(lensOptions.first())
-//            } else {
-//                select(lens)
-//            }
-//
-//            suspendCancellableCoroutine { continuation ->
-//                dispatch_async(sessionQueue) {
-//                    session.startRunning()
-//                    continuation.resumeSafe(Unit)
-//                }
-//            }
-//            awaitCancellation()
-//        } finally {
-//            dispatch_async(sessionQueue) {
-//                session.stopRunning()
-//            }
-//        }
-//    }
-// }
-
 @Stable
 internal class SessionCameraState : DefaultCameraState() {
     private val sessionQueue = dispatch_queue_create("camera.session.serial", null)
@@ -157,6 +42,7 @@ internal class SessionCameraState : DefaultCameraState() {
     private var sampleBufferDelegate: SampleBufferDelegate? = null
     private var deviceInput: AVCaptureDeviceInput? = null
     private var videoDataOutput: AVCaptureVideoDataOutput? = null
+    private var photoCapture: DiveCameraPhotoCapture? = null
     private var lastCameraInfo: DiveCameraInfo? = null
 
     override var viewFinder by mutableStateOf(DiveCameraViewFinder(session))
@@ -171,8 +57,6 @@ internal class SessionCameraState : DefaultCameraState() {
         get() = emptyList() // TODO
     override val videoRecordingDuration: Duration
         get() = Duration.ZERO // TODO
-    override val status: CameraStatus
-        get() = CameraStatus.LOADING // TODO
 
     override suspend fun bind() {
         try {
@@ -260,7 +144,26 @@ internal class SessionCameraState : DefaultCameraState() {
     }
 
     override suspend fun capture() {
-        // TODO
+        when (status) {
+            // TODO
+            CameraStatus.LOADING -> Unit
+
+            CameraStatus.PHOTO_READY -> takePhoto()
+
+            // TODO
+            CameraStatus.VIDEO_READY -> Unit
+
+            // TODO
+            CameraStatus.VIDEO_RECORDING -> Unit
+        }
+    }
+
+    private suspend fun takePhoto() {
+        val photoCapture = photoCapture ?: return
+
+        isInProgress = true
+        photoCapture.takePhoto(facing = diveCamera?.info?.facing ?: DiveCameraFacing.UNKNOWN)
+        isInProgress = false
     }
 
     override suspend fun setAspect(aspect: DiveCameraAspect) {
