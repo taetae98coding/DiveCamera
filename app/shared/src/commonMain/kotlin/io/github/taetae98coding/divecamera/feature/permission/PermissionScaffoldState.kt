@@ -17,9 +17,9 @@ import io.github.taetae98coding.divecamera.core.permission.rememberPhotoPermissi
 
 @Stable
 internal class PermissionScaffoldState(
-    val camera: CameraPermissionState,
+    private val camera: CameraPermissionState,
     audio: AudioPermissionState,
-    photo: PhotoPermissionState,
+    private val photo: PhotoPermissionState,
     location: LocationPermissionState,
     private val appSettingsLauncher: AppSettingsLauncher,
 ) {
@@ -36,6 +36,9 @@ internal class PermissionScaffoldState(
 
     val isCameraGranted: Boolean
         get() = camera.isGranted
+
+    val isPhotoGranted: Boolean
+        get() = photo.isGranted
 
     val isAllGranted: Boolean
         get() = states.values.all { it.isGranted }

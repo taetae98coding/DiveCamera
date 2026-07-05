@@ -34,9 +34,8 @@ internal fun PermissionScaffold(
         modifier = modifier,
         bottomBar = {
             PermissionBottomBar(
-                isCameraGranted = state.isCameraGranted,
+                state = state,
                 onStart = onStart,
-                onOpenSettings = state::openAppSettings,
             )
         },
     ) { padding ->
@@ -98,9 +97,8 @@ private fun PermissionCard(
 
 @Composable
 private fun PermissionBottomBar(
-    isCameraGranted: Boolean,
+    state: PermissionScaffoldState,
     onStart: () -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -112,13 +110,13 @@ private fun PermissionBottomBar(
     ) {
         Button(
             onClick = onStart,
-            enabled = isCameraGranted,
+            enabled = state.isCameraGranted && state.isPhotoGranted,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = stringResource(Res.string.permission_start))
         }
         OutlinedButton(
-            onClick = onOpenSettings,
+            onClick = state::openAppSettings,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = stringResource(Res.string.permission_open_settings))
