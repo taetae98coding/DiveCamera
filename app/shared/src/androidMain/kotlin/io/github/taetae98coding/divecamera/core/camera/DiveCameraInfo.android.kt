@@ -3,15 +3,15 @@ package io.github.taetae98coding.divecamera.core.camera
 import androidx.camera.core.CameraSelector
 import kotlin.time.Duration
 
-actual class DiveCameraInfo(
+internal actual class DiveCameraInfo(
     val selector: CameraSelector,
     actual val facing: DiveCameraFacing,
     actual val type: DiveCameraType,
-    val isManualModeAvailable: Boolean,
-    val exposureCompensationOptions: List<Float>,
-    val sensorExposureTimeOptions: List<Duration>,
-    val apertureOptions: List<Float>,
-    val isoOptions: List<Int>,
+    actual val isManualModeAvailable: Boolean,
+    actual val exposureCompensationOptions: List<Float>,
+    actual val sensorExposureTimeOptions: List<Duration>,
+    actual val apertureOptions: List<Float>,
+    actual val isoOptions: List<Int>,
     val videoQualityOptions: List<DiveCameraVideoQuality>,
     val videoFrameRateOptions: Map<DiveCameraVideoQuality, List<Int>>,
 ) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.ext.formatAperture
 import io.github.taetae98coding.divecamera.ext.formatExposureCompensation
@@ -23,7 +24,6 @@ import io.github.taetae98coding.divecamera.ext.formatSensorExposureTime
 import io.github.taetae98coding.divecamera.ext.formatVideoFrameRate
 import io.github.taetae98coding.divecamera.ext.formatVideoQuality
 import io.github.taetae98coding.divecamera.ext.formatVideoRecordingDuration
-import io.github.taetae98coding.divecamera.feature.camera.state.CameraCaptureMode
 import io.github.taetae98coding.divecamera.feature.camera.state.CameraState
 import io.github.taetae98coding.divecamera.feature.camera.state.CameraStatus
 
@@ -55,7 +55,7 @@ internal fun CameraTopBar(
             ExposureText(text = formatIso(cameraState.exposure.iso))
         }
 
-        if (cameraState.captureMode == CameraCaptureMode.VIDEO) {
+        if (cameraState.captureMode == DiveCameraCaptureMode.VIDEO) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

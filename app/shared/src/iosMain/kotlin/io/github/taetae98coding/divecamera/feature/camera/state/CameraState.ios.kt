@@ -8,6 +8,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import io.github.taetae98coding.divecamera.core.camera.CameraExposureCompensationSampleBufferDelegate
+import io.github.taetae98coding.divecamera.core.camera.CameraExposureLevelSampleBufferDelegate
+import io.github.taetae98coding.divecamera.core.camera.CameraExposureSampleBufferDelegate
+import io.github.taetae98coding.divecamera.core.camera.CameraModeSampleBufferDelegate
+import io.github.taetae98coding.divecamera.core.camera.DiveCamera
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
+import io.github.taetae98coding.divecamera.core.camera.SampleBufferDelegate
 import io.github.taetae98coding.divecamera.ext.minAbs
 import io.github.taetae98coding.divecamera.ext.resumeSafe
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -21,8 +32,8 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_queue_create
 import kotlin.time.Duration
 
-//@Stable
-//internal actual class CameraState {
+// @Stable
+// internal actual class CameraState {
 //    private val sessionQueue = dispatch_queue_create("camera.session.serial", null)
 //    private val session = AVCaptureSession()
 //
@@ -91,44 +102,6 @@ import kotlin.time.Duration
 //    actual suspend fun select(lens: CameraLens) {
 //        suspendCancellableCoroutine { continuation ->
 //            dispatch_async(sessionQueue) {
-//                session.beginConfiguration()
-//
-//                videoDataOutput?.let { session.removeOutput(it) }
-//                deviceInput?.let { session.removeInput(it) }
-//
-//                val sampleBufferDelegate = SampleBufferDelegate()
-//                val videoDataOutput =
-//                    AVCaptureVideoDataOutput()
-//                        .apply {
-//                            alwaysDiscardsLateVideoFrames = true
-//                            setSampleBufferDelegate(sampleBufferDelegate, sessionQueue)
-//                        }
-//                val deviceInput =
-//                    AVCaptureDeviceInput
-//                        .deviceInputWithDevice(lens.device, null)
-//
-//                if (deviceInput != null && session.canAddInput(deviceInput)) {
-//                    session.addInput(deviceInput)
-//                }
-//                if (session.canAddOutput(videoDataOutput)) {
-//                    session.addOutput(videoDataOutput)
-//                }
-//
-//                sampleBufferDelegate.add(
-//                    CameraExposureSampleBufferDelegate(lens.device) {
-//                        _exposure =
-//                            when (exposureMode) {
-//                                CameraExposureMode.MANUAL -> lens.device.minAbs(it)
-//                                CameraExposureMode.PROGRAM -> it
-//                            }
-//                    },
-//                )
-//                sampleBufferDelegate.add(CameraExposureCompensationSampleBufferDelegate(lens.device) { _exposureCompensation = exposureCompensationOptions.minAbs(it) })
-//                sampleBufferDelegate.add(CameraExposureLevelSampleBufferDelegate(lens.device) { _exposureLevel = it })
-//                sampleBufferDelegate.add(CameraModeSampleBufferDelegate(lens.device) { _exposureMode = it })
-//
-//                session.setSessionPreset(AVCaptureSessionPresetPhoto)
-//                session.commitConfiguration()
 //
 //                _isManualModeAvailable = lens.device.isManualModeAvailable()
 //                _exposureCompensationOptions = lens.device.exposureCompensationOptions()
@@ -174,10 +147,143 @@ import kotlin.time.Duration
 //            }
 //        }
 //    }
-//}
+// }
+
+@Stable
+internal class SessionCameraState : DefaultCameraState() {
+    private val sessionQueue = dispatch_queue_create("camera.session.serial", null)
+    private val session = AVCaptureSession()
+
+    private var sampleBufferDelegate: SampleBufferDelegate? = null
+    private var deviceInput: AVCaptureDeviceInput? = null
+    private var videoDataOutput: AVCaptureVideoDataOutput? = null
+    private var lastCameraInfo: DiveCameraInfo? = null
+
+    override var viewFinder by mutableStateOf(DiveCameraViewFinder(session))
+        private set
+
+    override var videoQuality by mutableStateOf<DiveCameraVideoQuality?>(null)
+    override val videoQualityOptions: List<DiveCameraVideoQuality>
+        get() = emptyList() // TODO
+    override val videoFrameRate: Int?
+        get() = null // TODO
+    override val videoFrameRateOptions: List<Int>
+        get() = emptyList() // TODO
+    override val videoRecordingDuration: Duration
+        get() = Duration.ZERO // TODO
+    override val status: CameraStatus
+        get() = CameraStatus.LOADING // TODO
+
+    override suspend fun bind() {
+        try {
+            suspendCancellableCoroutine { continuation ->
+                dispatch_async(sessionQueue) {
+                    session.startRunning()
+                    diveCameraInfoOptions = getAvailableCameraLensList()
+                    continuation.resumeSafe(Unit)
+                }
+            }
+
+            changeSession(lastCameraInfo ?: diveCameraInfoOptions.firstOrNull())
+            awaitCancellation()
+        } finally {
+            dispatch_async(sessionQueue) {
+                session.stopRunning()
+            }
+            diveCamera = null
+            sampleBufferDelegate = null
+            deviceInput = null
+            videoDataOutput = null
+            photoCapture = null
+        }
+    }
+
+    override suspend fun changeCamera(camera: DiveCameraInfo) {
+        changeSession(camera)
+    }
+
+    private suspend fun changeSession(cameraInfo: DiveCameraInfo? = lastCameraInfo) {
+        if (cameraInfo != null) {
+            suspendCancellableCoroutine { continuation ->
+                dispatch_async(sessionQueue) {
+                    session.beginConfiguration()
+                    deviceInput?.let { session.removeInput(it) }
+                    videoDataOutput?.let { session.removeOutput(it) }
+                    photoCapture?.let { session.removeOutput(it.output) }
+
+                    val sampleBufferDelegate = SampleBufferDelegate()
+                    val videoDataOutput =
+                        AVCaptureVideoDataOutput()
+                            .apply {
+                                alwaysDiscardsLateVideoFrames = true
+                                setSampleBufferDelegate(sampleBufferDelegate, sessionQueue)
+                            }
+                    val photoCapture = DiveCameraPhotoCapture(sessionQueue)
+                    val deviceInput =
+                        AVCaptureDeviceInput
+                            .deviceInputWithDevice(cameraInfo.device, null)
+                    if (deviceInput != null && session.canAddInput(deviceInput)) {
+                        session.addInput(deviceInput)
+                    }
+                    if (session.canAddOutput(videoDataOutput)) {
+                        session.addOutput(videoDataOutput)
+                    }
+                    if (session.canAddOutput(photoCapture.output)) {
+                        session.addOutput(photoCapture.output)
+                    }
+                    session.setSessionPreset(AVCaptureSessionPresetPhoto)
+                    session.commitConfiguration()
+
+                    sampleBufferDelegate.add(CameraModeSampleBufferDelegate(cameraInfo.device) { exposureMode = it })
+                    sampleBufferDelegate.add(CameraExposureLevelSampleBufferDelegate(cameraInfo.device) { exposureLevel = it })
+                    sampleBufferDelegate.add(CameraExposureCompensationSampleBufferDelegate(cameraInfo.device) { exposureCompensation = exposureCompensationOptions.minAbs(it) })
+                    sampleBufferDelegate.add(CameraExposureSampleBufferDelegate(cameraInfo.device) { preferExposure = it })
+
+                    diveCamera = DiveCamera(queue = sessionQueue, info = cameraInfo)
+                    this.sampleBufferDelegate = sampleBufferDelegate
+                    this.deviceInput = deviceInput
+                    this.videoDataOutput = videoDataOutput
+                    this.photoCapture = photoCapture
+                    lastCameraInfo = cameraInfo
+
+                    continuation.resumeSafe(Unit)
+                }
+            }
+        } else {
+            diveCamera = null
+            sampleBufferDelegate = null
+            deviceInput = null
+            videoDataOutput = null
+            photoCapture = null
+            lastCameraInfo = null
+        }
+    }
+
+    override suspend fun capture() {
+        // TODO
+    }
+
+    override suspend fun setAspect(aspect: DiveCameraAspect) {
+        if (preferAspect == aspect) return
+
+        preferAspect = aspect
+    }
+
+    override suspend fun setCaptureMode(captureMode: DiveCameraCaptureMode) {
+        // TODO
+    }
+
+    override suspend fun setVideoQuality(videoQuality: DiveCameraVideoQuality) {
+        // TODO
+    }
+
+    override suspend fun setVideoFrameRate(videoFrameRate: Int) {
+        // TODO
+    }
+}
 
 @Composable
 internal actual fun rememberCameraState(): CameraState =
     remember {
-        CameraState()
+        SessionCameraState()
     }

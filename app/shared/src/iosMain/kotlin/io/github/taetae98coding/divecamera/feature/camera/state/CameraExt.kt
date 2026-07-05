@@ -2,11 +2,14 @@
 
 package io.github.taetae98coding.divecamera.feature.camera.state
 
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposure
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraType
+import io.github.taetae98coding.divecamera.core.camera.generateExposureCompensation
+import io.github.taetae98coding.divecamera.core.camera.generateIsoOptions
+import io.github.taetae98coding.divecamera.core.camera.generateSensorExposureTimeOptions
 import io.github.taetae98coding.divecamera.ext.cameraLensComparator
-import io.github.taetae98coding.divecamera.ext.generateExposureCompensation
-import io.github.taetae98coding.divecamera.ext.generateIsoOptions
-import io.github.taetae98coding.divecamera.ext.generateSensorExposureTimeOptions
-import io.github.taetae98coding.divecamera.ext.minAbs
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.AVFoundation.AVCaptureDevice
@@ -40,7 +43,7 @@ import kotlin.time.DurationUnit
 
 private const val TIMESCALE = 1_000_000_000
 
-internal fun getAvailableCameraLensList(): List<CameraLens> {
+internal fun getAvailableCameraLensList(): List<DiveCameraInfo> {
     val session =
         AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
             deviceTypes =
@@ -55,21 +58,26 @@ internal fun getAvailableCameraLensList(): List<CameraLens> {
     return session.devices
         .filterIsInstance<AVCaptureDevice>()
         .map { device ->
-            CameraLens(
+            DiveCameraInfo(
                 device = device,
                 facing =
                     when (device.position) {
-                        AVCaptureDevicePositionBack -> CameraLensFacing.BACK
-                        AVCaptureDevicePositionFront -> CameraLensFacing.FRONT
-                        else -> CameraLensFacing.UNKNOWN
+                        AVCaptureDevicePositionBack -> DiveCameraFacing.BACK
+                        AVCaptureDevicePositionFront -> DiveCameraFacing.FRONT
+                        else -> DiveCameraFacing.UNKNOWN
                     },
                 type =
                     when (device.deviceType) {
-                        AVCaptureDeviceTypeBuiltInUltraWideCamera -> CameraLensType.ULTRA_WIDE
-                        AVCaptureDeviceTypeBuiltInWideAngleCamera -> CameraLensType.WIDE
-                        AVCaptureDeviceTypeBuiltInTelephotoCamera -> CameraLensType.TELEPHOTO
-                        else -> CameraLensType.UNKNOWN
+                        AVCaptureDeviceTypeBuiltInUltraWideCamera -> DiveCameraType.ULTRA_WIDE
+                        AVCaptureDeviceTypeBuiltInWideAngleCamera -> DiveCameraType.WIDE
+                        AVCaptureDeviceTypeBuiltInTelephotoCamera -> DiveCameraType.TELEPHOTO
+                        else -> DiveCameraType.UNKNOWN
                     },
+                exposureCompensationOptions = device.exposureCompensationOptions(),
+                isManualModeAvailable = device.isManualModeAvailable(),
+                isoOptions = device.isoOptions(),
+                apertureOptions = device.apertureOptions(),
+                sensorExposureTimeOptions = device.sensorExposureTimeOptions(),
             )
         }.sortedWith(cameraLensComparator)
 }
@@ -105,13 +113,6 @@ internal fun AVCaptureDevice.setManualExposure(exposure: DiveCameraExposure) {
         completionHandler = null,
     )
 }
-
-internal fun AVCaptureDevice.minAbs(exposure: DiveCameraExposure): DiveCameraExposure =
-    exposure.copy(
-        iso = isoOptions().minAbs(exposure.iso),
-        sensorExposureTime = sensorExposureTimeOptions().minAbs(exposure.sensorExposureTime),
-        aperture = apertureOptions().minAbs(exposure.aperture),
-    )
 
 internal fun AVCaptureDevice.withLock(block: (AVCaptureDevice) -> Unit) {
     if (!lockForConfiguration(null)) return

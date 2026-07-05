@@ -46,6 +46,7 @@ import divecamera.app.shared.generated.resources.overlay_lens
 import divecamera.app.shared.generated.resources.overlay_shutture_speed
 import divecamera.app.shared.generated.resources.overlay_video_quality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.core.model.CameraGesture
 import io.github.taetae98coding.divecamera.ext.formatAperture
@@ -64,7 +65,6 @@ import io.github.taetae98coding.divecamera.ext.gestureClickNoRipple
 import io.github.taetae98coding.divecamera.ext.gestureSwipe
 import io.github.taetae98coding.divecamera.ext.gestureThreePane
 import io.github.taetae98coding.divecamera.ext.gestureVolume
-import io.github.taetae98coding.divecamera.feature.camera.state.CameraCaptureMode
 import io.github.taetae98coding.divecamera.feature.camera.state.CameraState
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -268,7 +268,7 @@ private fun HomeOverlay(
                     add(it)
                 }
 
-                if (cameraState.captureMode == CameraCaptureMode.VIDEO) {
+                if (cameraState.captureMode == DiveCameraCaptureMode.VIDEO) {
                     OverlayItem(
                         title = overlayVideoQuality,
                         isEnable = cameraState.videoQualityOptions.size >= 2,
@@ -288,7 +288,7 @@ private fun HomeOverlay(
                     }
                 }
 
-                if (cameraState.captureMode == CameraCaptureMode.PHOTO) {
+                if (cameraState.captureMode == DiveCameraCaptureMode.PHOTO) {
                     OverlayItem(
                         title = overlayAspect,
                         isEnable = true,
@@ -299,7 +299,7 @@ private fun HomeOverlay(
                     }
                 }
 
-                if (cameraState.captureMode == CameraCaptureMode.PHOTO) {
+                if (cameraState.captureMode == DiveCameraCaptureMode.PHOTO) {
                     OverlayItem(
                         title = overlayExposureMode,
                         isEnable = cameraState.isManualModeAvailable,
@@ -383,7 +383,7 @@ private fun CaptureModeOverlay(
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val list = listOf(CameraCaptureMode.PHOTO, CameraCaptureMode.VIDEO)
+    val list = listOf(DiveCameraCaptureMode.PHOTO, DiveCameraCaptureMode.VIDEO)
     val captureModePhoto = stringResource(Res.string.capture_mode_photo)
     val captureModeVideo = stringResource(Res.string.capture_mode_video)
 
@@ -723,16 +723,19 @@ private fun LazyColumnOverlay(
         coroutineScope.launch {
             cursor = getEnableDownIndex(cursor - 1, items) ?: 0
             lazyListVisibleScroll(cursor)
+            scaffoldState.input()
         }
     }
     val cursorUpIndex: () -> Unit = {
         coroutineScope.launch {
             cursor = getEnableUpIndex(cursor + 1, items) ?: 0
             lazyListVisibleScroll(cursor)
+            scaffoldState.input()
         }
     }
     val itemAction: () -> Unit = {
         items.getOrNull(cursor)?.action()
+        scaffoldState.input()
     }
 
     Box(
@@ -741,7 +744,10 @@ private fun LazyColumnOverlay(
                 .fillMaxSize()
                 .gestureClickNoRipple(
                     isEnable = gesture.isTouchEnable,
-                    onClick = { scaffoldState.isOverlayVisible = false },
+                    onClick = {
+                        scaffoldState.isOverlayVisible = false
+                        scaffoldState.input()
+                    },
                 ).gestureVolume(
                     onVolumeChange = itemAction,
                 ).gestureThreePane(

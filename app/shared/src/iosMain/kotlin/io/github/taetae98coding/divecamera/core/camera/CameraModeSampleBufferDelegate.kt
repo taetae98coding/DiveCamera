@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.camera.state
+package io.github.taetae98coding.divecamera.core.camera
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVCaptureConnection
@@ -13,7 +13,7 @@ import platform.darwin.NSObject
 @OptIn(ExperimentalForeignApi::class)
 internal class CameraModeSampleBufferDelegate(
     private val device: AVCaptureDevice,
-    private val onChange: (CameraExposureMode) -> Unit,
+    private val onChange: (DiveCameraExposureMode) -> Unit,
 ) : NSObject(),
     AVCaptureVideoDataOutputSampleBufferDelegateProtocol {
     override fun captureOutput(
@@ -23,9 +23,9 @@ internal class CameraModeSampleBufferDelegate(
     ) {
         val mode =
             if (device.exposureMode == AVCaptureExposureModeCustom) {
-                CameraExposureMode.MANUAL
+                DiveCameraExposureMode.MANUAL
             } else {
-                CameraExposureMode.PROGRAM
+                DiveCameraExposureMode.PROGRAM
             }
         onChange(mode)
     }

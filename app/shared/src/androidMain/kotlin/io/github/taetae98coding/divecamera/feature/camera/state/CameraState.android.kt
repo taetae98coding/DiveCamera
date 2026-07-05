@@ -11,7 +11,6 @@ import androidx.camera.lifecycle.awaitInstance
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoRecordEvent
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,10 +20,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.taetae98coding.divecamera.core.camera.DiveCamera
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
-import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposure
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureCaptureCallback
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureCompensationCaptureCallback
-import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureModeCaptureCallback
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraImageCapture
@@ -35,10 +33,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder
 import io.github.taetae98coding.divecamera.core.camera.getAvailableCameraLensList
-import io.github.taetae98coding.divecamera.core.camera.setManualExposure
-import io.github.taetae98coding.divecamera.core.camera.setProgramExposure
 import io.github.taetae98coding.divecamera.core.camera.toDiveCameraOption
-import io.github.taetae98coding.divecamera.core.camera.toResolutionSelector
 import io.github.taetae98coding.divecamera.core.camera.toViewPort
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -49,96 +44,27 @@ import kotlin.time.Duration.Companion.nanoseconds
 internal class LifecycleCameraState(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
-) : CameraState {
-    override var captureMode by mutableStateOf(CameraCaptureMode.PHOTO)
-        private set
-    override var videoQuality by mutableStateOf<DiveCameraVideoQuality?>(null)
-        private set
-    override var videoFrameRate by mutableStateOf<Int?>(null)
-        private set
-    override var videoRecordingDuration by mutableStateOf<Duration>(Duration.ZERO)
-        private set
-    private var _aspect by mutableStateOf(DiveCameraAspect.W3H4)
-        private set
-    override val aspect by derivedStateOf {
-        if (captureMode == CameraCaptureMode.VIDEO) {
-            DiveCameraAspect.W9H16
-        } else {
-            _aspect
-        }
-    }
-    override var viewFinder by mutableStateOf(DiveCameraViewFinder())
-        private set
-    override var diveCameraInfoOptions: List<DiveCameraInfo> by mutableStateOf(emptyList())
-        private set
-
-    override var diveCamera by mutableStateOf<DiveCamera?>(null)
-        private set
-    override val isManualModeAvailable: Boolean
-        get() = diveCamera?.info?.isManualModeAvailable ?: false
-    override val exposureCompensationOptions: List<Float>
-        get() = diveCamera?.info?.exposureCompensationOptions.orEmpty()
-    override val sensorExposureTimeOptions: List<Duration>
-        get() = diveCamera?.info?.sensorExposureTimeOptions.orEmpty()
-    override val apertureOptions: List<Float>
-        get() = diveCamera?.info?.apertureOptions.orEmpty()
-    override val isoOptions: List<Int>
-        get() = diveCamera?.info?.isoOptions.orEmpty()
-    override val videoQualityOptions: List<DiveCameraVideoQuality>
-        get() = diveCamera?.info?.videoQualityOptions.orEmpty()
-    override val videoFrameRateOptions: List<Int>
-        get() = videoQuality?.let { diveCamera?.info?.videoFrameRateOptions?.get(it) }.orEmpty()
-
-    override var exposureMode by mutableStateOf(DiveCameraExposureMode.UNKNOWN)
-        private set
-    override val exposureLevel: Float? = null
-    override var exposureCompensation by mutableStateOf<Float?>(null)
-        private set
-    private var _exposure by mutableStateOf(DiveCameraExposure())
-    override val exposure: DiveCameraExposure
-        get() {
-            return when (exposureMode) {
-                DiveCameraExposureMode.MANUAL -> {
-                    _exposure.copy(
-                        isoOptions = isoOptions,
-                        sensorExposureTimeOptions = sensorExposureTimeOptions,
-                        apertureOptions = apertureOptions,
-                    )
-                }
-
-                else -> {
-                    _exposure
-                }
-            }
-        }
-
-    private var isInProgress by mutableStateOf(false)
-    private var isRecording by mutableStateOf(false)
-    override val status by derivedStateOf {
-        when {
-            isInProgress -> {
-                CameraStatus.LOADING
-            }
-
-            isRecording -> {
-                CameraStatus.VIDEO_RECORDING
-            }
-
-            else -> {
-                when (captureMode) {
-                    CameraCaptureMode.PHOTO -> CameraStatus.PHOTO_READY
-                    CameraCaptureMode.VIDEO -> CameraStatus.VIDEO_READY
-                }
-            }
-        }
-    }
-
+) : DefaultCameraState() {
     private val cameraLocationProvider: DiveCameraLocationProvider = DiveCameraLocationProvider(context)
     private var cameraPreview: DiveCameraPreview? = null
     private var cameraImageCapture: DiveCameraImageCapture? = null
     private var cameraVideoCapture: DiveCameraVideoCapture? = null
     private var recording: Recording? = null
     private var lastCameraInfo: DiveCameraInfo? = null
+
+    override var viewFinder by mutableStateOf(DiveCameraViewFinder())
+        private set
+    override val videoQualityOptions: List<DiveCameraVideoQuality>
+        get() = diveCamera?.info?.videoQualityOptions.orEmpty()
+    override val videoFrameRateOptions: List<Int>
+        get() = videoQuality?.let { diveCamera?.info?.videoFrameRateOptions?.get(it) }.orEmpty()
+
+    override var videoQuality by mutableStateOf<DiveCameraVideoQuality?>(null)
+        private set
+    override var videoFrameRate by mutableStateOf<Int?>(null)
+        private set
+    override var videoRecordingDuration by mutableStateOf(Duration.ZERO)
+        private set
 
     override suspend fun bind() {
         val provider = ProcessCameraProvider.awaitInstance(context)
@@ -153,9 +79,11 @@ internal class LifecycleCameraState(
         } finally {
             stopVideo()
             provider.unbindAll()
+            diveCamera = null
             cameraPreview = null
             cameraImageCapture = null
             cameraVideoCapture = null
+            recording = null
         }
     }
 
@@ -178,17 +106,16 @@ internal class LifecycleCameraState(
                 videoFrameRate = videoFrameRateOptions.lastOrNull()
             }
 
-            val resolutionSelector = aspect.toResolutionSelector()
-            val preview = DiveCameraPreview(resolutionSelector)
+            val preview = DiveCameraPreview(aspect)
             val imageCapture =
                 when (captureMode) {
-                    CameraCaptureMode.PHOTO -> DiveCameraImageCapture(context, resolutionSelector)
-                    CameraCaptureMode.VIDEO -> null
+                    DiveCameraCaptureMode.PHOTO -> DiveCameraImageCapture(context, aspect)
+                    DiveCameraCaptureMode.VIDEO -> null
                 }
             val videoCapture =
                 when (captureMode) {
-                    CameraCaptureMode.PHOTO -> null
-                    CameraCaptureMode.VIDEO -> DiveCameraVideoCapture(context, aspect, videoQuality, videoFrameRate)
+                    DiveCameraCaptureMode.PHOTO -> null
+                    DiveCameraCaptureMode.VIDEO -> DiveCameraVideoCapture(context, aspect, videoQuality, videoFrameRate)
                 }
             val useCases = listOfNotNull(preview.useCase, imageCapture?.useCase, videoCapture?.useCase)
             val sessionConfig =
@@ -206,47 +133,34 @@ internal class LifecycleCameraState(
             cameraPreview =
                 preview.apply {
                     useCase.surfaceProvider = { viewFinder = DiveCameraViewFinder(it) }
-                    add(DiveCameraExposureCompensationCaptureCallback(diveCamera) { exposureCompensation = it })
-                    add(DiveCameraExposureCaptureCallback { _exposure = it })
                     add(DiveCameraExposureModeCaptureCallback { exposureMode = it })
+                    add(DiveCameraExposureCompensationCaptureCallback(diveCamera) { exposureCompensation = it })
+                    add(DiveCameraExposureCaptureCallback { preferExposure = it })
                 }
             cameraImageCapture = imageCapture
             cameraVideoCapture = videoCapture
             lastCameraInfo = diveCameraInfo
         } else {
+            diveCamera = null
             cameraPreview = null
             cameraImageCapture = null
             cameraVideoCapture = null
-            lastCameraInfo = null
+            recording = null
         }
     }
 
-    override suspend fun setProgramExposure(exposureCompensation: Float) {
-        diveCamera?.camera?.setProgramExposure(exposureCompensation)
-    }
-
-    override suspend fun setManualExposure(exposure: DiveCameraExposure) {
-        diveCamera?.camera?.setManualExposure(
-            exposure.copy(
-                isoOptions = isoOptions,
-                sensorExposureTimeOptions = sensorExposureTimeOptions,
-                apertureOptions = apertureOptions,
-            ),
-        )
-    }
-
     override suspend fun setAspect(aspect: DiveCameraAspect) {
-        if (_aspect == aspect) return
+        if (preferAspect == aspect) return
 
-        _aspect = aspect
+        preferAspect = aspect
         changeSession(ProcessCameraProvider.awaitInstance(context))
     }
 
-    override suspend fun setCaptureMode(captureMode: CameraCaptureMode) {
+    override suspend fun setCaptureMode(captureMode: DiveCameraCaptureMode) {
         if (this.captureMode == captureMode) return
 
         this.captureMode = captureMode
-        if (captureMode == CameraCaptureMode.VIDEO) {
+        if (captureMode == DiveCameraCaptureMode.VIDEO) {
             setProgramExposure()
         }
         changeSession(ProcessCameraProvider.awaitInstance(context))

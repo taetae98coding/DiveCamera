@@ -6,20 +6,19 @@ import android.location.Location
 import android.provider.MediaStore
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.core.content.ContextCompat
 import io.github.taetae98coding.divecamera.ext.resumeSafe
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 internal class DiveCameraImageCapture(
     private val context: Context,
-    resolutionSelector: ResolutionSelector,
+    aspect: DiveCameraAspect,
 ) {
     val useCase =
         ImageCapture
             .Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-            .setResolutionSelector(resolutionSelector)
+            .setResolutionSelector(aspect.toResolutionSelector())
             .setOutputFormat(ImageCapture.OUTPUT_FORMAT_RAW_JPEG)
             .build()
 

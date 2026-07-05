@@ -7,17 +7,16 @@ import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Preview
-import androidx.camera.core.resolutionselector.ResolutionSelector
 
 internal class DiveCameraPreview(
-    resolutionSelector: ResolutionSelector,
+    aspect: DiveCameraAspect,
 ) {
     private val captureCallback = DiveCameraCaptureCallback()
 
     val useCase =
         Preview
             .Builder()
-            .setResolutionSelector(resolutionSelector)
+            .setResolutionSelector(aspect.toResolutionSelector())
             .apply { Camera2Interop.Extender(this).setSessionCaptureCallback(captureCallback) }
             .build()
 

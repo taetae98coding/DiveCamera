@@ -1,12 +1,12 @@
 package io.github.taetae98coding.divecamera.ext
 
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraAspect
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraExposureMode
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraType
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
-import io.github.taetae98coding.divecamera.feature.camera.state.CameraCaptureMode
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -72,13 +72,13 @@ internal fun formatDiveCameraInfo(
     } ?: "--"
 
 internal fun formatCaptureMode(
-    value: CameraCaptureMode,
+    value: DiveCameraCaptureMode,
     photoText: String,
     videoText: String,
 ): String =
     when (value) {
-        CameraCaptureMode.PHOTO -> photoText
-        CameraCaptureMode.VIDEO -> videoText
+        DiveCameraCaptureMode.PHOTO -> photoText
+        DiveCameraCaptureMode.VIDEO -> videoText
     }
 
 internal fun formatVideoQuality(value: DiveCameraVideoQuality?): String =

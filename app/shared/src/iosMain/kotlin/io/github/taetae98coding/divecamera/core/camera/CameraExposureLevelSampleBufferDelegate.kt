@@ -1,4 +1,4 @@
-package io.github.taetae98coding.divecamera.feature.camera.state
+package io.github.taetae98coding.divecamera.core.camera
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVCaptureConnection
