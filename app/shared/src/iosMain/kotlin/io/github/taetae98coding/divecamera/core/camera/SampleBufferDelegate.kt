@@ -1,4 +1,6 @@
-package io.github.taetae98coding.divecamera.feature.camera.state
+@file:OptIn(ExperimentalForeignApi::class)
+
+package io.github.taetae98coding.divecamera.core.camera
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVCaptureConnection
@@ -7,7 +9,6 @@ import platform.AVFoundation.AVCaptureVideoDataOutputSampleBufferDelegateProtoco
 import platform.CoreMedia.CMSampleBufferRef
 import platform.darwin.NSObject
 
-@OptIn(ExperimentalForeignApi::class)
 internal class SampleBufferDelegate :
     NSObject(),
     AVCaptureVideoDataOutputSampleBufferDelegateProtocol {

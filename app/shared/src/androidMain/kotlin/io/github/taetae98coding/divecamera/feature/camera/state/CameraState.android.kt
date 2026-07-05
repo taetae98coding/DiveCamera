@@ -30,6 +30,7 @@ import io.github.taetae98coding.divecamera.core.camera.DiveCameraFacing
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraImageCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraInfo
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraLocationProvider
+import io.github.taetae98coding.divecamera.core.camera.DiveCameraPreview
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoCapture
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraVideoQuality
 import io.github.taetae98coding.divecamera.core.camera.DiveCameraViewFinder

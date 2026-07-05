@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalCamera2Interop::class)
 
-package io.github.taetae98coding.divecamera.feature.camera.state
+package io.github.taetae98coding.divecamera.core.camera
 
 import android.hardware.camera2.CameraCaptureSession
 import androidx.annotation.OptIn
@@ -8,7 +8,6 @@ import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import io.github.taetae98coding.divecamera.core.camera.DiveCameraCaptureCallback
 
 internal class DiveCameraPreview(
     resolutionSelector: ResolutionSelector,
